@@ -1,26 +1,31 @@
-import { StyleSheet, Text } from 'react-native';
-import { ScreenPlaceholder, colors } from '@/shared/ui';
-import { useAvailableScanModes } from '../hooks/useAvailableScanModes';
-import type { ScanMode } from '../types/scan.types';
+import { AnalyzingView } from '../components/AnalyzingView';
+import { CameraCapture } from '../components/CameraCapture';
+import { PhotoPreview } from '../components/PhotoPreview';
+import { ScanErrorView } from '../components/ScanErrorView';
+import { useProductScan } from '../hooks/useProductScan';
+import { ProductResultScreen } from './ProductResultScreen';
 
-const SCAN_MODE_LABELS: Record<ScanMode, string> = {
-  photo: 'Фото продукта',
-  barcode: 'Штрихкод',
-};
-
+/** Камера или галерея → предпросмотр → анализ → результат. Состояние целиком в useProductScan. */
 export function ScanScreen() {
-  const modes = useAvailableScanModes();
+  const scan = useProductScan();
+  const { state } = scan;
 
-  return (
-    <ScreenPlaceholder title="Сканирование" description="Здесь будет камера для распознавания продукта.">
-      <Text style={styles.modes}>Способы: {modes.map((mode) => SCAN_MODE_LABELS[mode]).join(', ')}</Text>
-    </ScreenPlaceholder>
-  );
+  switch (state.status) {
+    case 'capturing':
+      return (
+        <CameraCapture
+          onCaptured={scan.onPhotoCaptured}
+          onCaptureFailed={scan.onCaptureFailed}
+          onPickFromGallery={scan.pickFromGallery}
+        />
+      );
+    case 'preview':
+      return <PhotoPreview photo={state.photo} onAnalyze={scan.analyze} onRetake={scan.reset} />;
+    case 'analyzing':
+      return <AnalyzingView photo={state.photo} stage={state.stage} onCancel={scan.reset} />;
+    case 'result':
+      return <ProductResultScreen product={state.product} photo={state.photo} onScanAnother={scan.reset} />;
+    case 'error':
+      return <ScanErrorView code={state.code} canRetry={state.photo !== null} onRetry={scan.analyze} onScanAgain={scan.reset} />;
+  }
 }
-
-const styles = StyleSheet.create({
-  modes: {
-    fontSize: 13,
-    color: colors.accent,
-  },
-});

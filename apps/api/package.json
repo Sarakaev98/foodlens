@@ -7,7 +7,8 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-test/**/*.test.js\""
   },
   "dependencies": {
     "@foodlens/ai": "workspace:*",

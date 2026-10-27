@@ -14,7 +14,10 @@ export interface AppConfig {
   readonly databaseUrl: string;
   readonly ai: {
     readonly provider: AIProviderName;
-    readonly metaApiKey: string;
+    /** Ключ Meta Model API. Только на backend; если пуст, API запускается, а сканирование вернёт AI_NOT_CONFIGURED. */
+    readonly modelApiKey: string;
+    readonly model: string | undefined;
+    readonly timeoutMs: number | undefined;
   };
   readonly featureFlags: FeatureFlags;
 }
@@ -27,7 +30,9 @@ export function loadAppConfig(env: Env): AppConfig {
     databaseUrl: requireEnv(env, 'DATABASE_URL'),
     ai: {
       provider: parseAIProviderName(env.AI_PROVIDER),
-      metaApiKey: env.META_API_KEY ?? '',
+      modelApiKey: env.MODEL_API_KEY?.trim() ?? '',
+      model: env.MODEL_NAME?.trim() || undefined,
+      timeoutMs: parsePositiveInt(env.MODEL_TIMEOUT_MS, 'MODEL_TIMEOUT_MS'),
     },
     featureFlags: resolveFeatureFlags(parseFeatureFlagOverrides(readFeatureFlagEnv(env))),
   };
@@ -37,6 +42,13 @@ function requireEnv(env: Env, name: string): string {
   const value = env[name];
   if (!value) throw new Error(`Environment variable ${name} is required`);
   return value;
+}
+
+function parsePositiveInt(value: string | undefined, name: string): number | undefined {
+  if (!value) return undefined;
+  const number = Number(value);
+  if (!Number.isInteger(number) || number <= 0) throw new Error(`Environment variable ${name} must be a positive integer`);
+  return number;
 }
 
 function parseAIProviderName(value: string | undefined): AIProviderName {

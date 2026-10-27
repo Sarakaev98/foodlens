@@ -13,10 +13,14 @@ export interface ImageInput {
   readonly base64: string;
 }
 
-export type AnalyzeProductInput =
+export type AnalyzeProductInput = (
   | { readonly kind: 'image'; readonly image: ImageInput }
   | { readonly kind: 'barcode'; readonly barcode: Barcode }
-  | { readonly kind: 'text'; readonly text: string };
+  | { readonly kind: 'text'; readonly text: string }
+) & {
+  /** Идентификатор запроса FoodLens для сквозного логирования. */
+  readonly requestId?: string;
+};
 
 export interface ExplainProductInput {
   readonly product: Product;

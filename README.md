@@ -10,7 +10,7 @@ packages/
   core/       общие доменные типы (Product, NutritionFacts, MealPlan, ProductScore...) и feature flags
   scoring/    Scoring Engine (контракт, без логики; зависит только от core)
   nutrition/  Nutrition Engine: дневные цели по калориям и БЖУ из профиля (чистый TS)
-  ai/         интерфейс AIProvider и каркас MetaProvider
+  ai/         интерфейс AIProvider и MetaProvider (анализ фото продукта через Meta Model API)
   database/   Prisma + PostgreSQL
 ```
 
@@ -41,7 +41,7 @@ cp packages/database/.env.example packages/database/.env
 cp apps/api/.env.example apps/api/.env
 pnpm db:deploy
 
-# API: http://localhost:3000/health, /feature-flags, /profile
+# API: http://localhost:3000/health, /feature-flags, /profile, /nutrition-targets, POST /scan/analyze
 pnpm dev:api
 
 # Mobile: Expo Dev Server (QR для Expo Go, `w` — web, `a` — Android)
@@ -55,7 +55,7 @@ pnpm dev:mobile
 
 ```bash
 pnpm typecheck      # проверка типов во всём монорепо
-pnpm test           # unit tests (node:test, сейчас packages/nutrition)
+pnpm test           # unit tests (node:test: packages/nutrition, packages/ai, apps/api)
 pnpm build          # сборка пакетов и API
 pnpm db:generate    # сгенерировать Prisma Client
 pnpm db:migrate     # prisma migrate dev: создать миграцию после изменения schema.prisma
@@ -78,3 +78,18 @@ pnpm db:deploy      # применить существующие миграци
 По умолчанию mobile обращается к API на том же компьютере, где запущен Expo
 (хост dev server, порт 3000). Это работает в web, в эмуляторе и на телефоне в той же Wi-Fi сети.
 Иначе задайте `EXPO_PUBLIC_API_URL` в `apps/mobile/.env`.
+
+## Сканирование продукта (Meta)
+
+Цепочка: камера или галерея → `POST /scan/analyze` (multipart, поле `image`) → `MetaProvider`
+→ Meta Model API (structured output по JSON Schema) → нормализатор → `Product` из `@foodlens/core`.
+
+Ключ задаётся **только** в `apps/api/.env`:
+
+```
+MODEL_API_KEY=...
+```
+
+Ключ не попадает в mobile, `EXPO_PUBLIC_*` и git (`.env` в `.gitignore`). Без ключа API
+запускается, а сканирование отвечает `503 AI_NOT_CONFIGURED`. Фото обрабатывается в памяти
+и нигде не сохраняется.

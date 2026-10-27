@@ -22,5 +22,12 @@ export type AllergenPresence = 'contains' | 'may_contain';
 
 export interface Allergen {
   readonly code: AllergenCode;
+  /** contains: входит в состав; may_contain: «может содержать следы». */
   readonly presence: AllergenPresence;
+  /** observed: явно указан на упаковке; inferred: выведен из ингредиента (например, «сухое молоко» → milk). */
+  readonly provenance: 'observed' | 'inferred';
+}
+
+export function isAllergenCode(value: unknown): value is AllergenCode {
+  return typeof value === 'string' && (ALLERGEN_CODES as readonly string[]).includes(value);
 }

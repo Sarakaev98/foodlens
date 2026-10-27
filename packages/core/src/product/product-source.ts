@@ -7,8 +7,16 @@ export type Barcode = Brand<string, 'Barcode'>;
  * новый способ получения добавляется новой веткой, не ломая существующие.
  */
 export type ProductSource =
-  | { readonly kind: 'barcode'; readonly barcode: Barcode; readonly provider: string }
-  | { readonly kind: 'image'; readonly provider: string }
-  | { readonly kind: 'manual' };
+  | {
+      /** Распознавание фотографии упаковки через Meta. */
+      readonly type: 'meta_vision';
+      readonly provider: 'meta';
+      /** Время анализа, ISO 8601. */
+      readonly analyzedAt: string;
+      /** Версия схемы и промпта анализа: по ней видно, каким алгоритмом получены данные. */
+      readonly analysisVersion: string;
+    }
+  | { readonly type: 'barcode'; readonly barcode: Barcode; readonly provider: string }
+  | { readonly type: 'manual' };
 
-export type ProductSourceKind = ProductSource['kind'];
+export type ProductSourceType = ProductSource['type'];
