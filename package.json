@@ -1,0 +1,29 @@
+{
+  "name": "foodlens",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:packages": "tsc -b packages/core packages/scoring packages/nutrition packages/ai packages/database",
+    "build": "pnpm build:packages && pnpm --filter @foodlens/api build",
+    "typecheck": "pnpm build:packages && pnpm -r --parallel typecheck",
+    "dev:api": "pnpm build:packages && pnpm --filter @foodlens/api dev",
+    "dev:mobile": "pnpm build:packages && pnpm --filter @foodlens/mobile start",
+    "db:generate": "pnpm --filter @foodlens/database db:generate",
+    "db:migrate": "pnpm --filter @foodlens/database db:migrate",
+    "clean": "pnpm build:packages --clean && rm -rf apps/api/dist",
+    "db:deploy": "pnpm --filter @foodlens/database db:deploy",
+    "test": "pnpm build:packages && pnpm -r --if-present test"
+  },
+  "devDependencies": {
+    "typescript": "~6.0.3"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/engines",
+      "prisma"
+    ]
+  }
+}

@@ -1,0 +1,77 @@
+// Схема FoodLens. Модели добавляются по мере появления функций, которым нужно хранение.
+// Значения enum совпадают с union-типами из @foodlens/core (проверяется типами в apps/api).
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum NutritionGoal {
+  lose_weight
+  maintain_weight
+  gain_weight
+  eat_healthier
+}
+
+enum BiologicalSex {
+  female
+  male
+}
+
+enum ActivityLevel {
+  sedentary
+  light
+  moderate
+  active
+  very_active
+}
+
+enum DietaryPreference {
+  none
+  vegetarian
+  vegan
+  pescatarian
+  halal
+  other
+}
+
+enum Allergen {
+  gluten
+  crustaceans
+  eggs
+  fish
+  peanuts
+  soy
+  milk
+  tree_nuts
+  celery
+  mustard
+  sesame
+  sulphites
+  lupin
+  molluscs
+}
+
+model UserNutritionProfile {
+  id                 String              @id @default(uuid()) @db.Uuid
+  /// Владелец профиля. Пока это локальный demo-пользователь; после появления auth станет FK на User.
+  userId             String              @unique @map("user_id")
+  goal               NutritionGoal
+  age                Int
+  sex                BiologicalSex
+  heightCm           Float               @map("height_cm")
+  weightKg           Float               @map("weight_kg")
+  activityLevel      ActivityLevel       @map("activity_level")
+  dietaryPreferences DietaryPreference[] @map("dietary_preferences")
+  allergens          Allergen[]
+  avoidedIngredients String[]            @map("avoided_ingredients")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  @@map("user_nutrition_profiles")
+}

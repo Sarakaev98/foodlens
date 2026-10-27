@@ -1,0 +1,26 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+.env*.local
+.DS_Store
+coverage/
+dist-test/
+
+# Local env variants and secrets (only .env.example is committed)
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.p8
+*.jks
+
+# Expo / Metro local state
+.expo/
+
+# Local artifacts: release archives, logs, QR codes
+*.tar.gz
+*.zip
+*.log
+*-qr.png

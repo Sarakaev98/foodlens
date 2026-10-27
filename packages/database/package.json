@@ -1,0 +1,32 @@
+{
+  "name": "@foodlens/database",
+  "version": "0.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "prisma generate && tsc -b",
+    "typecheck": "tsc -b",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "postinstall": "prisma generate",
+    "db:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1"
+  },
+  "devDependencies": {
+    "prisma": "7.10.1"
+  }
+}
