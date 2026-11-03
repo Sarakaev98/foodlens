@@ -1,7 +1,7 @@
 import { nutritionPlausibility } from './nutrition-plausibility';
 import { analyzeNutritionIngredients, estimateSugarShare } from './nutrition-ingredient-signals';
 import { nutritionEstimationProfile } from './nutrition-profiles';
-import { inferred, NUTRIENT_KEYS, NOT_DETECTED, type ConfidenceLevel, type NutrientKey, type NutritionFacts, type Product, type NutritionFieldMetadata } from '@foodlens/core';
+import { inferred, NUTRIENT_KEYS, NOT_DETECTED, SALT_PER_SODIUM, saltGFromSodiumMg, sodiumMgFromSaltG, type ConfidenceLevel, type NutrientKey, type NutritionFacts, type Product, type NutritionFieldMetadata } from '@foodlens/core';
 
 export const NUTRITION_ESTIMATION_VERSION = 'context-rules-v5';
 export { nutritionEstimationProfile } from './nutrition-profiles';
@@ -49,8 +49,8 @@ export function estimateMissingNutrition(product: Product): Product {
     metadata[key] = { quality: parent?.quality === 'verified' ? 'verified' : 'estimated', confidence: parent?.confidence ?? confidence, method: derivedFrom ? 'derived' : 'context_rules', reason };
   };
   // Convert a known salt/sodium pair before estimating either side.
-  if (values.saltG === null && values.sodiumMg !== null) set('saltG', values.sodiumMg * 2.5 / 1000, 'sodium × 2.5 / 1000', 'medium', 'sodiumMg');
-  if (values.sodiumMg === null && values.saltG !== null) set('sodiumMg', values.saltG * 1000 / 2.5, 'salt × 1000 / 2.5', 'medium', 'saltG');
+  if (values.saltG === null && values.sodiumMg !== null) set('saltG', saltGFromSodiumMg(values.sodiumMg), 'sodium × 2.5 / 1000', 'medium', 'sodiumMg');
+  if (values.sodiumMg === null && values.saltG !== null) set('sodiumMg', sodiumMgFromSaltG(values.saltG), 'salt × 1000 / 2.5', 'medium', 'saltG');
 
   const macros = [['proteinG', prior.protein, 4], ['carbsG', prior.carbs, 4], ['fatG', prior.fat, 9]] as const;
   const missing = macros.filter(([key]) => values[key] === null);
@@ -79,7 +79,7 @@ export function estimateMissingNutrition(product: Product): Product {
   const saltPosition = signals.saltPosition;
   const salt = saltPosition >= 0 ? Math.max(prior.salt, saltPosition <= 2 ? 1.5 : 0.5) : prior.salt;
   set('saltG', clamp(salt, 5), `category:${category}; profile:${subtype}; salt ingredient position:${saltPosition}; 0–5 g/100 bound`);
-  set('sodiumMg', values.saltG! * 1000 / 2.5, 'salt × 1000 / 2.5', 'low', 'saltG');
+  set('sodiumMg', sodiumMgFromSaltG(values.saltG!), 'salt × 1000 / 2.5', 'low', 'saltG');
 
   // Validate the completed profile together. Existing source fields are flagged, never clamped.
   const plausibility = nutritionPlausibility(base, signals);
@@ -112,7 +112,7 @@ export function estimateMissingNutrition(product: Product): Product {
     // A successful repair is recorded in the field reason; unresolved conflicts remain in constraints.
   }
   if (n.caloriesKcal.value === null) values.caloriesKcal = clamp(4 * values.proteinG! + 4 * values.carbsG! + 9 * values.fatG!, 900);
-  if (n.sodiumMg.value === null && n.saltG.value === null) values.sodiumMg = values.saltG! * 400;
+  if (n.sodiumMg.value === null && n.saltG.value === null) values.sodiumMg = values.saltG! * (1000 / SALT_PER_SODIUM); // = × 400, same multiplication as before
 
   const nutrition = { ...n } as { -readonly [K in keyof NutritionFacts]: NutritionFacts[K] };
   for (const key of NUTRIENT_KEYS) {

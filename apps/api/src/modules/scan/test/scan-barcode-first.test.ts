@@ -8,7 +8,7 @@ import { eatHealthierPlan } from '../../goal-match/test/goal-match-v4.fixtures';
 import type { GoalMatchService } from '../../goal-match/goal-match.service';
 import type { NutritionTargetsService } from '../../nutrition-targets/nutrition-targets.service';
 import { CachedProductLookupProvider } from '../../product-lookup/cached-product-lookup.provider';
-import { GeminiSearchProductLookupProvider, type NutritionSearcher } from '../../product-lookup/gemini-search-lookup.provider';
+import { WebSearchProductLookupProvider, type NutritionSearcher } from '../../product-lookup/web-search-lookup.provider';
 import { MultiSourceProductLookup } from '../../product-lookup/multi-source-product-lookup';
 import { mapOpenFoodFactsProduct } from '../../product-lookup/open-food-facts.mapper';
 import type { ProductLookupResult } from '../../product-lookup/product-lookup.provider';
@@ -64,7 +64,7 @@ function setup({ off = null, pages = {}, label, aiError }: Setup) {
     const domain = new URL(url).hostname;
     return { finalUrl: url, domain, contentType: 'text/html', body: pages[domain]! };
   } };
-  const web = new CachedProductLookupProvider(new GeminiSearchProductLookupProvider(searcher, reader, logger));
+  const web = new CachedProductLookupProvider(new WebSearchProductLookupProvider(searcher, reader, logger));
   const lookups = new MultiSourceProductLookup([{ name: 'open_food_facts', lookup: async (barcode) => (calls.off.push(barcode), off) }, web]);
   const service = new ScanService(ai, plans, undefined, lookups);
   const verdicts = () => logs.filter((line) => line.message === 'web_lookup').map((line) => line.fields);

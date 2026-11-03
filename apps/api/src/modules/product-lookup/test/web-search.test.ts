@@ -11,7 +11,7 @@ import { eatHealthierPlan } from '../../goal-match/test/goal-match-v4.fixtures';
 import type { NutritionTargetsService } from '../../nutrition-targets/nutrition-targets.service';
 import { ScanService } from '../../scan/scan.service';
 import { CachedProductLookupProvider } from '../cached-product-lookup.provider';
-import { GeminiSearchProductLookupProvider, MAX_PAGES_PER_SCAN, WEB_SEARCH_MAX_PER_HOUR, WebSearchLimitError, type NutritionSearcher } from '../gemini-search-lookup.provider';
+import { WebSearchProductLookupProvider, MAX_PAGES_PER_SCAN, WEB_SEARCH_MAX_PER_HOUR, WebSearchLimitError, type NutritionSearcher } from '../web-search-lookup.provider';
 import { MultiSourceProductLookup } from '../multi-source-product-lookup';
 import { mapOpenFoodFactsProduct } from '../open-food-facts.mapper';
 import { createProductLookupSources } from '../product-lookup.module';
@@ -65,7 +65,7 @@ function offPartial(): ProductLookupResult {
 }
 const offFull = () => mapOpenFoodFactsProduct(offProduct(), BARCODE)!;
 
-const provider = (stub: Web) => new GeminiSearchProductLookupProvider(stub.searcher, stub.reader, stub.logger);
+const provider = (stub: Web) => new WebSearchProductLookupProvider(stub.searcher, stub.reader, stub.logger);
 function chain(off: ProductLookupResult | null, stub: Web, barcode: string | null = BARCODE, cached = true) {
   const offSource: ProductLookupProvider = { name: 'open_food_facts', lookup: async () => off };
   const lookup = provider(stub);
@@ -396,7 +396,7 @@ describe('Web search: cache and failures', () => {
   });
   it('an hourly guard stops a runaway loop', async () => {
     const stub = web();
-    const lookup = new GeminiSearchProductLookupProvider(stub.searcher, stub.reader, stub.logger, () => 0);
+    const lookup = new WebSearchProductLookupProvider(stub.searcher, stub.reader, stub.logger, () => 0);
     const context = { brand: 'B', name: 'N', serving: null, basis: 'per_100g', kcal: 1, protein: 2, carbs: 3, fat: 4, missingFields: ['salt'] };
     for (let i = 0; i < WEB_SEARCH_MAX_PER_HOUR; i++) await lookup.lookup(`${4600000000000 + i}`, context);
     await assert.rejects(lookup.lookup(BARCODE, context), WebSearchLimitError);
@@ -453,7 +453,7 @@ describe('Full scan with Search (Gemini and Search stubbed)', () => {
       assert.equal(url, REDIRECT);
       return { finalUrl: 'https://orion.ru/choco-pie', domain: 'orion.ru', contentType: 'text/html', body: html({ barcode: BARCODE }) };
     } };
-    const lookups = new MultiSourceProductLookup([{ name: 'open_food_facts', lookup: async () => off }, new CachedProductLookupProvider(new GeminiSearchProductLookupProvider(search, reader))]);
+    const lookups = new MultiSourceProductLookup([{ name: 'open_food_facts', lookup: async () => off }, new CachedProductLookupProvider(new WebSearchProductLookupProvider(search, reader))]);
     const lines: string[] = [];
     const capture = (message: unknown) => { lines.push(String(message)); };
     Logger.overrideLogger({ log: capture, warn: capture, error: capture, debug: capture, verbose: capture });

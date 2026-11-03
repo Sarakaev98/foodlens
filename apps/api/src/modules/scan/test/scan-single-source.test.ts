@@ -8,7 +8,7 @@ import type { AIProvider, DiscoveredSource } from '@foodlens/ai';
 import { eatHealthierPlan } from '../../goal-match/test/goal-match-v4.fixtures';
 import type { NutritionTargetsService } from '../../nutrition-targets/nutrition-targets.service';
 import { CachedProductLookupProvider } from '../../product-lookup/cached-product-lookup.provider';
-import { GeminiSearchProductLookupProvider, WEB_SEARCH_MAX_PER_HOUR, type NutritionSearcher } from '../../product-lookup/gemini-search-lookup.provider';
+import { WebSearchProductLookupProvider, WEB_SEARCH_MAX_PER_HOUR, type NutritionSearcher } from '../../product-lookup/web-search-lookup.provider';
 import { MultiSourceProductLookup } from '../../product-lookup/multi-source-product-lookup';
 import { mapOpenFoodFactsProduct } from '../../product-lookup/open-food-facts.mapper';
 import { sourceTier } from '../../product-lookup/web/source-tier';
@@ -43,7 +43,7 @@ function setup(lookupOff: ReturnType<typeof off> | null, pages: Readonly<Record<
     calls.reads.push(domain);
     return { finalUrl: url, domain, contentType: 'text/html', body: pages[domain] ?? '<title>x</title>' };
   } };
-  const web = new CachedProductLookupProvider(new GeminiSearchProductLookupProvider(searcher, reader));
+  const web = new CachedProductLookupProvider(new WebSearchProductLookupProvider(searcher, reader));
   const lookups = new MultiSourceProductLookup([{ name: 'open_food_facts', lookup: async () => lookupOff }, web]);
   const ai = { name: 'stub', analyzeProduct: async () => assert.fail('no AI in a barcode scan') } as unknown as AIProvider;
   return { service: new ScanService(ai, plans, undefined, lookups), calls };
@@ -171,7 +171,7 @@ describe('The rule is the same for any product', () => {
   }
   it('no production branch names a concrete barcode or product', () => {
     const lookup = join(__dirname, '..', '..', 'product-lookup');
-    const code = ['gemini-search-lookup.provider.js', 'web/product-identity.js', 'multi-source-product-lookup.js'].map((file) => readFileSync(join(lookup, file), 'utf8')).join('');
+    const code = ['web-search-lookup.provider.js', 'web/product-identity.js', 'multi-source-product-lookup.js'].map((file) => readFileSync(join(lookup, file), 'utf8')).join('');
     for (const product of PRODUCTS) assert.ok(!code.includes(product.code), product.code);
     assert.ok(!/forkin|posylka|barista/i.test(code));
   });

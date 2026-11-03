@@ -6,7 +6,7 @@ import { APP_CONFIG } from '../../config/app-config.module';
 import { nestLogger } from '../ai/ai-provider.factory';
 import { CachedProductLookupProvider } from './cached-product-lookup.provider';
 import { FatSecretProductLookupProvider } from './fatsecret.provider';
-import { GeminiSearchProductLookupProvider, MAX_PAGES_PER_SCAN, MAX_SEARCHES_PER_PRODUCT, type NutritionSearcher } from './gemini-search-lookup.provider';
+import { WebSearchProductLookupProvider, MAX_PAGES_PER_SCAN, MAX_SEARCHES_PER_PRODUCT, type NutritionSearcher } from './web-search-lookup.provider';
 import { MultiSourceProductLookup } from './multi-source-product-lookup';
 import { OpenFoodFactsProductLookupProvider } from './open-food-facts.provider';
 import { PageFetcher } from './web/page-fetcher';
@@ -43,7 +43,7 @@ export function createProductLookupSources(config: AppConfig): readonly ProductL
   if (searcher) {
     const reader = new PageFetcher({ userAgent: `FoodLens/0.1.0 (${contact})` });
     const { maxQueries = MAX_SEARCHES_PER_PRODUCT, maxPages = MAX_PAGES_PER_SCAN } = config.productLookup.webSearchLimits;
-    sources.push(new CachedProductLookupProvider(new GeminiSearchProductLookupProvider(searcher, reader, nestLogger('WebLookup'), Date.now, scanDebugEnabled(), { maxQueries, maxPages })));
+    sources.push(new CachedProductLookupProvider(new WebSearchProductLookupProvider(searcher, reader, nestLogger('WebLookup'), Date.now, scanDebugEnabled(), { maxQueries, maxPages })));
   }
   return sources;
 }

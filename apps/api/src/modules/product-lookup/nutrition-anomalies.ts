@@ -1,4 +1,4 @@
-import type { NutrientValue, NutritionFacts, Product } from '@foodlens/core';
+import { saltGFromSodiumMg, type NutrientValue, type NutritionFacts, type Product } from '@foodlens/core';
 
 /** Калории и БЖУ могут расходиться из-за клетчатки и полиолов: подозрительным считается только заметное расхождение. */
 const KCAL_MARGIN = { relative: 0.15, absolute: 30 };
@@ -6,7 +6,6 @@ const SUBSET_MARGIN = 0.5;
 const SALT_MARGIN = { relative: 0.25, absolute: 0.2 };
 const MAX_GRAMS = 100;
 const MAX_KCAL = 900;
-const SALT_PER_SODIUM = 2.5;
 
 /** Значения с этикетки не проверяются: фото главнее внутренних сверок. */
 const fromBase = ({ value, provenance }: NutrientValue): number | null => (provenance === 'observed' ? null : value);
@@ -22,7 +21,7 @@ function caloriesConflict(n: NutritionFacts): boolean {
 function saltConflict(n: NutritionFacts): boolean {
   const [salt, sodium] = [n.saltG.value, n.sodiumMg.value];
   if (fromBase(n.saltG) === null || sodium === null || salt === null) return false;
-  const expected = (sodium * SALT_PER_SODIUM) / 1000;
+  const expected = saltGFromSodiumMg(sodium);
   return Math.abs(salt - expected) > Math.max(SALT_MARGIN.relative * expected, SALT_MARGIN.absolute);
 }
 

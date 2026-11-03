@@ -50,7 +50,9 @@ export class GoogleMealPlanProvider {
           systemInstruction: { parts: [{ text: MEAL_PLAN_SYSTEM_PROMPT }] },
           contents: [{ role: 'user', parts: [{ text: mealPlanUserPrompt(input) }] }],
           generationConfig: {
-            ...(model.startsWith('gemini-3.5-flash-lite') ? { thinkingConfig: { thinkingLevel: 'MINIMAL' } } : { temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } }),
+            ...(model.startsWith('gemini-3.5-flash-lite')
+              ? { thinkingConfig: { thinkingLevel: 'MINIMAL' } }
+              : { temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } }),
             responseMimeType: 'application/json',
             responseSchema: vertexMealPlanResponseSchema(),
             maxOutputTokens: 4096,
@@ -60,7 +62,10 @@ export class GoogleMealPlanProvider {
       if (!response.ok) {
         const status = response.status;
         await response.body?.cancel().catch(() => undefined);
-        throw failure(status === 401 || status === 403 ? 'authentication_failed' : status === 429 ? 'rate_limited' : status >= 500 ? 'unavailable' : 'bad_request', status);
+        throw failure(
+          status === 401 || status === 403 ? 'authentication_failed' : status === 429 ? 'rate_limited' : status >= 500 ? 'unavailable' : 'bad_request',
+          status,
+        );
       }
       const envelope: unknown = await response.json().catch(() => null);
       logGeminiUsage(this.logger, 'meal_plan', model, envelope);
@@ -94,7 +99,10 @@ function parseOutput(envelope: unknown): MealPlanOutput {
   if (!record(candidate) || candidate.finishReason !== 'STOP') throw failure('invalid_response');
   const content = record(candidate.content) ? candidate.content : null;
   const parts = content && Array.isArray(content.parts) ? content.parts : [];
-  const text = parts.filter((part) => record(part) && typeof part.text === 'string' && part.thought !== true).map((part) => (part as { text: string }).text).join('');
+  const text = parts
+    .filter((part) => record(part) && typeof part.text === 'string' && part.thought !== true)
+    .map((part) => (part as { text: string }).text)
+    .join('');
   let output: unknown;
   try {
     output = JSON.parse(text);

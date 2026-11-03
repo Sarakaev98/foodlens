@@ -48,7 +48,9 @@ export class GoogleMealPhotoProvider {
           systemInstruction: { parts: [{ text: MEAL_PHOTO_SYSTEM_PROMPT }] },
           contents: [{ role: 'user', parts: [{ text: MEAL_PHOTO_USER_PROMPT }, { inlineData: { mimeType: image.mimeType, data: image.base64 } }] }],
           generationConfig: {
-            ...(model.startsWith('gemini-3.5-flash-lite') ? { thinkingConfig: { thinkingLevel: 'MINIMAL' } } : { temperature: 0, thinkingConfig: { thinkingBudget: 0 } }),
+            ...(model.startsWith('gemini-3.5-flash-lite')
+              ? { thinkingConfig: { thinkingLevel: 'MINIMAL' } }
+              : { temperature: 0, thinkingConfig: { thinkingBudget: 0 } }),
             responseMimeType: 'application/json',
             responseSchema: vertexMealPhotoResponseSchema(),
             maxOutputTokens: 1024,
@@ -58,18 +60,37 @@ export class GoogleMealPhotoProvider {
       if (!response.ok) {
         const status = response.status;
         await response.body?.cancel().catch(() => undefined);
-        throw failure(status === 401 || status === 403 ? 'authentication_failed' : status === 429 ? 'rate_limited' : status >= 500 ? 'unavailable' : 'bad_request', status);
+        throw failure(
+          status === 401 || status === 403 ? 'authentication_failed' : status === 429 ? 'rate_limited' : status >= 500 ? 'unavailable' : 'bad_request',
+          status,
+        );
       }
       const envelope: unknown = await response.json().catch(() => null);
       logGeminiUsage(this.logger, 'meal_photo', model, envelope, 1);
       const output = parseOutput(envelope);
-      this.logger.log('google request', { provider: 'google', model, requestType: 'meal_photo', requestId: requestId ?? null, success: true, latencyMs: Date.now() - started });
+      this.logger.log('google request', {
+        provider: 'google',
+        model,
+        requestType: 'meal_photo',
+        requestId: requestId ?? null,
+        success: true,
+        latencyMs: Date.now() - started,
+      });
       return output;
     } catch (error) {
       // Тексты внешних ошибок наружу не уходят: в них могут быть данные запроса.
       const code = error instanceof AIProviderError ? error.code : signal.aborted ? 'timeout' : 'unavailable';
       const httpStatus = error instanceof AIProviderError ? error.httpStatus : undefined;
-      this.logger.warn('google request', { provider: 'google', model, requestType: 'meal_photo', requestId: requestId ?? null, success: false, latencyMs: Date.now() - started, code, httpStatus });
+      this.logger.warn('google request', {
+        provider: 'google',
+        model,
+        requestType: 'meal_photo',
+        requestId: requestId ?? null,
+        success: false,
+        latencyMs: Date.now() - started,
+        code,
+        httpStatus,
+      });
       throw error instanceof AIProviderError ? error : failure(code);
     }
   }
@@ -80,7 +101,10 @@ function parseOutput(envelope: unknown): MealPhotoAiOutput {
   if (!record(candidate) || candidate.finishReason !== 'STOP') throw failure('invalid_response');
   const content = record(candidate.content) ? candidate.content : null;
   const parts = content && Array.isArray(content.parts) ? content.parts : [];
-  const text = parts.filter((part) => record(part) && typeof part.text === 'string' && part.thought !== true).map((part) => (part as { text: string }).text).join('');
+  const text = parts
+    .filter((part) => record(part) && typeof part.text === 'string' && part.thought !== true)
+    .map((part) => (part as { text: string }).text)
+    .join('');
   let output: unknown;
   try {
     output = JSON.parse(text);

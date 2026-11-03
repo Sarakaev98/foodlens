@@ -1,12 +1,49 @@
 import type { AILogger, ExtractedPage, ExtractionPage, SourceDiscoveryInput, SourceDiscoveryResponse } from '@foodlens/ai';
-import type { NutrientKey } from '@foodlens/core';
+import { SALT_PER_SODIUM, sodiumMgFromSaltG, type NutrientKey } from '@foodlens/core';
 import { scanDebugEnabled } from '../../common/scan-debug';
 import { splitIngredients } from './open-food-facts.mapper';
 import type { IngredientsDecision, ProductLookupContext, ProductLookupProvider, ProductLookupResult, WebFieldSource } from './product-lookup.provider';
 import { PageFetchError } from './web/page-fetcher';
-import { EMPTY_NUTRITION, hasIngredientsMark, ingredientsFragment, mentionsIngredients, parsePage, printedIngredients, printedOnPage, type ExtractionMethod, type PageNutrition, type ParsedPage } from './web/page-nutrition';
-import { aliasState, barcodeInResult, enrichedName, identityContext, namesNearBarcode, type AliasStanding, type NameEnrichment } from './web/identity-enrichment';
-import { caloriesFit, compareMacros, hasReferenceMacros, identityFacts, ingredientsRejectReason, knownBrand, nameSpan, normalizeProductName, titleNamesVariant, titleRelevant, valuesAgree, variantTokens, verifyPage, FIELD_TOLERANCE, MIN_COMPARED_MACROS, type PageVerdict, type WebVerdictStatus } from './web/product-identity';
+import {
+  EMPTY_NUTRITION,
+  hasIngredientsMark,
+  ingredientsFragment,
+  mentionsIngredients,
+  parsePage,
+  printedIngredients,
+  printedOnPage,
+  type ExtractionMethod,
+  type PageNutrition,
+  type ParsedPage,
+} from './web/page-nutrition';
+import {
+  aliasState,
+  barcodeInResult,
+  enrichedName,
+  identityContext,
+  namesNearBarcode,
+  type AliasStanding,
+  type NameEnrichment,
+} from './web/identity-enrichment';
+import {
+  caloriesFit,
+  compareMacros,
+  hasReferenceMacros,
+  identityFacts,
+  ingredientsRejectReason,
+  knownBrand,
+  nameSpan,
+  normalizeProductName,
+  titleNamesVariant,
+  titleRelevant,
+  valuesAgree,
+  variantTokens,
+  verifyPage,
+  FIELD_TOLERANCE,
+  MIN_COMPARED_MACROS,
+  type PageVerdict,
+  type WebVerdictStatus,
+} from './web/product-identity';
 import { searchName } from './web/search-identity';
 import { SEARCH_ORDER, searchStrategy, type SearchStep } from './web/search-strategy';
 import { isBrandLikeDomain, isListPage, isManufacturerDomain, registrableDomain, sourceTier, type SourceTier } from './web/source-tier';
@@ -33,12 +70,17 @@ const HOUR_MS = 60 * 60 * 1000;
 const MAX_LOGGED_TEXT = 160;
 
 const FIELDS: readonly (readonly [keyof typeof FIELD_TOLERANCE, NutrientKey])[] = [
-  ['kcal', 'caloriesKcal'], ['protein', 'proteinG'], ['carbs', 'carbsG'], ['fat', 'fatG'],
-  ['sugars', 'sugarsG'], ['saturatedFat', 'saturatedFatG'], ['salt', 'saltG'], ['sodiumMg', 'sodiumMg'], ['fiber', 'fiberG'],
+  ['kcal', 'caloriesKcal'],
+  ['protein', 'proteinG'],
+  ['carbs', 'carbsG'],
+  ['fat', 'fatG'],
+  ['sugars', 'sugarsG'],
+  ['saturatedFat', 'saturatedFatG'],
+  ['salt', 'saltG'],
+  ['sodiumMg', 'sodiumMg'],
+  ['fiber', 'fiberG'],
 ];
 const MACRO_FIELDS = ['kcal', 'protein', 'carbs', 'fat'] as const;
-/** Масса NaCl к массе натрия. */
-const SALT_PER_SODIUM = 2.5;
 /** Сколько общих макросов нужно, чтобы сравнить две страницы между собой. */
 const MIN_SHARED_MACROS = 2;
 
@@ -46,7 +88,19 @@ const MIN_SHARED_MACROS = 2;
  * Страниц о продукте тут не бывает: их не стоит читать даже при совпадении названия.
  * Open Food Facts уже спрошен по штрихкоду первым источником: его страница повторяет ту же запись и только тратит лимит чтений и AI-извлечение.
  */
-const NOT_PRODUCT_SITES: readonly string[] = ['openfoodfacts.org', 'wikipedia.org', 'youtube.com', 'instagram.com', 'facebook.com', 'tiktok.com', 'vk.com', 'reddit.com', 'pinterest.com', 'kiddle.co', 'tavily.com'];
+const NOT_PRODUCT_SITES: readonly string[] = [
+  'openfoodfacts.org',
+  'wikipedia.org',
+  'youtube.com',
+  'instagram.com',
+  'facebook.com',
+  'tiktok.com',
+  'vk.com',
+  'reddit.com',
+  'pinterest.com',
+  'kiddle.co',
+  'tavily.com',
+];
 
 export interface WebSearchLimits {
   readonly maxQueries: number;
@@ -166,7 +220,14 @@ function per100Context(context: ProductLookupContext): ProductLookupContext | nu
   const amount = Number(serving?.[1]);
   if (!serving || !(amount > 0)) return null;
   const scale = (value: number | null) => (value === null ? null : Math.round((value * 1000) / amount) / 10);
-  return { ...context, basis: serving[2] === 'ml' ? 'per_100ml' : 'per_100g', kcal: scale(context.kcal), protein: scale(context.protein), carbs: scale(context.carbs), fat: scale(context.fat) };
+  return {
+    ...context,
+    basis: serving[2] === 'ml' ? 'per_100ml' : 'per_100g',
+    kcal: scale(context.kcal),
+    protein: scale(context.protein),
+    carbs: scale(context.carbs),
+    fat: scale(context.fat),
+  };
 }
 
 /** Без сверки с этикеткой или базой: значения считаются только вместе с макросами страницы. */
@@ -174,7 +235,8 @@ function withoutReference(context: ProductLookupContext): ProductLookupContext {
   return { ...context, basis: 'unknown', kcal: null, protein: null, carbs: null, fat: null };
 }
 
-const isNotProductSite = (domain: string): boolean => /forum|форум/.test(domain) || NOT_PRODUCT_SITES.some((site) => domain === site || domain.endsWith(`.${site}`));
+const isNotProductSite = (domain: string): boolean =>
+  /forum|форум/.test(domain) || NOT_PRODUCT_SITES.some((site) => domain === site || domain.endsWith(`.${site}`));
 
 /**
  * Порядок чтения: точный штрихкод в выдаче, производитель, крупный магазин, база продуктов, прочие страницы. Внутри уровня: метка «Состав:» в отрывке, пока нет состава, и название в заголовке. Текст модели здесь не участвует.
@@ -185,24 +247,44 @@ const readingRank = ({ tier, barcodeHit }: { readonly tier: SourceTier; readonly
 
 /** Заголовок обещает этот товар. Сайтам из списков достаточно бренда, прочим нужно само название. */
 function worthReading(source: SourceDiscoveryResponse['sources'][number], tier: SourceTier, context: ProductLookupContext): boolean {
-  return (tier < 4 && titleRelevant(source.title, context)) || titleNamesVariant(source.title, source.snippet ?? '', context, tier === 1 || isBrandLikeDomain(source.domain, context.brand));
+  return (
+    (tier < 4 && titleRelevant(source.title, context)) ||
+    titleNamesVariant(source.title, source.snippet ?? '', context, tier === 1 || isBrandLikeDomain(source.domain, context.brand))
+  );
 }
 
-function rankSources(sources: SourceDiscoveryResponse['sources'], context: ProductLookupContext, barcode: string | null, onlyRelevant: boolean, wantsIngredients: boolean) {
-  const words = normalizeProductName(`${context.brand ?? ''} ${context.name ?? ''}`).split(' ').filter(Boolean);
+function rankSources(
+  sources: SourceDiscoveryResponse['sources'],
+  context: ProductLookupContext,
+  barcode: string | null,
+  onlyRelevant: boolean,
+  wantsIngredients: boolean,
+) {
+  const words = normalizeProductName(`${context.brand ?? ''} ${context.name ?? ''}`)
+    .split(' ')
+    .filter(Boolean);
   const seen = new Set<string>();
   return sources
     .filter(({ domain }) => !isNotProductSite(domain))
     .map((source) => {
       const title = normalizeProductName(source.title);
-      return { source, marked: wantsIngredients && hasIngredientsMark(source.snippet ?? ''), barcodeHit: barcodeInResult(source, barcode), tier: sourceTier(source.domain, context.brand), hits: words.filter((word) => title.includes(word)).length };
+      return {
+        source,
+        marked: wantsIngredients && hasIngredientsMark(source.snippet ?? ''),
+        barcodeHit: barcodeInResult(source, barcode),
+        tier: sourceTier(source.domain, context.brand),
+        hits: words.filter((word) => title.includes(word)).length,
+      };
     })
     .filter((item) => {
       if (!onlyRelevant) return true;
       if (isListPage(item.source.url, item.source.title)) return false;
       return item.barcodeHit || worthReading(item.source, item.tier, context);
     })
-    .sort((a, b) => readingRank(a) - readingRank(b) || Number(b.marked) - Number(a.marked) || a.tier - b.tier || Number(b.hits > 0) - Number(a.hits > 0) || b.hits - a.hits)
+    .sort(
+      (a, b) =>
+        readingRank(a) - readingRank(b) || Number(b.marked) - Number(a.marked) || a.tier - b.tier || Number(b.hits > 0) - Number(a.hits > 0) || b.hits - a.hits,
+    )
     .filter(({ source }) => (seen.has(source.url) ? false : (seen.add(source.url), true)));
 }
 
@@ -229,25 +311,60 @@ const NO_INGREDIENTS = { page: null, ingredientsOnly: false, decision: { found: 
  * Состав доверяется отдельно от значений: домен и судьба питания со страницы на него не влияют.
  * Если значения той же страницы не приняты, состав только для показа: в Product Score и Goal Match он не идёт.
  */
-function chooseIngredients(checked: readonly CheckedPage[], outside: LoadedPage | null, context: ProductLookupContext, barcode: string | null, nameTrusted: boolean): { readonly page: LoadedPage | null; readonly ingredientsOnly: boolean; readonly decision: IngredientsDecision } {
-  const pages: readonly (LoadedPage & { readonly verdict?: PageVerdict })[] = [...checked, ...(outside ? [outside] : [])].filter((page) => page.page.ingredients);
+function chooseIngredients(
+  checked: readonly CheckedPage[],
+  outside: LoadedPage | null,
+  context: ProductLookupContext,
+  barcode: string | null,
+  nameTrusted: boolean,
+): { readonly page: LoadedPage | null; readonly ingredientsOnly: boolean; readonly decision: IngredientsDecision } {
+  const pages: readonly (LoadedPage & { readonly verdict?: PageVerdict })[] = [...checked, ...(outside ? [outside] : [])].filter(
+    (page) => page.page.ingredients,
+  );
   const onPage = (item: LoadedPage) => identityFacts({ ...item.page, basis: item.basis, nutrition: item.nutrition }, context, barcode).barcodeMatch;
   // Страница рецептуры, исправившей базу, спорит с макросами базы по определению: сверять с ними нечего.
-  const compared = (page: { readonly verdict?: PageVerdict }) => (page.verdict?.reason === CORRECTED_RECIPE ? { ...context, kcal: null, protein: null, carbs: null, fat: null } : context);
-  const reasons = pages.map((page) => (page.verdict?.reason === OTHER_CLUSTER ? 'possible_recipe_mismatch' : ingredientsRejectReason({ ...page.page, basis: page.basis, nutrition: page.nutrition }, compared(page), barcode, page.url) ?? (nameTrusted || onPage(page) ? null : 'unconfirmed_alias')));
+  const compared = (page: { readonly verdict?: PageVerdict }) =>
+    page.verdict?.reason === CORRECTED_RECIPE ? { ...context, kcal: null, protein: null, carbs: null, fat: null } : context;
+  const reasons = pages.map((page) =>
+    page.verdict?.reason === OTHER_CLUSTER
+      ? 'possible_recipe_mismatch'
+      : (ingredientsRejectReason({ ...page.page, basis: page.basis, nutrition: page.nutrition }, compared(page), barcode, page.url) ??
+        (nameTrusted || onPage(page) ? null : 'unconfirmed_alias')),
+  );
   const usable = pages.filter((_, index) => reasons[index] === null);
   // Самый полный состав среди страниц с тем же уровнем подтверждения: обрезанный блок не вытесняет целый.
   const fullest = (a: LoadedPage, b: LoadedPage) => b.page.ingredients!.length - a.page.ingredients!.length;
   const page = [...usable.filter(onPage)].sort(fullest)[0] ?? [...usable].sort(fullest)[0];
   // Точный штрихкод на странице подтверждает товар сам: такой состав идёт в расчёты, даже если значения страницы отклонены.
-  if (page) return { page, ingredientsOnly: (page.verdict?.status !== 'accepted' || page.verdict.needsSecondSource) && !onPage(page), decision: { found: true, accepted: true, source: page.domain, rejectReason: null } };
+  if (page)
+    return {
+      page,
+      ingredientsOnly: (page.verdict?.status !== 'accepted' || page.verdict.needsSecondSource) && !onPage(page),
+      decision: { found: true, accepted: true, source: page.domain, rejectReason: null },
+    };
   const issue = [...checked, ...(outside ? [outside] : [])].find((item) => item.page.ingredientsIssue);
-  return { page: null, ingredientsOnly: false, decision: { found: pages.length > 0, accepted: false, source: pages[0]?.domain ?? issue?.domain ?? null, rejectReason: reasons[0] ?? issue?.page.ingredientsIssue ?? null } };
+  return {
+    page: null,
+    ingredientsOnly: false,
+    decision: {
+      found: pages.length > 0,
+      accepted: false,
+      source: pages[0]?.domain ?? issue?.domain ?? null,
+      rejectReason: reasons[0] ?? issue?.page.ingredientsIssue ?? null,
+    },
+  };
 }
 
 /** Уверенность не выше medium: состав со страницы не сверяется с этикеткой. */
 const ingredientsSource = (page: LoadedPage, ingredientsOnly: boolean, retrievedAt: string, barcodeOnPage: boolean): WebFieldSource => ({
-  url: page.url, domain: page.domain, tier: page.tier, confidence: 'medium', identityMatch: barcodeOnPage ? 'exact_barcode' : 'exact_name', retrievedAt, method: page.method ?? 'html', ...(ingredientsOnly ? { ingredientsOnly } : {}),
+  url: page.url,
+  domain: page.domain,
+  tier: page.tier,
+  confidence: 'medium',
+  identityMatch: barcodeOnPage ? 'exact_barcode' : 'exact_name',
+  retrievedAt,
+  method: page.method ?? 'html',
+  ...(ingredientsOnly ? { ingredientsOnly } : {}),
 });
 
 function skipReason(source: SourceDiscoveryResponse['sources'][number], tier: SourceTier, inResults: boolean, context: ProductLookupContext): string {
@@ -258,7 +375,13 @@ function skipReason(source: SourceDiscoveryResponse['sources'][number], tier: So
 
 const OTHER_CLUSTER = 'other_recipe_cluster';
 const CORRECTED_RECIPE = 'corrected_recipe';
-const OTHER_RECIPE: PageVerdict = { status: 'different_product_or_recipe', identityMatch: null, reason: OTHER_CLUSTER, needsSecondSource: false, conflicts: [] };
+const OTHER_RECIPE: PageVerdict = {
+  status: 'different_product_or_recipe',
+  identityMatch: null,
+  reason: OTHER_CLUSTER,
+  needsSecondSource: false,
+  conflicts: [],
+};
 
 const trustOf = (page: CheckedPage) => pageTrust(page.tier, page.verdict.identityMatch, page.verdict.needsSecondSource);
 
@@ -276,7 +399,18 @@ function recipeRival(pages: readonly CheckedPage[], context: ProductLookupContex
     const official = page.tier === 1 && facts.brandMatch && facts.variantMatch;
     if (facts.otherVariant || (!facts.barcodeMatch && !official)) return [];
     const needsSecondSource = page.tier === 4 && !(page.method === 'json_ld' || page.method === 'embedded_json');
-    return [{ ...page, verdict: { status: 'accepted', identityMatch: official ? 'official_variant' : 'exact_barcode', reason: CORRECTED_RECIPE, needsSecondSource, conflicts: [] } }];
+    return [
+      {
+        ...page,
+        verdict: {
+          status: 'accepted',
+          identityMatch: official ? 'official_variant' : 'exact_barcode',
+          reason: CORRECTED_RECIPE,
+          needsSecondSource,
+          conflicts: [],
+        },
+      },
+    ];
   });
   const groups: CheckedPage[][] = [];
   for (const page of rivals) {
@@ -326,7 +460,7 @@ function selectRecipeCluster(pages: readonly CheckedPage[], reference: boolean, 
 /** Значение поля на странице. Соль и натрий приводятся друг к другу, чтобы их можно было сравнивать. */
 function fieldValue(nutrition: PageNutrition, field: (typeof FIELDS)[number][0]): number | null {
   if (field === 'salt') return nutrition.salt ?? (nutrition.sodiumMg === null ? null : Math.round((nutrition.sodiumMg * SALT_PER_SODIUM) / 10) / 100);
-  if (field === 'sodiumMg') return nutrition.sodiumMg ?? (nutrition.salt === null ? null : Math.round((nutrition.salt * 1000) / SALT_PER_SODIUM));
+  if (field === 'sodiumMg') return nutrition.sodiumMg ?? (nutrition.salt === null ? null : Math.round(sodiumMgFromSaltG(nutrition.salt)));
   return nutrition[field];
 }
 
@@ -350,10 +484,12 @@ function chooseValues(pages: readonly CheckedPage[], retrievedAt: string, reques
     if (!requested.includes(field) && existing === undefined && !recipeCorrected) continue;
     // Натрий выводится из принятой соли при слиянии: второй раз его не решаем.
     if (field === 'sodiumMg' && values.saltG !== undefined) continue;
-    const found = accepted.flatMap((page) => {
-      const value = page.verdict.conflicts.some((conflict) => conflict.field === field) ? null : fieldValue(page.nutrition, field);
-      return value === null ? [] : [{ page, value }];
-    }).sort((a, b) => a.value - b.value);
+    const found = accepted
+      .flatMap((page) => {
+        const value = page.verdict.conflicts.some((conflict) => conflict.field === field) ? null : fieldValue(page.nutrition, field);
+        return value === null ? [] : [{ page, value }];
+      })
+      .sort((a, b) => a.value - b.value);
     if (found.length === 0) continue;
     const groups: (typeof found)[] = [];
     for (const item of found) {
@@ -385,17 +521,31 @@ function chooseValues(pages: readonly CheckedPage[], retrievedAt: string, reques
     }
     const chosen = top!.find((item) => !item.page.verdict.needsSecondSource) ?? middle;
     values[key] = middle.value;
-    sources[key] = { url: chosen.page.url, domain: chosen.page.domain, tier: chosen.page.tier, confidence: sites >= 2 && hasStrong(top!) ? 'high' : 'medium',
-      identityMatch: chosen.page.verdict.identityMatch!, retrievedAt, method: chosen.page.method ?? 'html', basis: chosen.page.basis ?? undefined, consensusCount: sites, sources: top!.map((item) => item.page.url), trust: trustOf(chosen.page), dataQuality: hasStrong(top!) && chosen.page.tier < 4 ? 'verified' : 'confirmed' };
+    sources[key] = {
+      url: chosen.page.url,
+      domain: chosen.page.domain,
+      tier: chosen.page.tier,
+      confidence: sites >= 2 && hasStrong(top!) ? 'high' : 'medium',
+      identityMatch: chosen.page.verdict.identityMatch!,
+      retrievedAt,
+      method: chosen.page.method ?? 'html',
+      basis: chosen.page.basis ?? undefined,
+      consensusCount: sites,
+      sources: top!.map((item) => item.page.url),
+      trust: trustOf(chosen.page),
+      dataQuality: hasStrong(top!) && chosen.page.tier < 4 ? 'verified' : 'confirmed',
+    };
   }
   // Калории не из этой рецептуры: сумма БЖУ их не подтверждает.
-  const fitting = (kcal: number) => caloriesFit(kcal, { protein: values.proteinG ?? known.protein, carbs: values.carbsG ?? known.carbs, fat: values.fatG ?? known.fat });
+  const fitting = (kcal: number) =>
+    caloriesFit(kcal, { protein: values.proteinG ?? known.protein, carbs: values.carbsG ?? known.carbs, fat: values.fatG ?? known.fat });
   if (values.caloriesKcal !== undefined && !fitting(values.caloriesKcal)) {
     delete values.caloriesKcal;
     delete sources.caloriesKcal;
   }
   // Без внешней сверки расхождение макросов значит, что страницы могли описать разные продукты.
-  if (!reference && unresolved.some((field) => (MACRO_FIELDS as readonly string[]).includes(field))) return { values: {}, sources: {}, unresolved, corrections: [], recipeCorrected };
+  if (!reference && unresolved.some((field) => (MACRO_FIELDS as readonly string[]).includes(field)))
+    return { values: {}, sources: {}, unresolved, corrections: [], recipeCorrected };
   return { values, sources, unresolved, corrections, recipeCorrected };
 }
 
@@ -404,7 +554,7 @@ function chooseValues(pages: readonly CheckedPage[], retrievedAt: string, reques
  * Отключён по умолчанию. Поиску и AI уходят только данные продукта и текст страниц: без фото, профиля и макросов этикетки.
  * Макросы этикетки используются только здесь, в коде.
  */
-export class GeminiSearchProductLookupProvider implements ProductLookupProvider {
+export class WebSearchProductLookupProvider implements ProductLookupProvider {
   readonly name = WEB_SEARCH_PROVIDER;
   readonly needsBarcode = false;
   private recent: number[] = [];
@@ -423,7 +573,13 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
   cacheKey(barcode: string | null, context?: ProductLookupContext): string {
     const missing = [...(context?.missingFields ?? []), ...(context?.needsIngredients ? ['ingredients'] : [])].sort().join(',');
     if (barcode) return `${barcode}|${missing}|${recipeFingerprint(context ?? { kcal: null, protein: null, carbs: null, fat: null })}`;
-    return JSON.stringify([normalizeProductName(context?.brand ?? null), normalizeProductName(context?.name ?? null), variantTokens(context?.name ?? null, context?.brand ?? null), context?.serving, missing]);
+    return JSON.stringify([
+      normalizeProductName(context?.brand ?? null),
+      normalizeProductName(context?.name ?? null),
+      variantTokens(context?.name ?? null, context?.brand ?? null),
+      context?.serving,
+      missing,
+    ]);
   }
 
   async lookup(barcode: string | null, context?: ProductLookupContext): Promise<ProductLookupResult | null> {
@@ -445,17 +601,42 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
     }
 
     const { brand, name, serving } = label;
-    if (this.debug) this.logger.log('web_label', { barcode, brand, name, serving, basis: label.basis, kcal: label.kcal, protein: label.protein, carbs: label.carbs, fat: label.fat, missingFields: label.missingFields, variantTokens: variantTokens(name, brand) });
+    if (this.debug)
+      this.logger.log('web_label', {
+        barcode,
+        brand,
+        name,
+        serving,
+        basis: label.basis,
+        kcal: label.kcal,
+        protein: label.protein,
+        carbs: label.carbs,
+        fat: label.fat,
+        missingFields: label.missingFields,
+        variantTokens: variantTokens(name, brand),
+      });
     const identity = (): ProductLookupContext => (memory.enrichment ? { ...label, name: memory.enrichment.name } : label);
     const witnesses = () => [...memory.sources.values()].filter((source) => memory.witnesses.has(source.url) || barcodeInResult(source, barcode));
     const standing = (domain?: string) => (memory.enrichment && barcode ? aliasState(memory.enrichment, witnesses(), barcode, label, domain) : null);
     // Уточнённое название заменяет штрихкод на странице только на настоящем домене производителя и только если оно подтверждено.
     const confirmed = (domain: string) => isManufacturerDomain(domain, label.brand) && standing(domain)?.state === 'confirmed';
-    const verify = (page: LoadedPage) => verifyPage({ ...page.page, basis: page.basis, nutrition: page.nutrition }, page.tier, { ...identity(), nameConfirmed: confirmed(page.domain) }, barcode, page.url);
+    const verify = (page: LoadedPage) =>
+      verifyPage(
+        { ...page.page, basis: page.basis, nutrition: page.nutrition },
+        page.tier,
+        { ...identity(), nameConfirmed: confirmed(page.domain) },
+        barcode,
+        page.url,
+      );
     const retrievedAt = new Date(this.now()).toISOString();
     const evaluate = () => {
-      const checked = selectRecipeCluster(memory.pages.map((page): CheckedPage => ({ ...page, verdict: verify(page) })), reference, label, barcode);
-      const basis = reference ? label.basis as 'per_100g' | 'per_100ml' : checked.find((page) => page.verdict.status === 'accepted')?.basis ?? null;
+      const checked = selectRecipeCluster(
+        memory.pages.map((page): CheckedPage => ({ ...page, verdict: verify(page) })),
+        reference,
+        label,
+        barcode,
+      );
+      const basis = reference ? (label.basis as 'per_100g' | 'per_100ml') : (checked.find((page) => page.verdict.status === 'accepted')?.basis ?? null);
       const usable = checked.filter((page) => page.basis === basis);
       return { checked, basis, usable, ...chooseValues(usable, retrievedAt, label.missingFields, hasReferenceMacros(label), label) };
     };
@@ -465,29 +646,70 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
     const nameTrusted = () => !memory.enrichment || standing()?.state === 'confirmed';
     const ingredients = () => chooseIngredients(evaluate().checked, memory.outsidePage, identity(), barcode, nameTrusted());
     const wantsIngredients = () => label.needsIngredients === true && ingredients().page === null;
-    const stillMissing = () => { const { values } = evaluate(); return label.missingFields.filter((field) => !isFilled(field, values)); };
-    const counters = await this.search(memory, barcode, identity, verify, () => hasRequestedValues(evaluate().values, label) && !wantsIngredients(), sufficient, wantsIngredients, stillMissing);
+    const stillMissing = () => {
+      const { values } = evaluate();
+      return label.missingFields.filter((field) => !isFilled(field, values));
+    };
+    const counters = await this.search(
+      memory,
+      barcode,
+      identity,
+      verify,
+      () => hasRequestedValues(evaluate().values, label) && !wantsIngredients(),
+      sufficient,
+      wantsIngredients,
+      stillMissing,
+    );
     if (creditsBefore !== undefined) counters.credits = this.searcher.creditsSpent!() - creditsBefore;
     if (memory.sources.size === 0) {
       context.onIngredients?.({ found: false, accepted: false, source: null, rejectReason: null });
-      context.onSearch?.({ searches: counters.searches, candidates: 0, pagesRead: 0, accepted: [], rejected: [], credits: counters.credits ?? counters.searches, aiExtractions: 0, recipe: recipeFingerprint(label), rejectedRecipes: [], corrected: [] });
+      context.onSearch?.({
+        searches: counters.searches,
+        candidates: 0,
+        pagesRead: 0,
+        accepted: [],
+        rejected: [],
+        credits: counters.credits ?? counters.searches,
+        aiExtractions: 0,
+        recipe: recipeFingerprint(label),
+        rejectedRecipes: [],
+        corrected: [],
+      });
       this.report('no_grounded_source', counters.webSearchQueries, [], [], [], counters, memory.enrichment, standing());
       return null;
     }
     if (wantsIngredients()) await this.withIngredientsExtraction(memory, counters, identity(), barcode);
-    for (let left = MAX_AI_EXTRACTIONS_PER_PRODUCT - memory.aiExtractions; left > 0 && !hasRequestedValues(evaluate().values, label); left--) memory.pages = await this.withAiExtraction(memory, counters, identity(), barcode, confirmed);
+    for (let left = MAX_AI_EXTRACTIONS_PER_PRODUCT - memory.aiExtractions; left > 0 && !hasRequestedValues(evaluate().values, label); left--)
+      memory.pages = await this.withAiExtraction(memory, counters, identity(), barcode, confirmed);
     const solid = evaluate();
     const { checked, basis, unresolved, corrections, recipeCorrected } = solid;
     const { values, sources } = solid;
-    const status: WebVerdictStatus = Object.keys(values).length > 0 ? 'accepted' : unresolved.length > 0 ? 'unresolved_conflict'
-      : checked.find((page) => page.verdict.status !== 'accepted')?.verdict.status ?? 'insufficient_identity';
+    const status: WebVerdictStatus =
+      Object.keys(values).length > 0
+        ? 'accepted'
+        : unresolved.length > 0
+          ? 'unresolved_conflict'
+          : (checked.find((page) => page.verdict.status !== 'accepted')?.verdict.status ?? 'insufficient_identity');
     this.report(status, counters.webSearchQueries, checked, unresolved, Object.keys(values), counters, memory.enrichment, standing());
     context.onSearch?.({
-      searches: counters.searches, candidates: memory.sources.size, pagesRead: memory.pages.length, accepted: Object.keys(values), credits: counters.credits ?? counters.searches + counters.extracts, aiExtractions: counters.aiExtractions,
-      rejected: [...checked.filter((page) => page.verdict.status !== 'accepted').map((page) => ({ domain: page.domain, reason: page.verdict.reason })),
-        ...[...memory.failed].map(([url, reason]) => ({ domain: memory.sources.get(url)?.domain ?? '', reason }))],
+      searches: counters.searches,
+      candidates: memory.sources.size,
+      pagesRead: memory.pages.length,
+      accepted: Object.keys(values),
+      credits: counters.credits ?? counters.searches + counters.extracts,
+      aiExtractions: counters.aiExtractions,
+      rejected: [
+        ...checked.filter((page) => page.verdict.status !== 'accepted').map((page) => ({ domain: page.domain, reason: page.verdict.reason })),
+        ...[...memory.failed].map(([url, reason]) => ({ domain: memory.sources.get(url)?.domain ?? '', reason })),
+      ],
       recipe: recipeFingerprint(checked.find((page) => page.verdict.reason === CORRECTED_RECIPE)?.nutrition ?? label),
-      rejectedRecipes: [...new Set(checked.filter((page) => page.verdict.status !== 'accepted' && (page.verdict.conflicts.length > 0 || page.verdict.reason === OTHER_CLUSTER)).map((page) => recipeFingerprint(page.nutrition)))],
+      rejectedRecipes: [
+        ...new Set(
+          checked
+            .filter((page) => page.verdict.status !== 'accepted' && (page.verdict.conflicts.length > 0 || page.verdict.reason === OTHER_CLUSTER))
+            .map((page) => recipeFingerprint(page.nutrition)),
+        ),
+      ],
       corrected: corrections,
     });
     if (this.debug) this.reportCandidates([...memory.sources.values()], checked, memory.failed, identity(), barcode, sources, memory.identityUrl);
@@ -496,14 +718,41 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
     const hasValues = Object.keys(values).length > 0;
     if (!hasValues && !composition.page) return null;
 
-    const nutrition = Object.fromEntries((['caloriesKcal', 'proteinG', 'carbsG', 'sugarsG', 'fatG', 'saturatedFatG', 'fiberG', 'saltG', 'sodiumMg'] as const)
-      .map((key) => [key, values[key] ?? null])) as Record<NutrientKey, number | null>;
+    const nutrition = Object.fromEntries(
+      (['caloriesKcal', 'proteinG', 'carbsG', 'sugarsG', 'fatG', 'saturatedFatG', 'fiberG', 'saltG', 'sodiumMg'] as const).map((key) => [
+        key,
+        values[key] ?? null,
+      ]),
+    ) as Record<NutrientKey, number | null>;
     const named = reference || !hasValues ? null : checked.find((page) => page.verdict.status === 'accepted');
     return {
-      provider: WEB_SEARCH_PROVIDER, match: 'verified_identity', barcode: barcode ?? '', ...(corrections.length > 0 ? { corrections } : {}), ...(recipeCorrected ? { replacesRecipe: true } : {}),
-      name: named?.page.identityText.trim().slice(0, MAX_LOGGED_TEXT) || null, brand: named?.page.brand ?? null, servingSize: null, ingredients: composition.page ? splitIngredients(composition.page.page.ingredients!) : null, allergens: null, additives: null,
+      provider: WEB_SEARCH_PROVIDER,
+      match: 'verified_identity',
+      barcode: barcode ?? '',
+      ...(corrections.length > 0 ? { corrections } : {}),
+      ...(recipeCorrected ? { replacesRecipe: true } : {}),
+      name: named?.page.identityText.trim().slice(0, MAX_LOGGED_TEXT) || null,
+      brand: named?.page.brand ?? null,
+      servingSize: null,
+      ingredients: composition.page ? splitIngredients(composition.page.page.ingredients!) : null,
+      allergens: null,
+      additives: null,
       nutrition: hasValues ? { basis: basis!, values: nutrition, derived: [] } : null,
-      evidence: { fields: sources, webSearchQueries: counters.webSearchQueries, ...(composition.page ? { ingredients: ingredientsSource(composition.page, composition.ingredientsOnly, retrievedAt, identityFacts({ ...composition.page.page, basis: composition.page.basis, nutrition: composition.page.nutrition }, identity(), barcode).barcodeMatch) } : {}) },
+      evidence: {
+        fields: sources,
+        webSearchQueries: counters.webSearchQueries,
+        ...(composition.page
+          ? {
+              ingredients: ingredientsSource(
+                composition.page,
+                composition.ingredientsOnly,
+                retrievedAt,
+                identityFacts({ ...composition.page.page, basis: composition.page.basis, nutrition: composition.page.nutrition }, identity(), barcode)
+                  .barcodeMatch,
+              ),
+            }
+          : {}),
+      },
     };
   }
 
@@ -512,13 +761,35 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
     for (const [stored, value] of this.memory) if (value.expiresAt <= this.now()) this.memory.delete(stored);
     const known = this.memory.get(key);
     if (known) return known;
-    const fresh: SearchMemory = { queries: new Set(), visited: new Set(), sources: new Map(), failed: new Map(), pages: [], extracts: 0, aiExtractions: 0, enrichment: null, witnesses: new Set(), identityUrl: null, outsidePage: null, expiresAt: this.now() + SEARCH_MEMORY_TTL_MS };
+    const fresh: SearchMemory = {
+      queries: new Set(),
+      visited: new Set(),
+      sources: new Map(),
+      failed: new Map(),
+      pages: [],
+      extracts: 0,
+      aiExtractions: 0,
+      enrichment: null,
+      witnesses: new Set(),
+      identityUrl: null,
+      outsidePage: null,
+      expiresAt: this.now() + SEARCH_MEMORY_TTL_MS,
+    };
     this.memory.set(key, fresh);
     return fresh;
   }
 
   /** Запросы по очереди, пока не найдены критичные поля. Без повторов: каждый запрос стоит кредит. */
-  private async search(memory: SearchMemory, barcode: string | null, identity: () => ProductLookupContext, verify: (page: LoadedPage) => PageVerdict, enough: () => boolean, nameSufficient: boolean, wantsIngredients: () => boolean, stillMissing: () => readonly string[]): Promise<SearchCounters> {
+  private async search(
+    memory: SearchMemory,
+    barcode: string | null,
+    identity: () => ProductLookupContext,
+    verify: (page: LoadedPage) => PageVerdict,
+    enough: () => boolean,
+    nameSufficient: boolean,
+    wantsIngredients: () => boolean,
+    stillMissing: () => readonly string[],
+  ): Promise<SearchCounters> {
     const counters: SearchCounters = { searches: 0, reads: 0, extracts: 0, aiExtractions: 0, identityReads: 0, webSearchQueries: 0, steps: [] };
     const staged = this.searcher.searchQuery !== undefined;
     for (const kind of staged ? SEARCH_ORDER : SEARCH_ORDER.slice(0, 1)) {
@@ -533,7 +804,9 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
       let found: SourceDiscoveryResponse;
       try {
         this.reserveRequest();
-        found = staged ? await this.searcher.searchQuery!(step.query) : await this.searcher.discoverSources({ barcode, brand: label.brand, name: label.name, serving: label.serving });
+        found = staged
+          ? await this.searcher.searchQuery!(step.query)
+          : await this.searcher.discoverSources({ barcode, brand: label.brand, name: label.name, serving: label.serving });
       } catch (error) {
         // Первый сбой виден скану и не кэшируется; после него найденное раньше остаётся в силе.
         if (counters.searches === 0 && memory.pages.length === 0) throw error;
@@ -547,15 +820,27 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
       for (const source of found.sources) if (!memory.sources.has(source.url)) memory.sources.set(source.url, source);
       if (step.kind === 'barcode' || step.kind === 'barcode_identity') for (const source of found.sources) memory.witnesses.add(source.url);
       if (staged && barcode) {
-        if (this.debug) for (const source of found.sources.filter((item) => barcodeInResult(item, barcode))) {
-          this.logger.log('identity_context', { domain: source.domain, url: loggedUrl(source.url), contexts: identityContext(`${source.title} ${source.snippet ?? ''}`, barcode, label) });
-        }
+        if (this.debug)
+          for (const source of found.sources.filter((item) => barcodeInResult(item, barcode))) {
+            this.logger.log('identity_context', {
+              domain: source.domain,
+              url: loggedUrl(source.url),
+              contexts: identityContext(`${source.title} ${source.snippet ?? ''}`, barcode, label),
+            });
+          }
         const known = memory.enrichment ? null : enrichedName([...memory.sources.values()], barcode, label);
         const fromPage = await this.outsideRead(memory, barcode, label, counters, !nameSufficient && !memory.enrichment && !known);
-        const enrichment = memory.enrichment ? null : known ?? fromPage;
+        const enrichment = memory.enrichment ? null : (known ?? fromPage);
         if (enrichment) {
           memory.enrichment = enrichment;
-          this.logger.log('identity_enrichment', { from: label.name, alias: enrichment.name, addition: enrichment.addition, provisional: enrichment.reason === 'single_barcode_result', reason: enrichment.reason, domains: enrichment.domains });
+          this.logger.log('identity_enrichment', {
+            from: label.name,
+            alias: enrichment.name,
+            addition: enrichment.addition,
+            provisional: enrichment.reason === 'single_barcode_result',
+            reason: enrichment.reason,
+            domains: enrichment.domains,
+          });
         }
       }
       const fresh = [...memory.sources.values()].filter((source) => !memory.visited.has(source.url));
@@ -575,7 +860,8 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
         unread.push(...read.unread);
         room -= read.pages.length;
       }
-      if (unread.length > 0 && memory.extracts < MAX_EXTRACTS_PER_PRODUCT && !enough() && this.searcher.isAvailable?.() !== false) memory.pages = await this.withSearchExtract({ pages: memory.pages, unread, failed: memory.failed }, identity(), verify, memory, counters);
+      if (unread.length > 0 && memory.extracts < MAX_EXTRACTS_PER_PRODUCT && !enough() && this.searcher.isAvailable?.() !== false)
+        memory.pages = await this.withSearchExtract({ pages: memory.pages, unread, failed: memory.failed }, identity(), verify, memory, counters);
     }
     return counters;
   }
@@ -584,14 +870,21 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
    * Одна страница вне списка с точным штрихкодом в выдаче, если название неизвестно: например, страница тега.
    * Страница не попадает в pages, поэтому её значения и порция не доходят ни до проверки, ни до продукта. Состав с неё проверяется как обычно.
    */
-  private async outsideRead(memory: SearchMemory, barcode: string, label: ProductLookupContext, counters: SearchCounters, nameUnknown: boolean): Promise<NameEnrichment | null> {
+  private async outsideRead(
+    memory: SearchMemory,
+    barcode: string,
+    label: ProductLookupContext,
+    counters: SearchCounters,
+    nameUnknown: boolean,
+  ): Promise<NameEnrichment | null> {
     if (memory.identityUrl !== null || memory.visited.size >= this.limits.maxPages) return null;
     const sources = [...memory.sources.values()];
     const named = (item: SourceDiscoveryResponse['sources'][number]) => nameSpan(item.title.split('|')[0]!, label) !== null;
     const exact = sources.filter((item) => barcodeInResult(item, barcode));
     const identityNeeded = nameUnknown && !exact.some((item) => named(item) || namesNearBarcode(item.snippet ?? '', barcode, label).length > 0);
     if (!identityNeeded) return null;
-    const source = exact.filter((item) => !memory.visited.has(item.url) && !isNotProductSite(item.domain) && sourceTier(item.domain, label.brand) === 4)
+    const source = exact
+      .filter((item) => !memory.visited.has(item.url) && !isNotProductSite(item.domain) && sourceTier(item.domain, label.brand) === 4)
       .sort((a, b) => Number(named(b)) - Number(named(a)))[0];
     if (!source) return null;
     memory.identityUrl = source.url;
@@ -601,23 +894,56 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
     const read = await this.identityPage(source.url, memory, counters);
     if (read === null) return null;
     const parsed = parsePage(read.body);
-    const page = read.extracted ? { ...parsed, identityText: `${source.title} ${parsed.identityText}`, productText: `${source.title.split('|')[0]} ${parsed.productText}` } : parsed;
-    memory.outsidePage = { sourceUrl: source.url, url: source.url, domain: source.domain, tier: 4, page, nutrition: EMPTY_NUTRITION, basis: null, method: page.method, reader: read.extracted ? 'search_extract' : 'direct' };
+    const page = read.extracted
+      ? { ...parsed, identityText: `${source.title} ${parsed.identityText}`, productText: `${source.title.split('|')[0]} ${parsed.productText}` }
+      : parsed;
+    memory.outsidePage = {
+      sourceUrl: source.url,
+      url: source.url,
+      domain: source.domain,
+      tier: 4,
+      page,
+      nutrition: EMPTY_NUTRITION,
+      basis: null,
+      method: page.method,
+      reader: read.extracted ? 'search_extract' : 'direct',
+    };
     const hasCode = page.barcodes.includes(barcode) || barcodeInResult({ ...source, title: page.text, snippet: '' }, barcode);
     const near = namesNearBarcode(page.text, barcode, label);
-    const enrichment = hasCode ? enrichedName([...sources, { ...source, title: page.productText, snippet: [...near, barcode].join('\n') }], barcode, label) : null;
-    if (this.debug) this.logger.log('identity_read', { domain: source.domain, url: loggedUrl(source.url), reason: 'identity', hasCode, alias: enrichment?.name ?? null, name: page.productText.slice(0, MAX_LOGGED_TEXT), contexts: identityContext(page.text, barcode, label) });
+    const enrichment = hasCode
+      ? enrichedName([...sources, { ...source, title: page.productText, snippet: [...near, barcode].join('\n') }], barcode, label)
+      : null;
+    if (this.debug)
+      this.logger.log('identity_read', {
+        domain: source.domain,
+        url: loggedUrl(source.url),
+        reason: 'identity',
+        hasCode,
+        alias: enrichment?.name ?? null,
+        name: page.productText.slice(0, MAX_LOGGED_TEXT),
+        contexts: identityContext(page.text, barcode, label),
+      });
     return enrichment;
   }
 
   /** Прямое чтение без повторов. Если не открылось, один раз запасное чтение: оно входит в общий лимит. */
-  private async identityPage(url: string, memory: SearchMemory, counters: SearchCounters): Promise<{ readonly body: string; readonly extracted: boolean } | null> {
+  private async identityPage(
+    url: string,
+    memory: SearchMemory,
+    counters: SearchCounters,
+  ): Promise<{ readonly body: string; readonly extracted: boolean } | null> {
     try {
       return { body: (await this.reader.fetchPage(url)).body, extracted: false };
     } catch (error) {
       memory.failed.set(url, (error as Error)?.message ?? 'failed');
       this.logger.warn('identity_read_failed', { url: loggedUrl(url), error: (error as Error)?.message ?? 'failed' });
-      if ((error instanceof PageFetchError && error.code === 'blocked_url') || memory.extracts >= MAX_EXTRACTS_PER_PRODUCT || !this.searcher.readPages || this.searcher.isAvailable?.() === false) return null;
+      if (
+        (error instanceof PageFetchError && error.code === 'blocked_url') ||
+        memory.extracts >= MAX_EXTRACTS_PER_PRODUCT ||
+        !this.searcher.readPages ||
+        this.searcher.isAvailable?.() === false
+      )
+        return null;
     }
     memory.extracts++;
     counters.extracts++;
@@ -632,18 +958,30 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
 
   private async readPages(sources: SourceDiscoveryResponse['sources'], context: ProductLookupContext): Promise<ReadResult> {
     const failed = new Map<string, string>();
-    const results = await Promise.all(sources.map(async (source): Promise<LoadedPage | 'blocked' | null> => {
-      try {
-        const fetched = await this.reader.fetchPage(source.url);
-        const page = parsePage(fetched.contentType === 'application/ld+json' ? `<script type="application/ld+json">${fetched.body}</script>` : fetched.body);
-        return { sourceUrl: source.url, url: fetched.finalUrl, domain: fetched.domain, tier: sourceTier(fetched.domain, context.brand), page, nutrition: page.nutrition, basis: page.basis, method: page.method, reader: 'direct' };
-      } catch (error) {
-        this.logger.warn('web_page_failed', { domain: source.domain, error: (error as Error)?.message ?? 'failed' });
-        failed.set(source.url, (error as Error)?.message ?? 'failed');
-        // Закрытый адрес не передаётся дальше: запасное чтение его не обходит.
-        return error instanceof PageFetchError && error.code === 'blocked_url' ? 'blocked' : null;
-      }
-    }));
+    const results = await Promise.all(
+      sources.map(async (source): Promise<LoadedPage | 'blocked' | null> => {
+        try {
+          const fetched = await this.reader.fetchPage(source.url);
+          const page = parsePage(fetched.contentType === 'application/ld+json' ? `<script type="application/ld+json">${fetched.body}</script>` : fetched.body);
+          return {
+            sourceUrl: source.url,
+            url: fetched.finalUrl,
+            domain: fetched.domain,
+            tier: sourceTier(fetched.domain, context.brand),
+            page,
+            nutrition: page.nutrition,
+            basis: page.basis,
+            method: page.method,
+            reader: 'direct',
+          };
+        } catch (error) {
+          this.logger.warn('web_page_failed', { domain: source.domain, error: (error as Error)?.message ?? 'failed' });
+          failed.set(source.url, (error as Error)?.message ?? 'failed');
+          // Закрытый адрес не передаётся дальше: запасное чтение его не обходит.
+          return error instanceof PageFetchError && error.code === 'blocked_url' ? 'blocked' : null;
+        }
+      }),
+    );
     const pages = results.filter((page): page is LoadedPage => page !== null && page !== 'blocked');
     // Пустая страница без текста о питании обычно значит, что содержимое подгружается через JavaScript.
     const unread = sources.filter((_, index) => {
@@ -654,9 +992,21 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
   }
 
   /** Вызывается только если напрямую не нашлось страницы с недостающими значениями, которой хватает самой по себе: так кредит не тратится зря. */
-  private async withSearchExtract({ pages, unread }: ReadResult, context: ProductLookupContext, verify: (page: LoadedPage) => PageVerdict, memory: SearchMemory, counters: SearchCounters): Promise<readonly LoadedPage[]> {
+  private async withSearchExtract(
+    { pages, unread }: ReadResult,
+    context: ProductLookupContext,
+    verify: (page: LoadedPage) => PageVerdict,
+    memory: SearchMemory,
+    counters: SearchCounters,
+  ): Promise<readonly LoadedPage[]> {
     if (!this.searcher.readPages || unread.length === 0) return pages;
-    if (pages.some((page) => { const verdict = verify(page); return verdict.status === 'accepted' && !verdict.needsSecondSource && addsMissingValue(page, context); })) return pages;
+    if (
+      pages.some((page) => {
+        const verdict = verify(page);
+        return verdict.status === 'accepted' && !verdict.needsSecondSource && addsMissingValue(page, context);
+      })
+    )
+      return pages;
     let contents: Awaited<ReturnType<NonNullable<NutritionSearcher['readPages']>>>;
     memory.extracts++;
     counters.extracts++;
@@ -671,7 +1021,19 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
       if (!source) return [];
       const parsed = parsePage(item.content);
       const page = { ...parsed, identityText: `${source.title} ${parsed.identityText}`, productText: `${source.title.split('|')[0]} ${parsed.productText}` };
-      return [{ sourceUrl: source.url, url: source.url, domain: source.domain, tier: sourceTier(source.domain, context.brand), page, nutrition: page.nutrition, basis: page.basis, method: page.method, reader: 'search_extract' }];
+      return [
+        {
+          sourceUrl: source.url,
+          url: source.url,
+          domain: source.domain,
+          tier: sourceTier(source.domain, context.brand),
+          page,
+          nutrition: page.nutrition,
+          basis: page.basis,
+          method: page.method,
+          reader: 'search_extract',
+        },
+      ];
     });
     const replaced = new Set(extracted.map((page) => page.domain));
     return [...pages.filter((page) => !replaced.has(page.domain)), ...extracted];
@@ -680,8 +1042,12 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
   /** Код не нашёл состав на странице про этот товар. Один запрос без поиска, только текст этой страницы. Ненапечатанное отбрасывается. */
   private async withIngredientsExtraction(memory: SearchMemory, counters: SearchCounters, label: ProductLookupContext, barcode: string | null): Promise<void> {
     if (memory.aiExtractions >= MAX_AI_EXTRACTIONS_PER_PRODUCT || !this.searcher.extractIngredients) return;
-    const target = [...memory.pages, ...(memory.outsidePage ? [memory.outsidePage] : [])].find((page) => !page.page.ingredients && mentionsIngredients(page.page.text)
-      && ingredientsRejectReason({ ...page.page, basis: page.basis, nutrition: page.nutrition }, label, barcode, page.url) === null);
+    const target = [...memory.pages, ...(memory.outsidePage ? [memory.outsidePage] : [])].find(
+      (page) =>
+        !page.page.ingredients &&
+        mentionsIngredients(page.page.text) &&
+        ingredientsRejectReason({ ...page.page, basis: page.basis, nutrition: page.nutrition }, label, barcode, page.url) === null,
+    );
     if (!target) return;
     memory.aiExtractions++;
     counters.aiExtractions++;
@@ -703,13 +1069,29 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
    * Один запрос на продукт и одна страница: найденная поиском, про этот товар, без таблицы, которую разобрал бы код.
    * Числа от AI проверяются по тексту страницы, а товар и адрес остаются со страницы. Повторов нет.
    */
-  private async withAiExtraction(memory: SearchMemory, counters: SearchCounters, label: ProductLookupContext, barcode: string | null, confirmed: (domain: string) => boolean): Promise<readonly LoadedPage[]> {
+  private async withAiExtraction(
+    memory: SearchMemory,
+    counters: SearchCounters,
+    label: ProductLookupContext,
+    barcode: string | null,
+    confirmed: (domain: string) => boolean,
+  ): Promise<readonly LoadedPage[]> {
     const { pages } = memory;
     if (memory.aiExtractions >= MAX_AI_EXTRACTIONS_PER_PRODUCT) return pages;
-    const needAi = pages.map((page, id) => ({ id, page, facts: identityFacts({ ...page.page, nutrition: page.nutrition, basis: page.basis }, label, barcode) }))
-      .filter(({ page, facts }) => page.method === null && page.page.relevantText && (page.tier < 4 || facts.barcodeMatch) && !facts.otherVariant && !page.page.malformed
-        && (facts.barcodeMatch || hasReferenceMacros(label) || confirmed(page.domain))
-        && (facts.barcodeMatch || (facts.variantMatch && (facts.brandMatch || !label.brand)) || (facts.variantSilent && facts.brandMatch && hasReferenceMacros(label))))
+    const needAi = pages
+      .map((page, id) => ({ id, page, facts: identityFacts({ ...page.page, nutrition: page.nutrition, basis: page.basis }, label, barcode) }))
+      .filter(
+        ({ page, facts }) =>
+          page.method === null &&
+          page.page.relevantText &&
+          (page.tier < 4 || facts.barcodeMatch) &&
+          !facts.otherVariant &&
+          !page.page.malformed &&
+          (facts.barcodeMatch || hasReferenceMacros(label) || confirmed(page.domain)) &&
+          (facts.barcodeMatch ||
+            (facts.variantMatch && (facts.brandMatch || !label.brand)) ||
+            (facts.variantSilent && facts.brandMatch && hasReferenceMacros(label))),
+      )
       .sort((a, b) => Number(b.facts.barcodeMatch) - Number(a.facts.barcodeMatch) || a.page.tier - b.page.tier)
       .slice(0, 1);
     if (needAi.length === 0) return pages;
@@ -726,36 +1108,109 @@ export class GeminiSearchProductLookupProvider implements ProductLookupProvider 
       const item = extracted.find((entry) => entry.id === id);
       if (!item || page.method !== null) return page;
       const text = page.page.relevantText;
-      const nutrition: PageNutrition = { ...EMPTY_NUTRITION,
-        kcal: printedOnPage(item.kcal, text), protein: printedOnPage(item.protein, text), carbs: printedOnPage(item.carbs, text), fat: printedOnPage(item.fat, text),
-        sugars: printedOnPage(item.sugars, text), saturatedFat: printedOnPage(item.saturatedFat, text), salt: printedOnPage(item.salt, text),
-        sodiumMg: printedOnPage(item.sodiumMg, text), fiber: printedOnPage(item.fiber, text) };
+      const nutrition: PageNutrition = {
+        ...EMPTY_NUTRITION,
+        kcal: printedOnPage(item.kcal, text),
+        protein: printedOnPage(item.protein, text),
+        carbs: printedOnPage(item.carbs, text),
+        fat: printedOnPage(item.fat, text),
+        sugars: printedOnPage(item.sugars, text),
+        saturatedFat: printedOnPage(item.saturatedFat, text),
+        salt: printedOnPage(item.salt, text),
+        sodiumMg: printedOnPage(item.sodiumMg, text),
+        fiber: printedOnPage(item.fiber, text),
+      };
       // Основа должна быть напечатана: без неё значения на порцию нельзя отличить от значений на 100 г.
       const basis = /100\s*(мл|ml)/i.test(text) ? 'per_100ml' : /100\s*(г|гр|g)/i.test(text) ? 'per_100g' : null;
       return { ...page, nutrition, basis, method: 'ai' };
     });
   }
 
-  private report(status: WebVerdictStatus, queries: number, pages: readonly CheckedPage[], unresolved: readonly string[] = [], accepted: readonly string[] = [], counters?: SearchCounters, enrichment?: NameEnrichment | null, standing?: AliasStanding | null): void {
-    this.logger.log('web_lookup', { status, webSearchQueries: queries, searches: counters?.searches ?? 0, reads: counters?.reads ?? 0, extracts: counters?.extracts ?? 0, identityReads: counters?.identityReads ?? 0, alias: enrichment?.name ?? null, aliasStrength: !enrichment ? null : enrichment.reason === 'single_barcode_result' ? 'weak' : 'strong', aliasReason: enrichment?.reason ?? null, aliasState: standing?.state ?? null, aliasConfirmedBy: standing?.by ?? null, credits: counters?.credits ?? (counters?.searches ?? 0) + (counters?.extracts ?? 0), aiExtractions: counters?.aiExtractions ?? 0, steps: counters?.steps ?? [], accepted, unresolved,
-      pages: pages.map((page) => ({ domain: page.domain, tier: page.tier, reader: page.reader, method: page.method, values: page.nutrition, status: page.verdict.status, reason: page.verdict.reason, identityMatch: page.verdict.identityMatch, conflicts: page.verdict.conflicts })) });
+  private report(
+    status: WebVerdictStatus,
+    queries: number,
+    pages: readonly CheckedPage[],
+    unresolved: readonly string[] = [],
+    accepted: readonly string[] = [],
+    counters?: SearchCounters,
+    enrichment?: NameEnrichment | null,
+    standing?: AliasStanding | null,
+  ): void {
+    this.logger.log('web_lookup', {
+      status,
+      webSearchQueries: queries,
+      searches: counters?.searches ?? 0,
+      reads: counters?.reads ?? 0,
+      extracts: counters?.extracts ?? 0,
+      identityReads: counters?.identityReads ?? 0,
+      alias: enrichment?.name ?? null,
+      aliasStrength: !enrichment ? null : enrichment.reason === 'single_barcode_result' ? 'weak' : 'strong',
+      aliasReason: enrichment?.reason ?? null,
+      aliasState: standing?.state ?? null,
+      aliasConfirmedBy: standing?.by ?? null,
+      credits: counters?.credits ?? (counters?.searches ?? 0) + (counters?.extracts ?? 0),
+      aiExtractions: counters?.aiExtractions ?? 0,
+      steps: counters?.steps ?? [],
+      accepted,
+      unresolved,
+      pages: pages.map((page) => ({
+        domain: page.domain,
+        tier: page.tier,
+        reader: page.reader,
+        method: page.method,
+        values: page.nutrition,
+        status: page.verdict.status,
+        reason: page.verdict.reason,
+        identityMatch: page.verdict.identityMatch,
+        conflicts: page.verdict.conflicts,
+      })),
+    });
   }
 
   /** Каждый найденный кандидат и решение по нему. Без тела страницы и без параметров адреса. */
-  private reportCandidates(sources: SourceDiscoveryResponse['sources'], pages: readonly CheckedPage[], failed: ReadonlyMap<string, string>, label: ProductLookupContext, barcode: string | null, used: Partial<Record<NutrientKey, WebFieldSource>>, identityUrl: string | null): void {
+  private reportCandidates(
+    sources: SourceDiscoveryResponse['sources'],
+    pages: readonly CheckedPage[],
+    failed: ReadonlyMap<string, string>,
+    label: ProductLookupContext,
+    barcode: string | null,
+    used: Partial<Record<NutrientKey, WebFieldSource>>,
+    identityUrl: string | null,
+  ): void {
     const usedUrls = new Set(Object.values(used).map((field) => field.url));
     for (const source of sources) {
       const page = pages.find((item) => item.sourceUrl === source.url);
       const inResults = barcodeInResult(source, barcode);
-      const base = { domain: source.domain, url: loggedUrl(page?.url ?? source.url), title: source.title.slice(0, MAX_LOGGED_TEXT), tier: page?.tier ?? sourceTier(source.domain, label.brand), barcodeInResults: inResults, ...(hasIngredientsMark(source.snippet ?? '') ? { readBoost: 'ingredients_mark_in_snippet' } : {}) };
+      const base = {
+        domain: source.domain,
+        url: loggedUrl(page?.url ?? source.url),
+        title: source.title.slice(0, MAX_LOGGED_TEXT),
+        tier: page?.tier ?? sourceTier(source.domain, label.brand),
+        barcodeInResults: inResults,
+        ...(hasIngredientsMark(source.snippet ?? '') ? { readBoost: 'ingredients_mark_in_snippet' } : {}),
+      };
       if (!page) {
         const error = failed.get(source.url);
-        this.logger.log('web_candidate', { ...base, decision: error ? 'inaccessible' : 'other', reason: error ?? (source.url === identityUrl ? 'identity_read_only' : skipReason(source, base.tier, inResults, label)) });
+        this.logger.log('web_candidate', {
+          ...base,
+          decision: error ? 'inaccessible' : 'other',
+          reason: error ?? (source.url === identityUrl ? 'identity_read_only' : skipReason(source, base.tier, inResults, label)),
+        });
         continue;
       }
       const facts = identityFacts({ ...page.page, nutrition: page.nutrition, basis: page.basis }, label, barcode);
-      this.logger.log('web_candidate', { ...base, reader: page.reader, method: page.method, pageName: page.page.identityText.slice(0, MAX_LOGGED_TEXT), basis: page.basis, values: page.nutrition,
-        ...facts, macroComparisons: compareMacros(label, page.nutrition).comparisons, decision: candidateDecision(page.verdict, usedUrls.has(page.url)), reason: page.verdict.reason });
+      this.logger.log('web_candidate', {
+        ...base,
+        reader: page.reader,
+        method: page.method,
+        pageName: page.page.identityText.slice(0, MAX_LOGGED_TEXT),
+        basis: page.basis,
+        values: page.nutrition,
+        ...facts,
+        macroComparisons: compareMacros(label, page.nutrition).comparisons,
+        decision: candidateDecision(page.verdict, usedUrls.has(page.url)),
+        reason: page.verdict.reason,
+      });
     }
   }
 

@@ -5,6 +5,8 @@ import {
   isProductCategory,
   lowestConfidence,
   NOT_DETECTED,
+  SALT_PER_SODIUM,
+  saltGFromSodiumMg,
   observed,
   type Additive,
   type Allergen,
@@ -123,8 +125,6 @@ const PER_100_LIMITS = { kcal: 900, grams: 100, sodiumMg: 40_000 } as const;
 const PER_SERVING_LIMITS = { kcal: 5_000, grams: 1_000, sodiumMg: 100_000 } as const;
 
 const KJ_PER_KCAL = 4.184;
-/** Масса NaCl к массе натрия. */
-const SALT_PER_SODIUM = 2.5;
 
 function round(value: number, digits: number): number {
   const factor = 10 ** digits;
@@ -171,7 +171,7 @@ function normalizeNutrition(table: MetaProductAnalysis['nutrition_table']): Nutr
     fiberG: grams(table.fiber_g),
     // Если на этикетке только одно из двух, второе выводится по формуле и помечается inferred.
     saltG:
-      saltG !== null ? observed(round(saltG, 2)) : sodiumMg !== null ? inferred(round((sodiumMg * SALT_PER_SODIUM) / 1000, 2)) : NOT_DETECTED,
+      saltG !== null ? observed(round(saltG, 2)) : sodiumMg !== null ? inferred(round(saltGFromSodiumMg(sodiumMg), 2)) : NOT_DETECTED,
     sodiumMg:
       sodiumMg !== null ? observed(round(sodiumMg, 0)) : saltG !== null ? inferred(round((saltG / SALT_PER_SODIUM) * 1000, 0)) : NOT_DETECTED,
   };

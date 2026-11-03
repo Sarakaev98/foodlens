@@ -1,10 +1,9 @@
 import {
-  fromExternalSource, inferred, isExternalProvenance, lowestConfidence, NOT_DETECTED, type Additive, type Allergen, type ConfidenceLevel, type Detected,
+  fromExternalSource, inferred, isExternalProvenance, lowestConfidence, NOT_DETECTED, SALT_PER_SODIUM, saltGFromSodiumMg, type Additive, type Allergen, type ConfidenceLevel, type Detected,
   type ExternalProvenance, type NutrientKey, type NutrientValue, type NutritionFacts, type Product, type ProductConfidence, type ServingSize,
 } from '@foodlens/core';
 import type { ProductLookupNutrition, ProductLookupResult, WebFieldSource } from './product-lookup.provider';
 
-const SALT_PER_SODIUM = 2.5;
 /** Допуск «значения совпадают»: 10% от большего, но не меньше этого абсолютного порога. */
 const RELATIVE_TOLERANCE = 0.1;
 const ABSOLUTE_TOLERANCE: Readonly<Record<NutrientKey, number>> = {
@@ -66,7 +65,7 @@ function fromLookup(off: ProductLookupNutrition, key: NutrientKey, value: number
 function completeSaltPair(values: Partial<Record<NutrientKey, NutrientValue>>, nutrition: NutritionFacts): void {
   const salt = values.saltG ?? nutrition.saltG;
   const sodium = values.sodiumMg ?? nutrition.sodiumMg;
-  if (salt.value === null && sodium.value !== null) values.saltG = inferred(round((sodium.value * SALT_PER_SODIUM) / 1000, 2));
+  if (salt.value === null && sodium.value !== null) values.saltG = inferred(round(saltGFromSodiumMg(sodium.value), 2));
   if (sodium.value === null && salt.value !== null) values.sodiumMg = inferred(round((salt.value / SALT_PER_SODIUM) * 1000, 0));
 }
 

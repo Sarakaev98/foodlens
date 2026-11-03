@@ -7,7 +7,7 @@ import { fromOpenFoodFacts as fromOff, NOT_DETECTED, observed, type NutritionFac
 import { eatHealthierPlan } from '../../goal-match/test/goal-match-v4.fixtures';
 import type { NutritionTargetsService } from '../../nutrition-targets/nutrition-targets.service';
 import { CachedProductLookupProvider } from '../../product-lookup/cached-product-lookup.provider';
-import { GeminiSearchProductLookupProvider, MAX_AI_EXTRACTIONS_PER_PRODUCT, MAX_EXTRACTS_PER_PRODUCT, MAX_PAGE_ATTEMPTS, MAX_PAGES_PER_SCAN, MAX_SEARCHES_PER_PRODUCT, type NutritionSearcher, type WebSearchLimits } from '../../product-lookup/gemini-search-lookup.provider';
+import { WebSearchProductLookupProvider, MAX_AI_EXTRACTIONS_PER_PRODUCT, MAX_EXTRACTS_PER_PRODUCT, MAX_PAGE_ATTEMPTS, MAX_PAGES_PER_SCAN, MAX_SEARCHES_PER_PRODUCT, type NutritionSearcher, type WebSearchLimits } from '../../product-lookup/web-search-lookup.provider';
 import { MultiSourceProductLookup } from '../../product-lookup/multi-source-product-lookup';
 import { mapOpenFoodFactsProduct } from '../../product-lookup/open-food-facts.mapper';
 import type { ProductLookupResult } from '../../product-lookup/product-lookup.provider';
@@ -89,7 +89,7 @@ function setup({ off = null, pages = {}, results, closed = [], extractable = {},
     if (closed.includes(domain)) throw new Error('page_timeout');
     return { finalUrl: url, domain, contentType: 'text/html', body: pages[domain] ?? '<title>x</title>' };
   } };
-  const provider = new GeminiSearchProductLookupProvider(searcher, reader, logger, Date.now, debug, limits);
+  const provider = new WebSearchProductLookupProvider(searcher, reader, logger, Date.now, debug, limits);
   const web = new CachedProductLookupProvider(provider);
   const lookups = new MultiSourceProductLookup([{ name: 'open_food_facts', lookup: async () => (calls.off++, off) }, web]);
   const service = new ScanService(ai, plans, undefined, lookups);

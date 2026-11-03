@@ -1,4 +1,4 @@
-import type { NutritionFacts } from '@foodlens/core';
+import { SALT_PER_SODIUM, type NutritionFacts } from '@foodlens/core';
 
 export type NutritionSanityIssue = 'sugars_exceed_carbs' | 'saturated_fat_exceeds_fat' | 'macros_exceed_mass'
   | 'energy_mismatch' | 'salt_exceeds_limit' | 'calories_exceed_limit';
@@ -13,7 +13,7 @@ export function checkNutritionSanity(n: NutritionFacts | null, servingAmount?: n
   const p = value(n.proteinG.value), fat = value(n.fatG.value), carbs = value(n.carbsG.value);
   const sugar = value(n.sugarsG.value), sat = value(n.saturatedFatG.value), fiber = value(n.fiberG.value);
   const sodium = n.sodiumMg.value;
-  const salt = value(n.saltG.value ?? (known(sodium) ? sodium * .0025 : null));
+  const salt = value(n.saltG.value ?? (known(sodium) ? sodium * (SALT_PER_SODIUM / 1000) : null));
   const kcal = value(n.caloriesKcal.value);
   const issues: NutritionSanityIssue[] = [];
   if (sugar !== null && carbs !== null && sugar > carbs + .5) issues.push('sugars_exceed_carbs');

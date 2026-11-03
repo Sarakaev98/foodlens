@@ -1,6 +1,7 @@
 import { checkNutritionSanity } from './nutrition-sanity';
 import {
   normalizeProductSemantics,
+  saltGFromSodiumMg,
   type ConfidenceLevel, type GoalMatchFactor, type GoalMatchLevel, type GoalMatchPortion,
   type GoalMatchUnavailableReason, type GoalMatchUncertainty, type GoalMatchUserPlan,
   type GoalMatchV3, type NutritionFacts, type Product, type ProductSemantics,
@@ -46,7 +47,7 @@ function nutrients(n: NutritionFacts, scale: number | null): Nutrients | null {
   if (sugars === null && carbs !== null && scale !== null && carbs * scale <= 0.5) sugars = 0;
   if (saturated === null && fat !== null && scale !== null && fat * scale <= 0.5) saturated = 0;
   const sodium = number(n.sodiumMg.value);
-  const salt = number(n.saltG.value) ?? (sodium === null ? null : sodium * 2.5 / 1000);
+  const salt = number(n.saltG.value) ?? (sodium === null ? null : saltGFromSodiumMg(sodium));
   if (kcal === null || sugars === null || saturated === null || salt === null) return null;
   return {
     caloriesKcal: kcal, proteinG: p, sugarsG: sugars, saturatedFatG: saturated, saltG: salt,

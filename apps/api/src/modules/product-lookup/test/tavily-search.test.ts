@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import { Logger } from '@nestjs/common';
 import type { ExtractedPage } from '@foodlens/ai';
 import { loadAppConfig } from '../../../config/app-config';
-import { GeminiSearchProductLookupProvider, type NutritionSearcher } from '../gemini-search-lookup.provider';
+import { WebSearchProductLookupProvider, type NutritionSearcher } from '../web-search-lookup.provider';
 import type { ProductLookupContext } from '../product-lookup.provider';
 import { PageFetchError } from '../web/page-fetcher';
 import { sourceTier } from '../web/source-tier';
@@ -183,7 +183,7 @@ describe('Tavily inside the web lookup', () => {
       if (body instanceof Error) throw body;
       return { finalUrl: url, domain: new URL(url).hostname, contentType: 'text/html', body };
     } };
-    return { provider: new GeminiSearchProductLookupProvider(searcher, reader, logger), stub, reads, logs, verdict: () => logs.find((line) => line.message === 'web_lookup')?.fields };
+    return { provider: new WebSearchProductLookupProvider(searcher, reader, logger), stub, reads, logs, verdict: () => logs.find((line) => line.message === 'web_lookup')?.fields };
   }
   const extractCalls = (requests: { url: string }[]) => requests.filter((request) => request.url.endsWith('/extract')).length;
   const CODE = '4011100000000';
@@ -246,7 +246,7 @@ describe('Tavily inside the web lookup', () => {
   });
   it('a failed extract does not break the scan', async () => {
     const failing = lookup({ 'https://ozon.ru/p': new PageFetchError('http_error') });
-    const provider = new GeminiSearchProductLookupProvider({
+    const provider = new WebSearchProductLookupProvider({
       discoverSources: (input) => failing.stub.search.discoverSources(input), extractNutrition: async () => [], readPages: async () => { throw new TavilySearchError('http_500'); },
     }, { fetchPage: async () => { throw new PageFetchError('http_error'); } });
     assert.equal(await provider.lookup(CODE, CONTEXT), null);
@@ -264,7 +264,7 @@ describe('Tavily inside the web lookup', () => {
   });
   it('Tavily down: the lookup rejects so that the scan logs it and goes on without caching', async () => {
     const stub = client(() => new Response('', { status: 429 }));
-    const provider = new GeminiSearchProductLookupProvider({ discoverSources: (input) => stub.search.discoverSources(input), extractNutrition: async () => [] }, { fetchPage: async () => { throw new Error('unused'); } });
+    const provider = new WebSearchProductLookupProvider({ discoverSources: (input) => stub.search.discoverSources(input), extractNutrition: async () => [] }, { fetchPage: async () => { throw new Error('unused'); } });
     await assert.rejects(provider.lookup(CODE, CONTEXT), TavilySearchError);
   });
   describe('dev diagnostics', () => {
@@ -281,7 +281,7 @@ describe('Tavily inside the web lookup', () => {
         if (body instanceof Error) throw body;
         return { finalUrl: url, domain: new URL(url).hostname, contentType: 'text/html', body };
       } };
-      return { provider: new GeminiSearchProductLookupProvider(searcher, reader, logger, Date.now, debug), candidates: () => logs.filter((line) => line.message === 'web_candidate').map((line) => line.fields), logs };
+      return { provider: new WebSearchProductLookupProvider(searcher, reader, logger, Date.now, debug), candidates: () => logs.filter((line) => line.message === 'web_candidate').map((line) => line.fields), logs };
     };
     const page = (title: string, kcal = 510, fat = 28) => `<title>${title}</title><p>${TABLE('0000000').replace('510 ккал', `${kcal} ккал`).replace('| 28 г', `| ${fat} г`)}</p>`;
 

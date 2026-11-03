@@ -2,7 +2,7 @@
 
 Date: October 31, 2026; the Tavily section was added the same day. No real requests were made to Tavily, Gemini or websites, and Scan was not run. No commit or push was made, and the agent did not change `.env`.
 
-> **Current status (November 3, 2026).** Several numbers below have changed since this report: up to 8 searches, 10 page reads, 2 Tavily extracts and 2 Gemini text extractions per product, and 60 web searches per hour per API process. One page with the exact barcode, or with the brand and the full product name, and a matching recipe can now fill a missing field as an `estimated` value. The current constants are in `apps/api/src/modules/product-lookup/gemini-search-lookup.provider.ts`.
+> **Current status (November 3, 2026).** Several numbers below have changed since this report: up to 8 searches, 10 page reads, 2 Tavily extracts and 2 Gemini text extractions per product, and 60 web searches per hour per API process. One page with the exact barcode, or with the brand and the full product name, and a matching recipe can now fill a missing field as an `estimated` value. The current constants are in `apps/api/src/modules/product-lookup/web-search-lookup.provider.ts`.
 
 ## Page search: Tavily
 
@@ -208,7 +208,7 @@ Changed:
 - `packages/ai/src/index.ts`
 - `packages/ai/src/test/google-nutrition-search.test.ts`
 - `packages/core/src/product/product.ts`
-- `apps/api/src/modules/product-lookup/gemini-search-lookup.provider.ts`
+- `apps/api/src/modules/product-lookup/web-search-lookup.provider.ts`
 - `apps/api/src/modules/product-lookup/product-lookup.provider.ts`
 - `apps/api/src/modules/product-lookup/product-lookup.module.ts`
 - `apps/api/src/modules/product-lookup/product-merge.ts`
