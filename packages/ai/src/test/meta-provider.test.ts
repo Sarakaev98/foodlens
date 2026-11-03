@@ -4,6 +4,8 @@ import { AIProviderError, type AIProviderErrorCode } from '../errors';
 import { MetaProvider, type MetaProviderConfig } from '../providers/meta/meta-provider';
 import { metaAnalysis } from './meta-fixtures';
 
+const FIRST_IMAGE = { mimeType: 'image/jpeg', base64: Buffer.from('first').toString('base64') } as const;
+const SECOND_IMAGE = { mimeType: 'image/jpeg', base64: Buffer.from('second').toString('base64') } as const;
 const IMAGE = { kind: 'image', image: { mimeType: 'image/jpeg', base64: Buffer.from('fake-jpeg').toString('base64') } } as const;
 const TEST_KEY = 'test-key-not-real';
 
@@ -164,5 +166,21 @@ describe('MetaProvider.analyzeProduct', () => {
     assert.equal(finished.fields.status, 'ok');
     assert.equal(typeof finished.fields.durationMs, 'number');
     assert.equal(finished.fields.attempts, 2);
+  });
+});
+
+describe('MetaProvider with several images', () => {
+  it('uses the first image only', async () => {
+    let body = '';
+    const provider = new MetaProvider({
+      apiKey: 'unit-key',
+      fetch: (async (_url: unknown, init?: RequestInit) => {
+        body = String(init!.body);
+        return new Response(JSON.stringify({ id: 'r', choices: [{ finish_reason: 'stop', message: { content: JSON.stringify(metaAnalysis()) } }] }));
+      }) as typeof fetch,
+    });
+    await provider.analyzeProduct({ kind: 'image', images: [FIRST_IMAGE, SECOND_IMAGE] });
+    assert.ok(body.includes(FIRST_IMAGE.base64));
+    assert.ok(!body.includes(SECOND_IMAGE.base64));
   });
 });

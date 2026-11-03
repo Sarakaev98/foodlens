@@ -1,5 +1,5 @@
 /**
- * Feature "product-score": отображение ProductScore из @foodlens/scoring.
+ * Feature "product-score": отображение ProductScore, посчитанного на сервере (@foodlens/scoring).
  * Публичный API фичи экспортируется только отсюда.
  */
-export {};
+export { ProductScoreCard } from './components/ProductScoreCard';

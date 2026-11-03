@@ -3,6 +3,7 @@ import type { AIProviderErrorCode } from '@foodlens/ai';
 /** Коды ошибок сканирования, которые видит клиент. Mobile показывает по ним свой текст. */
 export type ScanErrorCode =
   | 'IMAGE_MISSING'
+  | 'TOO_MANY_IMAGES'
   | 'IMAGE_UNSUPPORTED_TYPE'
   | 'IMAGE_TOO_LARGE'
   | 'IMAGE_INVALID'
@@ -14,6 +15,7 @@ export type ScanErrorCode =
   | 'AI_UNAVAILABLE'
   | 'AI_BAD_RESPONSE'
   | 'PRODUCT_NOT_RECOGNIZED'
+  | 'NUTRITION_TABLE_NOT_FOUND'
   | 'SCAN_FAILED';
 
 /** Ошибка, безопасная для отправки клиенту: только код, статус и короткий текст без технических деталей. */

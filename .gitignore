@@ -24,3 +24,6 @@ dist-test/
 *.zip
 *.log
 *-qr.png
+
+# Дампы базы с данными профиля
+backups/

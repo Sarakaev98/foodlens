@@ -1,4 +1,4 @@
-import type { Meal, MealPlan, Product } from '@foodlens/core';
+import type { GoalMatchAiInput, GoalMatchAiOutput, Meal, MealPlan, Product } from '@foodlens/core';
 import type {
   AnalyzeProductInput,
   ExplainProductInput,
@@ -22,6 +22,13 @@ export interface AIProvider {
   generateMealPlan(input: GenerateMealPlanInput): Promise<MealPlan>;
 
   replaceMeal(input: ReplaceMealInput): Promise<Meal>;
+
+  /**
+   * Goal Match v4: второй AI-вызов после распознавания. Получает только факты (без Product Score и балла v3)
+   * и возвращает сырой ответ модели; его проверяют validate/reconcile в @foodlens/scoring.
+   * Нет ответа для этого продукта или провайдер недоступен: AIUnavailableError, тогда включается расчётная оценка.
+   */
+  evaluateGoalMatch(input: GoalMatchAiInput): Promise<GoalMatchAiOutput>;
 }
 
 export type AIProviderMethod = Exclude<keyof AIProvider, 'name'>;

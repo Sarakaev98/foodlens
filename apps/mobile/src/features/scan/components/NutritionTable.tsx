@@ -20,8 +20,10 @@ function formatValue(value: number): string {
 }
 
 /** null показывается как «Не обнаружено», никогда как 0. Выведенные значения помечены «≈». */
-export function NutritionTable({ nutrition }: { readonly nutrition: NutritionFacts }) {
-  const hasInferred = ROWS.some((row) => nutrition[row.key].provenance === 'inferred');
+export function NutritionTable({ nutrition, estimated = [] }: { readonly nutrition: NutritionFacts; readonly estimated?: readonly string[] }) {
+  const isEstimated = (key: NutrientKey) => estimated.includes(key);
+  const hasInferred = ROWS.some((row) => nutrition[row.key].provenance === 'inferred' && !isEstimated(row.key));
+  const hasEstimated = ROWS.some((row) => nutrition[row.key].value !== null && isEstimated(row.key));
   return (
     <View style={styles.table}>
       {ROWS.map((row) => {
@@ -33,7 +35,7 @@ export function NutritionTable({ nutrition }: { readonly nutrition: NutritionFac
               <Text style={styles.missing}>{NOT_DETECTED_LABEL}</Text>
             ) : (
               <Text style={styles.value}>
-                {nutrient.provenance === 'inferred' ? '≈ ' : ''}
+                {nutrient.provenance === 'inferred' || isEstimated(row.key) ? '≈' : ''}
                 {formatValue(nutrient.value)} {row.unit}
               </Text>
             )}
@@ -45,6 +47,7 @@ export function NutritionTable({ nutrition }: { readonly nutrition: NutritionFac
           Порция: {formatValue(nutrition.servingSize.value.amount)} {nutrition.servingSize.value.unit === 'g' ? 'г' : 'мл'}
         </Text>
       ) : null}
+      {hasEstimated ? <Text style={styles.footnote}>Часть пищевых данных оценена автоматически.</Text> : null}
       {hasInferred ? <Text style={styles.footnote}>≈ рассчитано по другим данным этикетки (кДж → ккал, натрий ↔ соль)</Text> : null}
     </View>
   );

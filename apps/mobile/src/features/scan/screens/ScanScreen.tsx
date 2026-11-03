@@ -5,7 +5,7 @@ import { ScanErrorView } from '../components/ScanErrorView';
 import { useProductScan } from '../hooks/useProductScan';
 import { ProductResultScreen } from './ProductResultScreen';
 
-/** Камера или галерея → предпросмотр → анализ → результат. Состояние целиком в useProductScan. */
+/** Режим «продукт» или «таблица», камера или галерея → предпросмотр → анализ → результат. Состояние целиком в useProductScan. */
 export function ScanScreen() {
   const scan = useProductScan();
   const { state } = scan;
@@ -14,18 +14,52 @@ export function ScanScreen() {
     case 'capturing':
       return (
         <CameraCapture
+          mode={scan.mode}
+          onModeChange={state.target ? undefined : scan.setMode}
           onCaptured={scan.onPhotoCaptured}
+          onBarcodeDetected={scan.onBarcodeDetected}
+          onAnalyzeBarcode={state.target || scan.mode === 'label' ? undefined : scan.analyzeBarcode}
           onCaptureFailed={scan.onCaptureFailed}
           onPickFromGallery={scan.pickFromGallery}
+          onCancel={state.target ? scan.backToPhotos : undefined}
         />
       );
     case 'preview':
-      return <PhotoPreview photo={state.photo} onAnalyze={scan.analyze} onRetake={scan.reset} />;
+      return (
+        <PhotoPreview
+          photos={state.photos}
+          barcode={state.barcode}
+          notice={state.notice}
+          allowExtraPhotos={scan.mode === 'product'}
+          onAnalyze={scan.analyze}
+          onAddPhoto={scan.addPhoto}
+          onRetake={scan.retakePhoto}
+          onRemove={scan.removePhoto}
+        />
+      );
     case 'analyzing':
-      return <AnalyzingView photo={state.photo} stage={state.stage} onCancel={scan.reset} />;
+      return <AnalyzingView photo={state.photo} mode={scan.mode} onCancel={scan.reset} />;
     case 'result':
-      return <ProductResultScreen product={state.product} photo={state.photo} onScanAnother={scan.reset} />;
+      return (
+        <ProductResultScreen
+          product={state.product}
+          score={state.score}
+          goalMatch={state.goalMatch}
+          photo={state.photo}
+          barcode={state.barcode}
+          onTakeNutritionPhoto={state.needsPhoto ? scan.takeNutritionPhoto : undefined}
+          onScanAnother={scan.reset}
+        />
+      );
     case 'error':
-      return <ScanErrorView code={state.code} canRetry={state.photo !== null} onRetry={scan.analyze} onScanAgain={scan.reset} />;
+      return (
+        <ScanErrorView
+          code={state.code}
+          canRetry={state.photo !== null}
+          onRetry={scan.analyze}
+          onScanAgain={scan.reset}
+          onEditPhotos={state.canEditPhotos ? scan.backToPhotos : undefined}
+        />
+      );
   }
 }

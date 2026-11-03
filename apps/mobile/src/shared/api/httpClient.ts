@@ -54,6 +54,7 @@ async function request<T>(method: HttpMethod, path: string, { json, form, timeou
 export const apiClient = {
   get: <T>(path: string) => request<T>('GET', path),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, { json: body }),
+  post: <T>(path: string, body: unknown, options: { readonly timeoutMs?: number } = {}) => request<T>('POST', path, { json: body, ...options }),
   postForm: <T>(path: string, form: FormData, options: { readonly timeoutMs?: number } = {}) =>
     request<T>('POST', path, { form, ...options }),
 };

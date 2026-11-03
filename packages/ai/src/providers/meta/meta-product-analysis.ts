@@ -1,4 +1,5 @@
-import { ALLERGEN_CODES, PRODUCT_CATEGORIES } from '@foodlens/core';
+import { ALLERGEN_CODES, PRODUCT_CATEGORIES, PRODUCT_SEMANTICS_VERSION, SUGAR_SOURCES,
+  PROCESSING_LEVELS, PRODUCT_FORMS, CONFIDENCE_LEVELS, type ProductSemantics } from '@foodlens/core';
 import { enumSchema, nullable, objectSchema, type JsonSchema } from '../../json-schema/json-schema';
 
 /**
@@ -6,7 +7,7 @@ import { enumSchema, nullable, objectSchema, type JsonSchema } from '../../json-
  * он описывает то, что модель увидела на фото, вместе с доказательствами,
  * а превращение в Product делает нормализатор.
  */
-export const META_PRODUCT_ANALYSIS_VERSION = 'meta-product-analysis-v1';
+export const META_PRODUCT_ANALYSIS_VERSION = 'meta-product-analysis-v2';
 
 export const META_EVIDENCE = ['visible_text', 'visual_inference', 'not_visible'] as const;
 export type MetaEvidence = (typeof META_EVIDENCE)[number];
@@ -34,6 +35,8 @@ export interface MetaTextField {
 }
 
 export interface MetaProductAnalysis {
+  /** Optional in legacy stored/mock responses; new structured responses always include the block. */
+  readonly semantics?: ProductSemantics | null;
   readonly image: {
     readonly is_food_product: boolean;
     readonly quality: (typeof META_IMAGE_QUALITY)[number];
@@ -92,7 +95,24 @@ const textField = (description: string): JsonSchema =>
 
 const grams = (description: string): JsonSchema => nullable({ type: 'number' }, `${description}, grams. null if not printed.`);
 
+const semanticField = (values: readonly string[]): JsonSchema => objectSchema({
+  value: enumSchema(values), confidence: enumSchema(CONFIDENCE_LEVELS),
+  evidence: { type: 'array', items: { type: 'string' } },
+});
+
+export const PRODUCT_SEMANTICS_SCHEMA: JsonSchema = objectSchema({
+  version: enumSchema([PRODUCT_SEMANTICS_VERSION]),
+  sugarSource: semanticField(SUGAR_SOURCES),
+  processing: semanticField(PROCESSING_LEVELS),
+  productForm: objectSchema({ value: enumSchema(PRODUCT_FORMS), confidence: enumSchema(CONFIDENCE_LEVELS) }),
+  typicalServing: nullable(objectSchema({
+    amount: { type: 'number' }, unit: enumSchema(['g', 'ml']), confidence: enumSchema(CONFIDENCE_LEVELS),
+    evidence: { type: 'array', items: { type: 'string' } },
+  })),
+});
+
 export const META_PRODUCT_ANALYSIS_SCHEMA: JsonSchema = objectSchema({
+  semantics: nullable(PRODUCT_SEMANTICS_SCHEMA),
   image: objectSchema({
     is_food_product: { type: 'boolean', description: 'true if the photo shows a packaged food or drink product' },
     quality: enumSchema(META_IMAGE_QUALITY, 'How readable the printed text is'),

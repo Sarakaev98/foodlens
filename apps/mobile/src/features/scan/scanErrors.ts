@@ -14,7 +14,8 @@ export type ScanFailureCode =
   | 'ai_busy'
   | 'ai_timeout'
   | 'ai_unavailable'
-  | 'product_not_recognized';
+  | 'product_not_recognized'
+  | 'label_not_readable';
 
 export class ScanFailure extends Error {
   constructor(readonly code: ScanFailureCode) {
@@ -45,7 +46,7 @@ export const SCAN_FAILURE_MESSAGES: Readonly<Record<ScanFailureCode, ScanFailure
   no_image: { title: 'Фото не выбрано', description: 'Сделайте снимок или выберите фото из галереи.', retryable: false },
   network_unavailable: {
     title: 'Нет связи с сервером',
-    description: 'Проверьте, что телефон в той же Wi-Fi сети, что и компьютер с FoodLens API.',
+    description: 'Проверьте подключение к интернету и попробуйте ещё раз.',
     retryable: true,
   },
   request_timeout: {
@@ -54,8 +55,8 @@ export const SCAN_FAILURE_MESSAGES: Readonly<Record<ScanFailureCode, ScanFailure
     retryable: true,
   },
   backend_unavailable: {
-    title: 'Сервер FoodLens недоступен',
-    description: 'Произошла ошибка на сервере. Попробуйте ещё раз чуть позже.',
+    title: 'Сервис временно недоступен',
+    description: 'Попробуйте ещё раз чуть позже.',
     retryable: true,
   },
   image_rejected: {
@@ -64,23 +65,23 @@ export const SCAN_FAILURE_MESSAGES: Readonly<Record<ScanFailureCode, ScanFailure
     retryable: false,
   },
   ai_not_configured: {
-    title: 'Сканирование не настроено',
-    description: 'На сервере не задан ключ AI-сервиса (MODEL_API_KEY в apps/api/.env).',
+    title: 'Анализ временно недоступен',
+    description: 'Попробуйте ещё раз чуть позже.',
     retryable: true,
   },
   ai_busy: {
     title: 'Слишком много запросов',
-    description: 'AI-сервис временно ограничил запросы. Подождите немного и повторите.',
+    description: 'Подождите немного и попробуйте ещё раз.',
     retryable: true,
   },
   ai_timeout: {
-    title: 'AI-сервис отвечает слишком долго',
+    title: 'Анализ занял слишком много времени',
     description: 'Попробуйте ещё раз.',
     retryable: true,
   },
   ai_unavailable: {
-    title: 'AI-сервис недоступен',
-    description: 'Не удалось получить результат анализа. Попробуйте позже.',
+    title: 'Анализ временно недоступен',
+    description: 'Не удалось получить результат. Попробуйте позже.',
     retryable: true,
   },
   product_not_recognized: {
@@ -88,10 +89,16 @@ export const SCAN_FAILURE_MESSAGES: Readonly<Record<ScanFailureCode, ScanFailure
     description: 'Сфотографируйте упаковку ближе, ровно и при хорошем освещении, чтобы текст был читаемым.',
     retryable: false,
   },
+  label_not_readable: {
+    title: 'Таблица не читается',
+    description: 'Сфотографируйте таблицу пищевой ценности ближе, ровно и при хорошем освещении.',
+    retryable: false,
+  },
 };
 
 const SERVER_CODES: Readonly<Record<string, ScanFailureCode>> = {
   IMAGE_MISSING: 'image_rejected',
+  TOO_MANY_IMAGES: 'image_rejected',
   IMAGE_UNSUPPORTED_TYPE: 'image_rejected',
   IMAGE_TOO_LARGE: 'image_rejected',
   IMAGE_INVALID: 'image_rejected',
@@ -103,6 +110,7 @@ const SERVER_CODES: Readonly<Record<string, ScanFailureCode>> = {
   AI_UNAVAILABLE: 'ai_unavailable',
   AI_BAD_RESPONSE: 'ai_unavailable',
   PRODUCT_NOT_RECOGNIZED: 'product_not_recognized',
+  NUTRITION_TABLE_NOT_FOUND: 'label_not_readable',
 };
 
 /** Переводит ответ API в ошибку сценария. Технические детали пользователю не показываются. */

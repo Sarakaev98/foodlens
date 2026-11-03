@@ -8,9 +8,11 @@ interface ScanErrorViewProps {
   readonly canRetry: boolean;
   readonly onRetry: () => void;
   readonly onScanAgain: () => void;
+  /** Несколько фото: вернуться к ним и убрать неудачное, не начиная заново. */
+  readonly onEditPhotos?: () => void;
 }
 
-export function ScanErrorView({ code, canRetry, onRetry, onScanAgain }: ScanErrorViewProps) {
+export function ScanErrorView({ code, canRetry, onRetry, onScanAgain, onEditPhotos }: ScanErrorViewProps) {
   const message = SCAN_FAILURE_MESSAGES[code];
   const isPermission = code === 'camera_permission_denied' || code === 'library_permission_denied';
 
@@ -19,6 +21,7 @@ export function ScanErrorView({ code, canRetry, onRetry, onScanAgain }: ScanErro
       <Text style={[typography.title, styles.center]}>{message.title}</Text>
       <Text style={[typography.subtitle, styles.center]}>{message.description}</Text>
       {message.retryable && canRetry ? <Button label="Повторить" onPress={onRetry} /> : null}
+      {onEditPhotos ? <Button label="Изменить фото" variant="secondary" onPress={onEditPhotos} /> : null}
       {isPermission ? <Button label="Открыть настройки" onPress={() => void Linking.openSettings()} /> : null}
       <Button label="Сканировать снова" variant="secondary" onPress={onScanAgain} />
     </SafeAreaView>

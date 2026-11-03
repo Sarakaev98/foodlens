@@ -31,7 +31,9 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test \"test/*.test.cjs\"",
+    "lint": "expo lint"
   },
   "private": true
 }

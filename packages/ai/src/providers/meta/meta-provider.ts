@@ -4,8 +4,10 @@ import type { AIProvider } from '../../ai-provider';
 import type { AnalyzeProductInput } from '../../ai-provider.types';
 import { SILENT_AI_LOGGER, type AILogger } from '../../ai-logger';
 import { AIMethodNotImplementedError, AIProviderError } from '../../errors';
+import { productImages } from '../../product-images';
 import { findSchemaViolation } from '../../json-schema/json-schema';
 import { MetaChatClient } from './meta-chat-client';
+import { prepareMetaProductAnalysis } from './meta-product-semantics';
 import { META_PRODUCT_ANALYSIS_SCHEMA, type MetaProductAnalysis } from './meta-product-analysis';
 import { normalizeMetaProductAnalysis, ProductNotRecognizedError } from './meta-product-normalizer';
 import { META_PRODUCT_SYSTEM_PROMPT, META_PRODUCT_USER_PROMPT } from './meta-product-prompt';
@@ -65,6 +67,9 @@ export class MetaProvider implements AIProvider {
     if (input.kind !== 'image') {
       throw new AIProviderError(this.name, 'unsupported_input', `Input kind "${input.kind}" is not supported`);
     }
+    // Клиент Meta принимает одно изображение: из нескольких фото используется первое.
+    const image = productImages(input)[0];
+    if (!image) throw new AIProviderError(this.name, 'unsupported_input', 'No image in the input');
     const requestId = input.requestId ?? this.createId();
     if (!this.config.apiKey) {
       throw new AIProviderError(this.name, 'not_configured', 'MODEL_API_KEY is not set');
@@ -72,23 +77,24 @@ export class MetaProvider implements AIProvider {
 
     const startedAt = Date.now();
     const fields = { requestId, provider: this.name, model: this.model };
-    this.logger.log('product analysis started', { ...fields, imageBytes: Math.floor((input.image.base64.length * 3) / 4) });
+    this.logger.log('product analysis started', { ...fields, imageBytes: Math.floor((image.base64.length * 3) / 4) });
 
     try {
       const response = await this.client.completeStructured({
         requestId,
         systemPrompt: META_PRODUCT_SYSTEM_PROMPT,
         userPrompt: META_PRODUCT_USER_PROMPT,
-        image: input.image,
+        image,
         schemaName: 'meta_product_analysis',
         schema: META_PRODUCT_ANALYSIS_SCHEMA,
         maxCompletionTokens: 4_096,
       });
 
-      const violation = findSchemaViolation(META_PRODUCT_ANALYSIS_SCHEMA, response.content);
+      const analysis = prepareMetaProductAnalysis(response.content);
+      const violation = findSchemaViolation(META_PRODUCT_ANALYSIS_SCHEMA, analysis);
       if (violation) throw new AIProviderError(this.name, 'invalid_response', `Schema mismatch at ${violation}`);
 
-      const product = this.normalize(response.content as MetaProductAnalysis);
+      const product = this.normalize(analysis as MetaProductAnalysis);
       this.logger.log('product analysis finished', {
         ...fields,
         status: 'ok',
@@ -135,5 +141,10 @@ export class MetaProvider implements AIProvider {
 
   async replaceMeal(): Promise<never> {
     throw new AIMethodNotImplementedError(this.name, 'replaceMeal');
+  }
+
+  /** GOAL_MATCH_AI=meta зарезервирован: запрос к Meta пока не отправляется, Goal Match уходит в расчётный fallback. */
+  async evaluateGoalMatch(): Promise<never> {
+    throw new AIMethodNotImplementedError(this.name, 'evaluateGoalMatch');
   }
 }

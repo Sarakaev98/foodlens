@@ -42,3 +42,11 @@ export class AIMethodNotImplementedError extends AIProviderError {
     this.name = 'AIMethodNotImplementedError';
   }
 }
+
+/** AI сейчас не может ответить (нет записанного mock-ответа, провайдер не подключён). Вызывающий код переходит на fallback. */
+export class AIUnavailableError extends AIProviderError {
+  constructor(provider: string, message: string) {
+    super(provider, 'unavailable', message);
+    this.name = 'AIUnavailableError';
+  }
+}

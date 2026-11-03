@@ -2,32 +2,36 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, colors, spacing, typography } from '@/shared/ui';
-import type { AnalyzingStage } from '../hooks/useProductScan';
-import type { ScanPhoto } from '../types/scan.types';
+import type { ScanMode, ScanPhoto } from '../types/scan.types';
 
-const STAGES: readonly { readonly id: AnalyzingStage; readonly label: string }[] = [
-  { id: 'preparing', label: 'Подготовка фото' },
-  { id: 'analyzing', label: 'Распознавание упаковки, состава и пищевой ценности' },
-];
+export const ANALYZING_STAGES: Readonly<Record<ScanMode, readonly string[]>> = {
+  product: ['Распознаём продукт', 'Ищем данные', 'Анализируем состав', 'Рассчитываем оценку'],
+  label: ['Распознаём таблицу', 'Анализируем состав', 'Рассчитываем оценку'],
+};
+
+/** Сервер отвечает одним ответом, поэтому этапы идут по времени; последний ждёт результата. */
+export const STAGE_MS = 2500;
+
+export function currentStage(elapsedMs: number, stages: number): number {
+  return Math.min(stages - 1, Math.floor(elapsedMs / STAGE_MS));
+}
 
 interface AnalyzingViewProps {
-  readonly photo: ScanPhoto;
-  readonly stage: AnalyzingStage;
+  readonly photo: ScanPhoto | null;
+  readonly mode: ScanMode;
   readonly onCancel: () => void;
 }
 
-/** Реальные этапы и прошедшее время, без выдуманных процентов. */
-export function AnalyzingView({ photo, stage, onCancel }: AnalyzingViewProps) {
-  const seconds = useElapsedSeconds();
-  const current = STAGES.findIndex((item) => item.id === stage);
+export function AnalyzingView({ photo, mode, onCancel }: AnalyzingViewProps) {
+  const stages = ANALYZING_STAGES[mode];
+  const current = currentStage(useElapsedMs(), stages.length);
 
   return (
     <SafeAreaView style={styles.container}>
-      <Image source={{ uri: photo.uri }} style={styles.thumbnail} resizeMode="cover" />
-      <Text style={typography.title}>Анализируем продукт…</Text>
+      {photo ? <Image source={{ uri: photo.uri }} style={styles.thumbnail} resizeMode="cover" /> : null}
       <View style={styles.stages}>
-        {STAGES.map((item, index) => (
-          <View key={item.id} style={styles.stage}>
+        {stages.map((label, index) => (
+          <View key={label} style={styles.stage}>
             {index < current ? (
               <Text style={styles.done}>✓</Text>
             ) : index === current ? (
@@ -35,32 +39,32 @@ export function AnalyzingView({ photo, stage, onCancel }: AnalyzingViewProps) {
             ) : (
               <Text style={styles.pending}>•</Text>
             )}
-            <Text style={[typography.body, index > current && styles.pendingText]}>{item.label}</Text>
+            <Text style={[typography.body, index === current && styles.currentText, index > current && styles.pendingText]}>{label}</Text>
           </View>
         ))}
       </View>
-      <Text style={typography.caption}>Прошло {seconds} с</Text>
       <Button label="Отменить" variant="secondary" onPress={onCancel} />
     </SafeAreaView>
   );
 }
 
-function useElapsedSeconds(): number {
-  const [seconds, setSeconds] = useState(0);
+function useElapsedMs(): number {
+  const [elapsed, setElapsed] = useState(0);
   useEffect(() => {
     const startedAt = Date.now();
-    const timer = setInterval(() => setSeconds(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    const timer = setInterval(() => setElapsed(Date.now() - startedAt), 250);
     return () => clearInterval(timer);
   }, []);
-  return seconds;
+  return elapsed;
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: spacing.lg, gap: spacing.md, justifyContent: 'center', backgroundColor: colors.background },
-  thumbnail: { width: 96, height: 96, borderRadius: 12, alignSelf: 'center', backgroundColor: colors.border },
-  stages: { gap: spacing.sm },
+  container: { flex: 1, padding: spacing.lg, gap: spacing.lg, justifyContent: 'center', backgroundColor: colors.background },
+  thumbnail: { width: 112, height: 112, borderRadius: 16, alignSelf: 'center', backgroundColor: colors.border },
+  stages: { gap: spacing.md, alignSelf: 'center' },
   stage: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   done: { width: 20, textAlign: 'center', color: colors.accent, fontSize: 16, fontWeight: '700' },
   pending: { width: 20, textAlign: 'center', color: colors.inactive, fontSize: 16 },
+  currentText: { fontWeight: '600' },
   pendingText: { color: colors.inactive },
 });

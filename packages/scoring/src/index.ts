@@ -1,1 +1,11 @@
 export type { ScoringEngine } from './scoring-engine';
+export { hasRequiredFactors, productScoringEngine, roundScore, scoreProduct } from './score-product';
+export { PRODUCT_SCORE_VERSION } from './product-score-rules';
+export { goalMatchUnavailable, matchGoal } from './match-goal';
+export { limitByProductScore } from './goal-match-product-limit';
+export { GOAL_MATCH_VERSION } from './goal-match-rules';
+export { checkNutritionSanity, type NutritionSanityIssue } from './nutrition-sanity';
+export { buildGoalMatchAiInput, prepareGoalMatchV4, type GoalMatchV4Preparation } from './goal-match-ai-input';
+export { validateGoalMatchAiOutput, fallbackGoalMatchSummary, type GoalMatchAiValidation } from './goal-match-ai-validate';
+export { reconcileGoalMatch, goalMatchRiskCeiling, type GoalMatchReconciliationInput } from './goal-match-reconcile';
+export { extractEatHealthierContext } from './goal-match-v3';

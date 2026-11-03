@@ -1,3 +1,5 @@
+import type { ExternalProvenance } from '../common';
+
 /** 14 основных аллергенов (EU Regulation 1169/2011). */
 export const ALLERGEN_CODES = [
   'gluten',
@@ -25,7 +27,7 @@ export interface Allergen {
   /** contains: входит в состав; may_contain: «может содержать следы». */
   readonly presence: AllergenPresence;
   /** observed: явно указан на упаковке; inferred: выведен из ингредиента (например, «сухое молоко» → milk). */
-  readonly provenance: 'observed' | 'inferred';
+  readonly provenance: 'observed' | 'inferred' | ExternalProvenance;
 }
 
 export function isAllergenCode(value: unknown): value is AllergenCode {

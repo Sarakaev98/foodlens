@@ -5,6 +5,7 @@ export { GoalField } from './components/GoalField';
 export { ProfileSummary } from './components/ProfileSummary';
 export { useDraftValidation } from './hooks/useDraftValidation';
 export { useSaveProfile } from './hooks/useSaveProfile';
+export { ALLERGEN_LABELS, GOAL_LABELS } from './profile.labels';
 export { ALL_PROFILE_FIELDS, EMPTY_PROFILE_DRAFT, completeDraft } from './profileDraft';
 export { ProfileEditScreen } from './screens/ProfileEditScreen';
 export { ProfileScreen } from './screens/ProfileScreen';

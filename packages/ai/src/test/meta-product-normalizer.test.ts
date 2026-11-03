@@ -23,7 +23,7 @@ describe('normalizeMetaProductAnalysis', () => {
       type: 'meta_vision',
       provider: 'meta',
       analyzedAt: CONTEXT.analyzedAt,
-      analysisVersion: 'meta-product-analysis-v1',
+      analysisVersion: 'meta-product-analysis-v2',
     });
     assert.ok(!JSON.stringify(product).includes('muse'), 'название модели не попадает в Product');
   });

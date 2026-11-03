@@ -7,5 +7,6 @@ import { NutritionTargetsService } from './nutrition-targets.service';
   imports: [ProfileModule],
   controllers: [NutritionTargetsController],
   providers: [NutritionTargetsService],
+  exports: [NutritionTargetsService],
 })
 export class NutritionTargetsModule {}

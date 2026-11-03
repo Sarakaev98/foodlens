@@ -1,4 +1,4 @@
-import type { AllergenCode, ConfidenceLevel, NutritionBasis, ProductCategory } from '@foodlens/core';
+import { NUTRIENT_KEYS, type AllergenCode, type ExternalProvenance, type NutritionBasis, type Product, type ProductCategory } from '@foodlens/core';
 
 export const CATEGORY_LABELS: Readonly<Record<ProductCategory, string>> = {
   beverage: 'Напиток',
@@ -41,12 +41,6 @@ export const ALLERGEN_LABELS: Readonly<Record<AllergenCode, string>> = {
   molluscs: 'Моллюски',
 };
 
-export const CONFIDENCE_LABELS: Readonly<Record<ConfidenceLevel, string>> = {
-  high: 'высокая',
-  medium: 'средняя',
-  low: 'низкая',
-};
-
 export const BASIS_LABELS: Readonly<Record<NutritionBasis, string>> = {
   per_100g: 'на 100 г',
   per_100ml: 'на 100 мл',
@@ -55,3 +49,34 @@ export const BASIS_LABELS: Readonly<Record<NutritionBasis, string>> = {
 };
 
 export const NOT_DETECTED_LABEL = 'Не обнаружено';
+
+function usesSource(product: Product, source: ExternalProvenance): boolean {
+  const fields = [product.name, product.brand, product.ingredients, product.allergens, product.additives];
+  const nutrition = product.nutrition;
+  const nutrients = nutrition ? [nutrition.servingSize, ...NUTRIENT_KEYS.map((key) => nutrition[key])] : [];
+  return [...fields, ...nutrients].some((field) => field.provenance === source) ||
+    (product.allergens.value?.some((item) => item.provenance === source) ?? false) ||
+    (product.additives.value?.some((item) => item.provenance === source) ?? false);
+}
+
+/** Есть ли в продукте данные Open Food Facts: тогда нужна атрибуция по условиям ODbL. */
+export const usesOpenFoodFacts = (product: Product): boolean => usesSource(product, 'open_food_facts');
+
+/** Есть ли в продукте данные FatSecret: тогда нужна их подпись. */
+export const usesFatSecret = (product: Product): boolean => usesSource(product, 'fatsecret');
+
+/** Подпись к тексту с упаковки на другом языке: его показываем как есть и не переводим. */
+export const ORIGINAL_TEXT_LABEL = 'как на упаковке, без перевода';
+
+/** Больше букв не кириллицей, чем кириллицей. Диапазоны вместо \p{L}: так надёжнее в Hermes. */
+export function isForeignText(text: string): boolean {
+  const cyrillic = text.match(/[\u0400-\u04FF]/g)?.length ?? 0;
+  const other = text.match(/[A-Za-z\u00C0-\u024F\u0370-\u03FF\u0590-\u1FFF\u3040-\uD7FF]/g)?.length ?? 0;
+  return other > cyrillic;
+}
+
+/** E-номер понятен на любом языке: название на другом языке рядом с ним только мешает. */
+export function additiveLabel(additive: { readonly code: string | null; readonly name: string | null }): string {
+  if (additive.code && additive.name && isForeignText(additive.name)) return additive.code;
+  return [additive.code, additive.name].filter(Boolean).join(' · ');
+}

@@ -12,7 +12,7 @@ export function TodayScreen() {
     return (
       <CenteredMessage
         title="Не удалось загрузить цели"
-        description="Проверьте подключение к серверу"
+        description="Проверьте подключение к интернету"
         actionLabel="Повторить"
         onAction={targets.reload}
       />

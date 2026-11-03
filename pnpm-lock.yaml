@@ -26,6 +26,9 @@ importers:
       '@foodlens/nutrition':
         specifier: workspace:*
         version: link:../../packages/nutrition
+      '@foodlens/scoring':
+        specifier: workspace:*
+        version: link:../../packages/scoring
       '@nestjs/common':
         specifier: ^12.3.2
         version: 12.3.2(reflect-metadata@0.2.2)(rxjs@7.8.2)
@@ -41,6 +44,9 @@ importers:
       rxjs:
         specifier: ^7.8.2
         version: 7.8.2
+      zxing-wasm:
+        specifier: 3.1.6
+        version: 3.1.6(@types/emscripten@1.41.6)
     devDependencies:
       '@nestjs/cli':
         specifier: ^12.0.11
@@ -51,6 +57,9 @@ importers:
       '@types/node':
         specifier: ^22.20.5
         version: 22.20.5
+      bwip-js:
+        specifier: ^4.11.4
+        version: 4.11.4
 
   apps/mobile:
     dependencies:
@@ -156,6 +165,10 @@ importers:
       '@foodlens/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.5
+        version: 22.20.5
 
 packages:
 
@@ -1858,6 +1871,10 @@ packages:
   busboy@1.6.0:
     resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
     engines: {node: '>=10.16.0'}
+
+  bwip-js@4.11.4:
+    resolution: {integrity: sha512-FOXnOQkinxog8FwxdnPB+8k2wRqwPnqXwxX37KcXOtMNW+9CinOkGv9MtIoRC4HX/UyogT0/9lIp6FDm2DcquQ==}
+    hasBin: true
 
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
@@ -6156,6 +6173,8 @@ snapshots:
   busboy@1.6.0:
     dependencies:
       streamsearch: 1.1.0
+
+  bwip-js@4.11.4: {}
 
   bytes@3.1.2: {}
 

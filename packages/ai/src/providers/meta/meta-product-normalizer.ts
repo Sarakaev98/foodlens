@@ -1,5 +1,6 @@
 import {
   inferred,
+  normalizeProductSemantics,
   isAllergenCode,
   isProductCategory,
   lowestConfidence,
@@ -25,6 +26,8 @@ export interface NormalizeContext {
   readonly productId: string;
   /** ISO 8601. */
   readonly analyzedAt: string;
+  /** Optional vision provenance; omitted for the unchanged Meta/Mock path. */
+  readonly source?: Extract<Product['source'], { readonly type: 'meta_vision' | 'google_vision' }>;
 }
 
 /** Ответ Meta не описывает продукт: не еда или ничего не прочитано. */
@@ -65,11 +68,12 @@ export function normalizeMetaProductAnalysis(analysis: MetaProductAnalysis, cont
     brand,
     category,
     nutrition,
+    semantics: normalizeProductSemantics(analysis.semantics, nutrition?.servingSize.value !== null && nutrition?.servingSize.value !== undefined),
     ingredients,
     allergens,
     additives,
     confidence: normalizeConfidence(analysis, { name, nutrition, ingredients }),
-    source: {
+    source: context.source ?? {
       type: 'meta_vision',
       provider: 'meta',
       analyzedAt: context.analyzedAt,

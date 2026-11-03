@@ -1,7 +1,7 @@
 import { ArgumentsHost, Catch, HttpException, type ExceptionFilter } from '@nestjs/common';
 import type { Response } from 'express';
 import { ScanError } from './scan-error';
-import { SCAN_IMAGE_FIELD, SCAN_MAX_IMAGE_BYTES } from './scan-image.validation';
+import { SCAN_IMAGE_FIELD, SCAN_MAX_IMAGE_BYTES, SCAN_MAX_IMAGES } from './scan-image.validation';
 
 /**
  * Единый формат ошибок сканирования: { statusCode, code, message, requestId }.
@@ -27,6 +27,7 @@ function toClientError(exception: unknown): ScanError {
       return new ScanError('IMAGE_TOO_LARGE', 413, `The image must be smaller than ${SCAN_MAX_IMAGE_BYTES / 1024 / 1024} MB`);
     }
     if (exception.getStatus() === 400) {
+      if (exception.message === 'Too many files') return new ScanError('TOO_MANY_IMAGES', 400, `Send at most ${SCAN_MAX_IMAGES} photos`);
       return new ScanError('IMAGE_MISSING', 400, `Send one photo as multipart/form-data in the "${SCAN_IMAGE_FIELD}" field`);
     }
   }

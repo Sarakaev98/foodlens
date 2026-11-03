@@ -1,71 +1,99 @@
-import type { Detected, Product } from '@foodlens/core';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import type { Detected, Product, ProductScore } from '@foodlens/core';
+import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GoalMatchCard, type AnyGoalMatch } from '@/features/goal-match';
+import { ProductScoreCard } from '@/features/product-score';
 import { Button, colors, radius, spacing, typography } from '@/shared/ui';
 import { NutritionTable } from '../components/NutritionTable';
 import { NotDetected, ProductSection } from '../components/ProductSection';
-import { ALLERGEN_LABELS, BASIS_LABELS, CATEGORY_LABELS, CONFIDENCE_LABELS, NOT_DETECTED_LABEL } from '../productLabels';
+import {
+  additiveLabel, ALLERGEN_LABELS, BASIS_LABELS, CATEGORY_LABELS, isForeignText, NOT_DETECTED_LABEL, ORIGINAL_TEXT_LABEL,
+  usesFatSecret, usesOpenFoodFacts,
+} from '../productLabels';
 import type { ScanPhoto } from '../types/scan.types';
 
 interface ProductResultScreenProps {
   readonly product: Product;
-  readonly photo: ScanPhoto;
+  readonly score: ProductScore;
+  readonly goalMatch: AnyGoalMatch;
+  readonly photo: ScanPhoto | null;
+  readonly barcode?: string | null;
+  /** Есть, если стоит доснять таблицу питания. */
+  readonly onTakeNutritionPhoto?: () => void;
   readonly onScanAnother: () => void;
+}
+
+/** Оценка сравнивает значения на 100 мл для напитков и на 100 г для остального. */
+function nutritionPer(product: Product): 'g' | 'ml' {
+  const nutrition = product.nutrition;
+  if (!nutrition) return 'g';
+  return nutrition.basis === 'per_100ml' || nutrition.servingSize.value?.unit === 'ml' ? 'ml' : 'g';
 }
 
 function inferredNote(field: Detected<unknown>): string {
   return field.provenance === 'inferred' ? ' (по виду упаковки)' : '';
 }
 
-export function ProductResultScreen({ product, photo, onScanAnother }: ProductResultScreenProps) {
-  const { name, brand, category, nutrition, ingredients, allergens, additives, confidence } = product;
+export function ProductResultScreen({ product, score, goalMatch, photo, barcode, onTakeNutritionPhoto, onScanAnother }: ProductResultScreenProps) {
+  const { name, brand, category, nutrition, ingredients, allergens, additives } = product;
+  const estimated = [...new Set([
+    ...(product.fieldEvidence?.filter(item => item.dataQuality === 'estimated').map(item => item.field) ?? []),
+    ...Object.entries(product.nutritionMetadata?.fields ?? {}).filter(([, item]) => item.quality !== 'verified').map(([key]) => key),
+  ])];
+  const foreignIngredients = ingredients.value?.some((item) => isForeignText(item.name)) ?? false;
+  const foreignAdditives = additives.value?.some((item) => !item.code && item.name !== null && isForeignText(item.name)) ?? false;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.identity}>
-          <Image source={{ uri: photo.uri }} style={styles.photo} resizeMode="cover" />
+          {photo ? <Image source={{ uri: photo.uri }} style={styles.photo} resizeMode="cover" /> : null}
           <View style={styles.identityText}>
             <Text style={styles.name} numberOfLines={4}>
-              {name.value ?? 'Название не распознано'}
+              {name.value ?? 'Отсканированный продукт'}
             </Text>
-            <Text style={typography.subtitle}>{brand.value ? `Бренд: ${brand.value}` : `Бренд: ${NOT_DETECTED_LABEL.toLowerCase()}`}</Text>
+            {barcode ? <Text style={typography.caption}>Штрихкод: {barcode}</Text> : null}
+            {brand.value ? <Text style={typography.subtitle}>{brand.value}</Text> : null}
           </View>
         </View>
 
-        <View style={styles.badges}>
-          <Text style={styles.badge}>
-            {category.value ? `${CATEGORY_LABELS[category.value]}${inferredNote(category)}` : `Категория: ${NOT_DETECTED_LABEL.toLowerCase()}`}
-          </Text>
-          <Text style={[styles.badge, confidence.overall === 'low' && styles.badgeLow]}>
-            Уверенность: {CONFIDENCE_LABELS[confidence.overall]}
-          </Text>
-        </View>
-        {confidence.overall === 'low' ? (
-          <Text style={typography.caption}>Фото читается плохо или данных мало. Проверьте значения по упаковке или переснимите.</Text>
+        {onTakeNutritionPhoto ? (
+          <View style={styles.photoHint}>
+            <Text style={typography.subtitle}>Данные о питании неполные. Сфотографируйте таблицу на упаковке, чтобы уточнить оценку.</Text>
+            <Button label="Сфотографировать таблицу" onPress={onTakeNutritionPhoto} />
+          </View>
         ) : null}
+
+        {category.value ? (
+          <View style={styles.badges}>
+            <Text style={styles.badge}>{`${CATEGORY_LABELS[category.value]}${inferredNote(category)}`}</Text>
+          </View>
+        ) : null}
+
+        <ProductScoreCard score={score} per={nutritionPer(product)} estimated={estimated.length > 0 || product.nutritionMetadata?.basis.quality === 'estimated'} />
+        <GoalMatchCard goalMatch={goalMatch} product={product} />
 
         <ProductSection
           title="Пищевая ценность"
-          subtitle={nutrition ? `${BASIS_LABELS[nutrition.basis]} · уверенность ${CONFIDENCE_LABELS[confidence.nutrition ?? 'low']}` : undefined}
+          subtitle={nutrition ? BASIS_LABELS[nutrition.basis] : undefined}
         >
           {nutrition ? (
-            <NutritionTable nutrition={nutrition} />
+            <NutritionTable nutrition={nutrition} estimated={estimated} />
           ) : (
-            <NotDetected text="Таблица пищевой ценности на фото не найдена. Сфотографируйте её отдельно." />
+            <NotDetected text="Таблица пищевой ценности не найдена. Сфотографируйте её отдельно." />
           )}
         </ProductSection>
 
         <ProductSection
           title="Состав"
-          subtitle={confidence.ingredients ? `уверенность ${CONFIDENCE_LABELS[confidence.ingredients]}` : undefined}
+          subtitle={foreignIngredients ? ORIGINAL_TEXT_LABEL : undefined}
         >
           {ingredients.value ? (
             <Text style={typography.body}>
               {ingredients.value.map((item) => (item.percent !== null ? `${item.name} (${item.percent}%)` : item.name)).join(', ')}
             </Text>
           ) : (
-            <NotDetected text={`${NOT_DETECTED_LABEL}: состава на фото нет`} />
+            <NotDetected text="Состав не найден" />
           )}
         </ProductSection>
 
@@ -87,7 +115,7 @@ export function ProductResultScreen({ product, photo, onScanAnother }: ProductRe
           )}
         </ProductSection>
 
-        <ProductSection title="Пищевые добавки">
+        <ProductSection title="Пищевые добавки" subtitle={foreignAdditives ? ORIGINAL_TEXT_LABEL : undefined}>
           {additives.value === null ? (
             <NotDetected text={NOT_DETECTED_LABEL} />
           ) : additives.value.length === 0 ? (
@@ -95,15 +123,25 @@ export function ProductResultScreen({ product, photo, onScanAnother }: ProductRe
           ) : (
             additives.value.map((additive) => (
               <Text key={additive.code ?? additive.name} style={typography.body}>
-                {[additive.code, additive.name].filter(Boolean).join(' · ')}
+                {additiveLabel(additive)}
               </Text>
             ))
           )}
         </ProductSection>
 
         <Text style={typography.caption}>
-          Данные распознаны AI по фотографии и могут содержать ошибки. Сверяйтесь с упаковкой. Фото не сохраняется.
+          Данные могут содержать неточности, сверяйтесь с упаковкой. Фото не сохраняется.
         </Text>
+        {usesOpenFoodFacts(product) ? (
+          <Text style={typography.caption} accessibilityRole="link" onPress={() => void Linking.openURL('https://world.openfoodfacts.org')}>
+            Часть данных: Open Food Facts, лицензия ODbL.
+          </Text>
+        ) : null}
+        {usesFatSecret(product) ? (
+          <Text style={typography.caption} accessibilityRole="link" onPress={() => void Linking.openURL('https://platform.fatsecret.com')}>
+            Powered by fatsecret Platform API
+          </Text>
+        ) : null}
         <Button label="Сканировать другой продукт" onPress={onScanAnother} />
       </ScrollView>
     </SafeAreaView>
@@ -116,6 +154,7 @@ const styles = StyleSheet.create({
   identity: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   identityText: { flex: 1, minWidth: 0, gap: spacing.xs },
   name: { fontSize: 22, lineHeight: 27, fontWeight: '700', color: colors.textPrimary },
+  photoHint: { gap: spacing.sm },
   photo: { width: 84, height: 84, borderRadius: radius.md, backgroundColor: colors.border },
   badges: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   badge: {
@@ -128,7 +167,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     overflow: 'hidden',
   },
-  badgeLow: { color: colors.danger, backgroundColor: '#FDECE3' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   chip: {
     fontSize: 14,
