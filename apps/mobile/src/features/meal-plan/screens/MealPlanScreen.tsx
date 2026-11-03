@@ -24,6 +24,7 @@ export function MealPlanScreen() {
   return (
     <FormScreen
       title="Ваш план питания"
+      safeBottom={false}
       footer={<Button label={day ? 'Обновить план' : 'Составить план'} onPress={generate} loading={generating} />}
     >
       <PlanSummaryCard targets={nutrition.targets} totals={day?.totals ?? null} />
