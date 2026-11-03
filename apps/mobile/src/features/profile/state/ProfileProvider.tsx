@@ -18,13 +18,17 @@ const ProfileContext = createContext<ProfileContextValue | null>(null);
 export function ProfileProvider({ children }: { readonly children: ReactNode }) {
   const [state, setState] = useState<ProfileState>({ status: 'loading' });
 
-  const reload = useCallback(() => {
-    setState({ status: 'loading' });
+  const fetchProfile = useCallback(() => {
     profileApi.get().then(
       (profile) => setState({ status: 'ready', profile }),
       () => setState({ status: 'error' }),
     );
   }, []);
+
+  const reload = useCallback(() => {
+    setState({ status: 'loading' });
+    fetchProfile();
+  }, [fetchProfile]);
 
   const save = useCallback(async (input: UserNutritionProfileInput) => {
     const saved = await profileApi.save(input);
@@ -32,7 +36,7 @@ export function ProfileProvider({ children }: { readonly children: ReactNode }) 
     return saved;
   }, []);
 
-  useEffect(reload, [reload]);
+  useEffect(fetchProfile, [fetchProfile]);
 
   const value = useMemo(() => ({ ...state, reload, save }), [state, reload, save]);
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;

@@ -8,9 +8,9 @@ import { colors } from '@/shared/ui';
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 function tabIcon(name: IconName): BottomTabNavigationOptions['tabBarIcon'] {
-  return ({ focused, size }) => (
-    <Ionicons name={name} size={size} color={focused ? colors.accent : colors.inactive} />
-  );
+  return function TabIcon({ focused, size }) {
+    return <Ionicons name={name} size={size} color={focused ? colors.accent : colors.inactive} />;
+  };
 }
 
 export default function TabsLayout() {

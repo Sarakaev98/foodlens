@@ -17,17 +17,29 @@ export function useNutritionTargets() {
   const profileVersion = profile.status === 'ready' ? profile.profile?.updatedAt : undefined;
   const [state, setState] = useState<NutritionTargetsState>({ status: 'loading' });
 
-  const load = useCallback(() => {
-    setState({ status: 'loading' });
+  const [requestedVersion, setRequestedVersion] = useState(profileVersion);
+
+  // Reset before rendering targets for a changed profile, rather than in an effect.
+  if (profileVersion !== requestedVersion) {
+    setRequestedVersion(profileVersion);
+    if (profileVersion) setState({ status: 'loading' });
+  }
+
+  const fetchTargets = useCallback(() => {
     nutritionTargetsApi.get().then(
       (targets) => setState({ status: 'ready', targets }),
       () => setState({ status: 'error' }),
     );
   }, []);
 
+  const load = useCallback(() => {
+    setState({ status: 'loading' });
+    fetchTargets();
+  }, [fetchTargets]);
+
   useEffect(() => {
-    if (profileVersion) load();
-  }, [profileVersion, load]);
+    if (profileVersion) fetchTargets();
+  }, [profileVersion, fetchTargets]);
 
   return { ...state, reload: load };
 }

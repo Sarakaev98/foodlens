@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 
 const SIZE = 76;
@@ -8,8 +8,8 @@ const HIDE_MS = 250;
 
 /** Кольцо фокуса: появляется при каждом новом pulse. Фокусировка идёт по всему кадру, поэтому кольцо в центре. */
 export function FocusIndicator({ pulse }: { readonly pulse: number }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(1.4)).current;
+  const [opacity] = useState(() => new Animated.Value(0));
+  const [scale] = useState(() => new Animated.Value(1.4));
 
   useEffect(() => {
     if (pulse === 0) return;
