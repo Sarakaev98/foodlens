@@ -35,7 +35,7 @@ describe('v4 AI validation: every factor code',()=>{
   for(const code of GOAL_MATCH_AI_FACTOR_CODES){
     it(code+' accepts its documented precondition and rejects absent evidence',()=>{
       const input=allowedInput(code);
-      const factor:GoalMatchAiFactor={code,direction:positives.includes(code)?'positive':'negative',impact:'high',facts:[codeRef[code]],text:'Учтены данные продукта.'};
+      const factor:GoalMatchAiFactor={code,direction:positives.includes(code)?'positive':'negative',impact:'high',facts:[codeRef[code]],text:'Based on the product data.'};
       assert.equal(factorCodeAllowed(code,input),true);
       assert.equal(validateGoalMatchAiOutput(aiOutput(8.5,[factor]),input).valid,true);
       // Missing canonical leaf paths override even otherwise populated input values.
@@ -78,9 +78,10 @@ describe('v4 AI validation: hallucinations, schema and rubric',()=>{
     for(const bad of [
       '{',null,{}, {...base,extra:true},{...base,score:8.7},{...base,score:11},{...base,score:NaN},
       {...base,band:'unknown'},{...base,version:'v1'},{...base,factors:[]},{...base,factors:Array(5).fill(base.factors[0])},
-      {...base,summary:'я'.repeat(141)},{...base,summary:'Первая фраза. Вторая фраза.'},
+      {...base,summary:'a'.repeat(141)},{...base,summary:'First sentence. Second sentence.'},
+      {...base,summary:'Подходит вашей цели.'},{...base,factors:[{...base.factors[0],text:'Много белка.'}]},
       {...base,confidence:'maybe'},{...base,dimensions:{}},{...base,warnings:['unknown']},
-      {...base,factors:[{...base.factors[0],text:'я'.repeat(91)}]},
+      {...base,factors:[{...base.factors[0],text:'a'.repeat(91)}]},
       {...base,factors:[{...base.factors[0],facts:[]}]},
       {...base,factors:[{...base.factors[0],code:'unknown'}]},
       {...base,factors:[{...base.factors[0],impact:'low'},{...base.factors[0],code:'low_salt',impact:'high'}]},
@@ -89,7 +90,7 @@ describe('v4 AI validation: hallucinations, schema and rubric',()=>{
   it('checks all five band/dimensions rules',()=>{
     const input=v4Input('cola');
     const neutral={nutrientDensity:'neutral',processing:'neutral',sugar:'neutral',fatQuality:'neutral',sodium:'neutral',portion:'neutral'} as const;
-    const whole=aiOutput(8.5,[{code:'high_sugar',direction:'negative',impact:'high',facts:['facts.levels.freeSugar'],text:'Высокая доля свободных сахаров.'}]);
+    const whole=aiOutput(8.5,[{code:'high_sugar',direction:'negative',impact:'high',facts:['facts.levels.freeSugar'],text:'High share of free sugars.'}]);
     const cases=[
       [9,{...neutral,nutrientDensity:'positive',processing:'strong_positive'},true],
       [9,neutral,false],[8,neutral,true],[8,{...neutral,sugar:'strong_negative'},false],
@@ -114,30 +115,30 @@ describe('v4 AI validation: hallucinations, schema and rubric',()=>{
     assert.equal(validateGoalMatchAiOutput(aiOutput(),missing).valid,false);
   });
   it('removes one non-high invalid factor and requests rejection for high or multiple invalid factors',()=>{
-    const extra:GoalMatchAiFactor={code:'low_salt',direction:'positive',impact:'low',facts:['facts.noSuch'],text:'Мало соли.'};
+    const extra:GoalMatchAiFactor={code:'low_salt',direction:'positive',impact:'low',facts:['facts.noSuch'],text:'Low in salt.'};
     const x=validateGoalMatchAiOutput({...aiOutput(),factors:[...aiOutput().factors,extra]},v4Input());
     assert.equal(x.valid,true);if(x.valid){assert.equal(x.removedFactors,1);assert.equal(x.adjusted,true);assert.equal(x.output.factors.length,1);}
     assert.equal(validateGoalMatchAiOutput({...aiOutput(),factors:[...aiOutput().factors,{...extra,impact:'high'}]},v4Input()).valid,false);
     assert.equal(validateGoalMatchAiOutput({...aiOutput(),factors:[...aiOutput().factors,extra,{...extra,code:'low_sugar'}]},v4Input()).valid,false);
   });
   it('rejects medical language and exposes a safe fallback summary for rejected summaries',()=>{
-    for(const text of ['Лечит диабет.','Снижает риск болезней.','Детокс и сжигает жир.','Рекомендую при гипертонии.','Принимать 10 мг.']){
+    for(const text of ['Cures diabetes.','Lowers the risk of disease.','Detox that burns fat.','Recommended for hypertension.','Take 10 mg daily.']){
       assert.equal(validateGoalMatchAiOutput(aiOutput(8.5,[{...aiOutput().factors[0]!,text}]),v4Input()).valid,false);
       const result=validateGoalMatchAiOutput({...aiOutput(),summary:text},v4Input());
-      assert.equal(result.valid,false);if(!result.valid)assert.match(result.fallbackSummary,/белка/);
+      assert.equal(result.valid,false);if(!result.valid)assert.match(result.fallbackSummary,/protein/);
     }
-    const result=validateGoalMatchAiOutput({...aiOutput(),summary:'В порции 99 г белка.'},v4Input());
+    const result=validateGoalMatchAiOutput({...aiOutput(),summary:'99 g of protein per serving.'},v4Input());
     assert.equal(result.valid,false);if(!result.valid)assert.ok(!result.fallbackSummary.includes('99'));
   });
   it('checks unsupported absence claims and factor direction',()=>{
-    for(const text of ['Без сахара.','Без добавленного сахара.','Без добавок.','Натуральный продукт.'])
+    for(const text of ['Sugar-free.','No added sugar.','No additives.','Natural product.'])
       assert.equal(validateGoalMatchAiOutput(aiOutput(8.5,[{...aiOutput().factors[0]!,text}]),v4Input()).valid,false);
     assert.equal(validateGoalMatchAiOutput(aiOutput(8.5,[{...aiOutput().factors[0]!,direction:'negative'}]),v4Input()).valid,false);
-    const whole:GoalMatchAiFactor={code:'whole_food',direction:'positive',impact:'high',facts:['semantics.processing.value'],text:'Без добавок.'};
+    const whole:GoalMatchAiFactor={code:'whole_food',direction:'positive',impact:'high',facts:['semantics.processing.value'],text:'No additives.'};
     assert.equal(validateGoalMatchAiOutput(aiOutput(8.5,[whole]),v4Input()).valid,true);
     const x=v4Input();x.product.additives=null;
     assert.equal(validateGoalMatchAiOutput(aiOutput(8.5,[whole]),x).valid,false);
-    const intrinsic:GoalMatchAiFactor={code:'intrinsic_sugar',direction:'positive',impact:'high',facts:['semantics.sugarSource.value'],text:'Без добавленного сахара.'};
+    const intrinsic:GoalMatchAiFactor={code:'intrinsic_sugar',direction:'positive',impact:'high',facts:['semantics.sugarSource.value'],text:'No added sugar.'};
     assert.equal(validateGoalMatchAiOutput(aiOutput(8.5,[intrinsic]),v4Input()).valid,true);
   });
   it('requires actual ingredient signals for all ingredient codes and warnings',()=>{

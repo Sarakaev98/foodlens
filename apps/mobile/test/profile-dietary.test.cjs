@@ -32,7 +32,7 @@ describe('Profile dietary selection and legacy mobile responses',()=>{
   const draw=value=>render(FoodPreferencesFields({draft:{...profile,dietaryPreferences:value},issues:[],onChange:v=>{change=v;}}));
   const radio=find(draw(['none']),n=>n.type==='Pressable'&&n.props.accessibilityRole==='radio');
   assert.equal(radio.length,4);
-  assert.deepEqual(radio.map(n=>find(n,c=>c.type==='Text')[0].props.children),['Без ограничений','Вегетарианство','Веганство','Пескетарианство']);
+  assert.deepEqual(radio.map(n=>find(n,c=>c.type==='Text')[0].props.children),['No restrictions','Vegetarian','Vegan','Pescatarian']);
   assert.equal(radio.filter(n=>n.props.accessibilityState.selected).length,1);
   radio[2].props.onPress();assert.deepEqual(Array.from(change.dietaryPreferences),['vegan']);
   const selected=find(draw(change.dietaryPreferences),n=>n.type==='Pressable'&&n.props.accessibilityRole==='radio');
@@ -61,6 +61,6 @@ describe('Profile dietary selection and legacy mobile responses',()=>{
   const {ProfileSummary}=load('src/features/profile/components/ProfileSummary.tsx',{'react-native':rn,'@/shared/ui':theme,'../profile.labels':labels});
   const node=render(ProfileSummary({profile:{...profile,dietaryPreferences:['halal']}}));
   const text=find(node,n=>n.type==='Text').map(n=>n.props.children).join(' ');
-  assert.ok(text.includes('Без ограничений'));assert.ok(!text.includes('Халяль'));
+  assert.ok(text.includes('No restrictions'));assert.ok(!text.includes('Halal'));
  });
 });

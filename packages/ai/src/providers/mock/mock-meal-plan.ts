@@ -3,10 +3,10 @@ import type { GenerateMealPlanInput } from '../../ai-provider.types';
 
 /** Доля дневной цели на блюдо. */
 const MOCK_MEALS: readonly (Pick<Meal, 'slot' | 'name' | 'description' | 'ingredients' | 'portion'> & { readonly share: number })[] = [
-  { slot: 'breakfast', share: 0.25, name: 'Гречка с грибами', description: 'Сытный завтрак без лишнего сахара.', ingredients: ['гречка, 80 г', 'шампиньоны, 100 г', 'растительное масло, 10 г'], portion: '1 тарелка, 300 г' },
-  { slot: 'lunch', share: 0.35, name: 'Чечевичный суп с овощами', description: 'Тёплый обед с растительным белком.', ingredients: ['чечевица, 90 г', 'морковь, 50 г', 'картофель, 100 г'], portion: '1 тарелка, 400 г' },
-  { slot: 'dinner', share: 0.3, name: 'Рис с нутом и томатами', description: 'Простой ужин из доступных продуктов.', ingredients: ['рис, 80 г', 'нут, 120 г', 'помидоры, 100 г'], portion: '1 тарелка, 350 г' },
-  { slot: 'snack', share: 0.1, name: 'Банан и яблоко', description: 'Лёгкий перекус между приёмами пищи.', ingredients: ['банан, 100 г', 'яблоко, 100 г'], portion: '2 фрукта, 200 г' },
+  { slot: 'breakfast', share: 0.25, name: 'Buckwheat with Mushrooms', description: 'A filling breakfast without extra sugar.', ingredients: ['buckwheat, 80 g', 'button mushrooms, 100 g', 'vegetable oil, 10 g'], portion: '1 plate, 300 g' },
+  { slot: 'lunch', share: 0.35, name: 'Lentil Soup with Vegetables', description: 'A warm lunch with plant protein.', ingredients: ['lentils, 90 g', 'carrot, 50 g', 'potato, 100 g'], portion: '1 bowl, 400 g' },
+  { slot: 'dinner', share: 0.3, name: 'Rice with Chickpeas and Tomatoes', description: 'A simple dinner from everyday foods.', ingredients: ['rice, 80 g', 'chickpeas, 120 g', 'tomatoes, 100 g'], portion: '1 plate, 350 g' },
+  { slot: 'snack', share: 0.1, name: 'Banana and Apple', description: 'A light snack between meals.', ingredients: ['banana, 100 g', 'apple, 100 g'], portion: '2 pieces of fruit, 200 g' },
 ];
 
 /** Для AI_PROVIDER=mock: фиксированный растительный день, числа пропорциональны цели. Ничего не генерирует. */

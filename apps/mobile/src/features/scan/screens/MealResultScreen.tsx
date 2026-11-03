@@ -6,7 +6,7 @@ import { addMealEstimateToToday, formatInteger, newTodayEntryId } from '@/featur
 import { Button, colors, radius, spacing, typography } from '@/shared/ui';
 import type { ScanPhoto } from '../types/scan.types';
 
-export const MEAL_ESTIMATE_DISCLAIMER = 'Примерная оценка по фотографии. Фактические значения зависят от порции и способа приготовления.';
+export const MEAL_ESTIMATE_DISCLAIMER = 'Approximate estimate from the photo. Actual values depend on portion size and cooking method.';
 
 type AddState = 'idle' | 'adding' | 'added' | 'error';
 
@@ -22,7 +22,7 @@ interface MealResultScreenProps {
 export function calorieRangeText(estimate: MealPhotoEstimate): string | null {
   if (estimate.confidence === 'high') return null;
   const { min, max } = estimate.calorieRange;
-  return min < max ? `≈ ${formatInteger(min)}–${formatInteger(max)} ккал` : null;
+  return min < max ? `≈ ${formatInteger(min)}–${formatInteger(max)} kcal` : null;
 }
 
 export function MealResultScreen({ estimate, photo, onScanAnother, addToToday = addMealEstimateToToday }: MealResultScreenProps) {
@@ -52,28 +52,28 @@ export function MealResultScreen({ estimate, photo, onScanAnother, addToToday = 
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.kcal} accessibilityLabel={`Примерно ${formatInteger(total.caloriesKcal)} килокалорий`}>
-            ≈{formatInteger(total.caloriesKcal)} <Text style={styles.kcalUnit}>ккал</Text>
+          <Text style={styles.kcal} accessibilityLabel={`About ${formatInteger(total.caloriesKcal)} calories`}>
+            ≈{formatInteger(total.caloriesKcal)} <Text style={styles.kcalUnit}>kcal</Text>
           </Text>
           {range ? <Text style={styles.range}>{range}</Text> : null}
-          <Text style={styles.heroCaption}>Примерная оценка по фотографии</Text>
+          <Text style={styles.heroCaption}>Approximate estimate from photo</Text>
         </View>
 
         <View style={styles.macros}>
-          <Macro label="Белки" grams={total.proteinG} />
-          <Macro label="Жиры" grams={total.fatG} />
-          <Macro label="Углеводы" grams={total.carbsG} />
+          <Macro label="Protein" grams={total.proteinG} />
+          <Macro label="Fat" grams={total.fatG} />
+          <Macro label="Carbs" grams={total.carbsG} />
         </View>
 
         <View style={styles.section}>
-          <Text style={typography.subtitle}>Что распознано</Text>
+          <Text style={typography.subtitle}>What We Found</Text>
           {estimate.items.map((item, index) => (
             <View key={`${item.name}-${index}`} style={styles.item}>
               <Text style={[typography.body, styles.itemName]} numberOfLines={2}>
                 {item.name}
               </Text>
-              <Text style={styles.itemValue}>≈{formatInteger(item.estimatedGrams)} г</Text>
-              <Text style={styles.itemValue}>≈{formatInteger(item.caloriesKcal)} ккал</Text>
+              <Text style={styles.itemValue}>≈{formatInteger(item.estimatedGrams)} g</Text>
+              <Text style={styles.itemValue}>≈{formatInteger(item.caloriesKcal)} kcal</Text>
             </View>
           ))}
         </View>
@@ -83,13 +83,13 @@ export function MealResultScreen({ estimate, photo, onScanAnother, addToToday = 
 
         {addState === 'added' ? (
           <View style={styles.added} accessibilityLiveRegion="polite">
-            <Text style={styles.addedText}>✓ Добавлено в Сегодня</Text>
+            <Text style={styles.addedText}>✓ Added to Today</Text>
           </View>
         ) : (
-          <Button label={addState === 'error' ? 'Повторить добавление' : 'Добавить в Сегодня'} loading={addState === 'adding'} onPress={add} />
+          <Button label={addState === 'error' ? 'Try Adding Again' : 'Add to Today'} loading={addState === 'adding'} onPress={add} />
         )}
-        {addState === 'error' ? <Text style={[typography.caption, styles.error]}>Не удалось добавить. Проверьте подключение и попробуйте ещё раз.</Text> : null}
-        <Button label="Сфотографировать ещё" variant="secondary" onPress={onScanAnother} />
+        {addState === 'error' ? <Text style={[typography.caption, styles.error]}>Couldn’t add. Check your connection and try again.</Text> : null}
+        <Button label="Scan Another Meal" variant="secondary" onPress={onScanAnother} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -100,7 +100,7 @@ function Macro({ label, grams }: { readonly label: string; readonly grams: numbe
     <View style={styles.macro}>
       <Text style={typography.caption}>{label}</Text>
       <Text style={styles.macroValue}>
-        ≈{formatInteger(grams)} <Text style={styles.macroUnit}>г</Text>
+        ≈{formatInteger(grams)} <Text style={styles.macroUnit}>g</Text>
       </Text>
     </View>
   );

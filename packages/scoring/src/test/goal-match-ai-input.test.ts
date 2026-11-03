@@ -13,7 +13,7 @@ describe('v4 AI input: deterministic facts without scores or restrictions',()=>{
     const plan={...healthPlan(),targets:{...healthPlan().targets,caloriesKcal:2230,fatG:74,carbsG:251}};
     const input=buildGoalMatchAiInput(product,plan)!;
     assert.deepEqual(input,{
-      version:'goal-match-ai-input-v1',goal:'eat_healthier',locale:'ru',
+      version:'goal-match-ai-input-v1',goal:'eat_healthier',locale:'en',
       product:{name:'Греческий йогурт 2%',brand:null,category:'dairy',ingredients:['молоко нормализованное','закваска'],
         ingredientsStatus:'observed',additives:[],basis:'per_100g',
         per100:{kcal:66,proteinG:9.5,fatG:2,saturatedFatG:1.3,carbsG:3.6,sugarsG:3.6,fiberG:null,saltG:.1},

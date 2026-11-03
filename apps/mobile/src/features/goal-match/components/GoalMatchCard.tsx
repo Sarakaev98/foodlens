@@ -7,7 +7,7 @@ import {
   aiFactorReason, goalMatchSourceLabel, isTenPointScale, type AnyGoalMatch,
 } from '../goalMatchLabels';
 
-/** Самые весомые причины: карточка короче, чем «Оценка продукта», и не повторяет её. */
+/** Самые весомые причины: карточка короче, чем «Product Score», и не повторяет её. */
 const MAX_REASONS = 3;
 
 const RESTRICTION_KINDS: readonly GoalMatchFactor['kind'][] = ['allergens', 'diet', 'avoidedIngredients'];
@@ -47,31 +47,31 @@ function notes(goalMatch: AnyGoalMatch): string[] {
   const byKind = (kind: GoalMatchFactor['kind']) => goalMatch.factors.find((factor) => factor.kind === kind);
   const result: string[] = [];
   if (!isTenPointScale(goalMatch) && goalMatch.portion?.basis === 'per_100' && goalMatch.value !== null && goalMatch.level !== 'conflict') {
-    result.push('Размер порции не указан, поэтому доля дневной нормы калорий не посчитана.');
+    result.push('Serving size isn’t listed, so the share of daily calories wasn’t calculated.');
   }
-  if (byKind('allergens')?.level === 'not_counted') result.push('Аллергены на фото не найдены: проверьте упаковку.');
+  if (byKind('allergens')?.level === 'not_counted') result.push('No allergens found in the photo. Please check the package.');
   result.push(...dietVerificationNotes(byKind('diet')));
-  if (byKind('avoidedIngredients')?.level === 'not_counted') result.push('Состав не прочитан: продукты, которых вы избегаете, не проверены.');
+  if (byKind('avoidedIngredients')?.level === 'not_counted') result.push('Ingredients weren’t read, so foods you avoid weren’t checked.');
   if (isTenPointScale(goalMatch) && goalMatch.uncertainty.includes('protein')) {
-    result.push('Белок не указан: его вклад не учтён.');
+    result.push('Protein isn’t listed, so it wasn’t counted.');
   }
   if (isTenPointScale(goalMatch) && goalMatch.uncertainty.includes('fiber')) {
-    result.push('Клетчатка не указана: её вклад не учтён.');
+    result.push('Fiber isn’t listed, so it wasn’t counted.');
   }
   return result;
 }
 
 export function GoalMatchCard({ goalMatch, product }: { readonly goalMatch: AnyGoalMatch; readonly product?: Product }) {
-  const goal = goalMatch.goal ? `Цель: ${GOAL_LABELS[goalMatch.goal].toLowerCase()}` : null;
+  const goal = goalMatch.goal ? `Goal: ${GOAL_LABELS[goalMatch.goal]}` : null;
   const warnings = goalMatch.factors.filter((factor) => RESTRICTION_KINDS.includes(factor.kind));
 
   if (isTenPointScale(goalMatch) && goalMatch.state === 'not_applicable') {
     const reasons = topReasons(warnings, goalMatch.version);
     return (
       <View style={styles.card}>
-        <Text style={styles.title}>Соответствие вашей цели</Text>
+        <Text style={styles.title}>Goal Match</Text>
         {goal ? <Text style={typography.caption}>{goal}</Text> : null}
-        <Text style={typography.subtitle}>Не влияет на вашу цель</Text>
+        <Text style={typography.subtitle}>Doesn’t affect your goal</Text>
         {reasons.map(({ factor, reason }) => (
           <Reason key={factor.id} impact={factor.impact} text={reason.text} detail={reason.detail} />
         ))}
@@ -84,7 +84,7 @@ export function GoalMatchCard({ goalMatch, product }: { readonly goalMatch: AnyG
     const reasons = topReasons(warnings, goalMatch.version);
     return (
       <View style={styles.card}>
-        <Text style={styles.title}>Соответствие вашей цели</Text>
+        <Text style={styles.title}>Goal Match</Text>
         {goal ? <Text style={typography.caption}>{goal}</Text> : null}
         <Text style={typography.subtitle}>{unavailableMessage(goalMatch, product)}</Text>
         {reasons.map(({ factor, reason }) => (
@@ -107,15 +107,15 @@ export function GoalMatchCard({ goalMatch, product }: { readonly goalMatch: AnyG
   const summary = goalMatch.version === 'goal-match-v4' && goalMatch.source === 'ai' ? goalMatch.ai?.summary ?? null : null;
 
   return (
-    <View style={styles.card} accessible accessibilityLabel={`Соответствие вашей цели: ${approximate ? 'примерно ' : ''}${displayValue} из 10, ${LEVEL_VERDICTS[goalMatch.level]}`}>
+    <View style={styles.card} accessible accessibilityLabel={`Goal Match: ${approximate ? 'about ' : ''}${displayValue} out of 10, ${LEVEL_VERDICTS[goalMatch.level]}`}>
       <View style={styles.header}>
         <View style={[styles.badge, { backgroundColor: background }]}>
           <Text style={[styles.value, { color }]}>{displayValue}</Text>
           <Text style={[styles.outOf, { color }]}>/ 10</Text>
         </View>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Соответствие вашей цели</Text>
-          {goalMatch.goal === 'eat_healthier' ? <Text style={typography.caption}>Насколько подходит цели питаться здоровее</Text> : null}
+          <Text style={styles.title}>Goal Match</Text>
+          {goalMatch.goal === 'eat_healthier' ? <Text style={typography.caption}>How well it fits your goal to eat healthier</Text> : null}
           <Text style={[styles.verdict, { color }]}>{LEVEL_VERDICTS[goalMatch.level]}</Text>
           {approximate ? <Text style={typography.caption}>{approximateNote(goalMatch)}</Text> : null}
           {goal ? <Text style={typography.caption}>{goal}</Text> : null}
@@ -138,7 +138,7 @@ export function GoalMatchCard({ goalMatch, product }: { readonly goalMatch: AnyG
           {note}
         </Text>
       ))}
-      <Text style={typography.caption}>Сравнение с вашими дневными целями из профиля. Не медицинская рекомендация.</Text>
+      <Text style={typography.caption}>Compared with the daily goals in your profile. Not medical advice.</Text>
     </View>
   );
 }

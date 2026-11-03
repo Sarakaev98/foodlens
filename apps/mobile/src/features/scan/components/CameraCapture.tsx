@@ -30,7 +30,7 @@ interface CameraCaptureProps {
 }
 
 /** Короткие подписи: три вкладки помещаются в строку и на iPhone SE. */
-export const SCAN_MODE_LABELS: Readonly<Record<ScanMode, string>> = { product: 'Продукт', label: 'Таблица', meal: 'Еда' };
+export const SCAN_MODE_LABELS: Readonly<Record<ScanMode, string>> = { product: 'Product', label: 'Label', meal: 'Meal' };
 const ALL_MODES: readonly ScanMode[] = ['product', 'label', 'meal'];
 
 /** Разовая фокусировка: столько держим режим "on", потом возвращаем непрерывный автофокус. */
@@ -60,18 +60,18 @@ export function CameraCapture({ mode, onModeChange, modes = ALL_MODES, onCapture
     const denied = SCAN_FAILURE_MESSAGES.camera_permission_denied;
     return (
       <SafeAreaView style={styles.permission}>
-        <Text style={typography.title}>Сканирование</Text>
+        <Text style={typography.title}>Scan</Text>
         <Text style={typography.subtitle}>
           {permission.canAskAgain
-            ? 'Чтобы распознать продукт, FoodLens нужен доступ к камере. Фото используется только для анализа и не сохраняется.'
+            ? 'FoodLens needs camera access to recognize products. Photos are used only for analysis and are not saved.'
             : denied.description}
         </Text>
         {permission.canAskAgain ? (
-          <Button label="Разрешить доступ к камере" onPress={() => void requestPermission()} />
+          <Button label="Allow Camera Access" onPress={() => void requestPermission()} />
         ) : (
-          <Button label="Открыть настройки" onPress={() => void Linking.openSettings()} />
+          <Button label="Open Settings" onPress={() => void Linking.openSettings()} />
         )}
-        <Button label="Выбрать из галереи" variant="secondary" onPress={onPickFromGallery} />
+        <Button label="Choose from Library" variant="secondary" onPress={onPickFromGallery} />
       </SafeAreaView>
     );
   }
@@ -163,7 +163,7 @@ export function CameraCapture({ mode, onModeChange, modes = ALL_MODES, onCapture
         )}
         <Pressable
           accessibilityRole="switch"
-          accessibilityLabel="Фонарик"
+          accessibilityLabel="Flashlight"
           accessibilityState={{ checked: torch }}
           hitSlop={8}
           onPress={() => setTorch((on) => !on)}
@@ -178,21 +178,21 @@ export function CameraCapture({ mode, onModeChange, modes = ALL_MODES, onCapture
           <Text style={styles.found} accessibilityLiveRegion="polite">
             {SCAN_GUIDE_TEXT.barcodeFound} · {detected}
           </Text>
-          {onAnalyzeBarcode ? <Button label="Анализировать продукт" onPress={() => onAnalyzeBarcode(detected)} /> : null}
+          {onAnalyzeBarcode ? <Button label="Analyze Product" onPress={() => onAnalyzeBarcode(detected)} /> : null}
           <Pressable accessibilityRole="button" onPress={scanAgain} hitSlop={6}>
-            <Text style={styles.scanAgain}>Другой штрихкод</Text>
+            <Text style={styles.scanAgain}>Scan Another Barcode</Text>
           </Pressable>
         </View>
       ) : null}
 
       <View style={[styles.controls, { bottom: insets.bottom + BOTTOM_GAP }]}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Выбрать из галереи" onPress={onPickFromGallery} style={styles.sideButton}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Choose from library" onPress={onPickFromGallery} style={styles.sideButton}>
           <Ionicons name="images-outline" size={24} color="#fff" />
-          <Text style={styles.sideLabel}>Галерея</Text>
+          <Text style={styles.sideLabel}>Library</Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Сделать снимок"
+          accessibilityLabel="Take photo"
           disabled={!ready || capturing}
           onPress={() => void capture()}
           style={({ pressed }) => [styles.shutter, (!ready || capturing) && styles.shutterDisabled, pressed && styles.shutterPressed]}
@@ -200,9 +200,9 @@ export function CameraCapture({ mode, onModeChange, modes = ALL_MODES, onCapture
           {capturing ? <ActivityIndicator color={colors.accent} /> : <View style={styles.shutterInner} />}
         </Pressable>
         {onCancel ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Отменить съёмку" onPress={onCancel} style={styles.sideButton}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Cancel capture" onPress={onCancel} style={styles.sideButton}>
             <Ionicons name="close-outline" size={26} color="#fff" />
-            <Text style={styles.sideLabel}>Отмена</Text>
+            <Text style={styles.sideLabel}>Cancel</Text>
           </Pressable>
         ) : (
           <View style={styles.sideButton} />

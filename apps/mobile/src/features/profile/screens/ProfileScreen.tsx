@@ -12,9 +12,9 @@ export function ProfileScreen() {
 
   return (
     <FormScreen
-      title="Профиль"
-      subtitle="Эти данные используются для персональных рекомендаций."
-      footer={<Button label="Изменить" variant="secondary" onPress={() => router.push('/profile-edit')} />}
+      title="Profile"
+      subtitle="We use this to personalize your recommendations."
+      footer={<Button label="Edit" variant="secondary" onPress={() => router.push('/profile-edit')} />}
     >
       <ProfileSummary profile={profile} />
     </FormScreen>

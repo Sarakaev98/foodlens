@@ -27,7 +27,7 @@ const ui = {'react/jsx-runtime': {jsx, jsxs: jsx},
   'react-native': {StyleSheet: {create: x => x, hairlineWidth: 1}, Text: 'Text', View: 'View'},
   '@/shared/ui': {...theme, typography: {}}};
 const {NutritionTable} = load('src/features/scan/components/NutritionTable.tsx',
-  {...ui, '../productLabels': {NOT_DETECTED_LABEL: 'Не обнаружено'}});
+  {...ui, '../productLabels': {NOT_DETECTED_LABEL: 'Not detected'}});
 const {ProductScoreCard} = load('src/features/product-score/components/ProductScoreCard.tsx',
   {...ui, '../productScoreLabels': scoreLabels});
 function text(node) {
@@ -52,25 +52,25 @@ const item = nutritionFacts => ({id: 'p', name: observed('Товар'), brand: N
 describe('Estimated nutrients on the screen', () => {
   it('an estimated field shows ≈ and one note, an unestimated one stays plain', () => {
     const shown = text(NutritionTable({nutrition: facts, estimated: ['sugarsG', 'saturatedFatG', 'saltG']}));
-    assert.match(shown, /≈37,1 г/); assert.match(shown, /≈11 г/); assert.match(shown, /≈0,2 г/);
+    assert.match(shown, /≈37.1 g/); assert.match(shown, /≈11 g/); assert.match(shown, /≈0.2 g/);
     assert.ok(!shown.includes('≈433'));
-    assert.equal(shown.split('Часть пищевых данных оценена автоматически.').length, 2);
+    assert.equal(shown.split('Some nutrition values were estimated automatically.').length, 2);
   });
   it('without estimates there is no note', () => {
-    assert.ok(!text(NutritionTable({nutrition: facts})).includes('оценены'));
+    assert.ok(!text(NutritionTable({nutrition: facts})).includes('estimated'));
   });
   it('a score with estimated inputs is an ordinary score, without any confidence wording', () => {
     const shown = text(ProductScoreCard({score: scoreProduct(item(facts)), per: 'g', estimated: true}));
-    assert.ok(!shown.includes('Предварительно')); assert.ok(!shown.includes('Уверенность'));
-    assert.match(shown, /Общее качество продукта/);
-    assert.match(shown, /Часть пищевых данных оценена автоматически/);
+    assert.ok(!shown.includes('Preliminary')); assert.ok(!shown.includes('Confidence'));
+    assert.match(shown, /Overall product quality/);
+    assert.match(shown, /Some nutrition values were estimated automatically/);
   });
   it('preliminary stays only when the main factors are really missing', () => {
     const shown = text(ProductScoreCard({score: scoreProduct(item({...facts, sugarsG: NOT_DETECTED, saturatedFatG: NOT_DETECTED})), per: 'g'}));
-    assert.match(shown, /Предварительно/);
+    assert.match(shown, /Preliminary/);
   });
   it('the result screen has no confidence labels', () => {
     const screen = fs.readFileSync(path.join(__dirname, '..', 'src/features/scan/screens/ProductResultScreen.tsx'), 'utf8');
-    assert.ok(!/Уверенность|уверенность/.test(screen));
+    assert.ok(!/Confidence|confidence|Уверенность|уверенность/.test(screen));
   });
 });

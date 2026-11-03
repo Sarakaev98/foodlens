@@ -4,22 +4,22 @@ import { colors, spacing } from '@/shared/ui';
 import { NOT_DETECTED_LABEL } from '../productLabels';
 
 const ROWS: readonly { readonly key: NutrientKey; readonly label: string; readonly unit: string; readonly nested?: boolean }[] = [
-  { key: 'caloriesKcal', label: 'Энергия', unit: 'ккал' },
-  { key: 'proteinG', label: 'Белки', unit: 'г' },
-  { key: 'carbsG', label: 'Углеводы', unit: 'г' },
-  { key: 'sugarsG', label: 'в т. ч. сахара', unit: 'г', nested: true },
-  { key: 'fatG', label: 'Жиры', unit: 'г' },
-  { key: 'saturatedFatG', label: 'в т. ч. насыщенные', unit: 'г', nested: true },
-  { key: 'fiberG', label: 'Клетчатка', unit: 'г' },
-  { key: 'saltG', label: 'Соль', unit: 'г' },
-  { key: 'sodiumMg', label: 'Натрий', unit: 'мг' },
+  { key: 'caloriesKcal', label: 'Energy', unit: 'kcal' },
+  { key: 'proteinG', label: 'Protein', unit: 'g' },
+  { key: 'carbsG', label: 'Carbohydrates', unit: 'g' },
+  { key: 'sugarsG', label: 'of which sugars', unit: 'g', nested: true },
+  { key: 'fatG', label: 'Fat', unit: 'g' },
+  { key: 'saturatedFatG', label: 'of which saturates', unit: 'g', nested: true },
+  { key: 'fiberG', label: 'Fiber', unit: 'g' },
+  { key: 'saltG', label: 'Salt', unit: 'g' },
+  { key: 'sodiumMg', label: 'Sodium', unit: 'mg' },
 ];
 
 function formatValue(value: number): string {
-  return String(value).replace('.', ',');
+  return String(value);
 }
 
-/** null показывается как «Не обнаружено», никогда как 0. Выведенные значения помечены «≈». */
+/** null показывается как «Not detected», никогда как 0. Выведенные значения помечены «≈». */
 export function NutritionTable({ nutrition, estimated = [] }: { readonly nutrition: NutritionFacts; readonly estimated?: readonly string[] }) {
   const isEstimated = (key: NutrientKey) => estimated.includes(key);
   const hasInferred = ROWS.some((row) => nutrition[row.key].provenance === 'inferred' && !isEstimated(row.key));
@@ -44,11 +44,11 @@ export function NutritionTable({ nutrition, estimated = [] }: { readonly nutriti
       })}
       {nutrition.servingSize.value ? (
         <Text style={styles.footnote}>
-          Порция: {formatValue(nutrition.servingSize.value.amount)} {nutrition.servingSize.value.unit === 'g' ? 'г' : 'мл'}
+          Serving: {formatValue(nutrition.servingSize.value.amount)} {nutrition.servingSize.value.unit === 'g' ? 'g' : 'ml'}
         </Text>
       ) : null}
-      {hasEstimated ? <Text style={styles.footnote}>Часть пищевых данных оценена автоматически.</Text> : null}
-      {hasInferred ? <Text style={styles.footnote}>≈ рассчитано по другим данным этикетки (кДж → ккал, натрий ↔ соль)</Text> : null}
+      {hasEstimated ? <Text style={styles.footnote}>Some nutrition values were estimated automatically.</Text> : null}
+      {hasInferred ? <Text style={styles.footnote}>≈ calculated from other label values (kJ → kcal, sodium ↔ salt)</Text> : null}
     </View>
   );
 }

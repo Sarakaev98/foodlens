@@ -123,7 +123,7 @@ function mealText(meal: Meal): string {
 
 /** Текст для поиска продуктов: нижний регистр, без отрицаний и безопасных замен. */
 function foodText(raw: string): string {
-  const text = raw.toLowerCase().replace(/ё/g, 'е').replace(/без\s+[а-я]+/g, ' ');
+  const text = raw.toLowerCase().replace(/ё/g, 'е').replace(/без\s+[а-я]+/g, ' ').replace(/\bwithout\s+[a-z]+/g, ' ');
   return SAFE_PHRASES.reduce((clean, phrase) => clean.replace(phrase, '$1'), text);
 }
 

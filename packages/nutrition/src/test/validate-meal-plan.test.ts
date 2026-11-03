@@ -99,6 +99,23 @@ describe('validateMealPlan: калории и БЖУ', () => {
     assert.ok(found.some((issue) => /does not match its macros/.test(issue.message)));
   });
 
+  it('English plan: restricted foods are found, safe phrases and negations are not flagged', () => {
+    const englishDay = plan(
+      meal('breakfast', 'Oatmeal with Berries', ['rolled oats, 60 g', 'oat milk, 200 ml', 'blueberries, 80 g']),
+      meal('lunch', 'Lentil Soup', ['lentils, 90 g', 'carrot, 50 g', 'vegetable broth, 300 ml']),
+      meal('dinner', 'Baked Eggplant with Chickpeas', ['eggplant, 200 g', 'chickpeas, 120 g', 'rice noodles, 70 g']),
+      meal('snack', 'Smoothie without Honey', ['banana, 100 g', 'coconut milk, 200 ml']),
+    );
+    assert.deepEqual(restrictions(englishDay, { dietaryPreferences: ['vegan'] }), []);
+    for (const food of ['Greek yogurt, 150 g', 'grilled chicken breast, 120 g', 'scrambled eggs, 2', 'shrimp, 100 g', 'feta, 30 g', 'honey, 10 g'])
+      assert.ok(restrictions(withMeal('Snack', [food]), { dietaryPreferences: ['vegan'] }).length > 0, food);
+    assert.ok(restrictions(withMeal('Snack', ['whole wheat toast, 60 g']), { allergens: ['gluten'] }).length > 0);
+    assert.ok(restrictions(withMeal('Snack', ['spaghetti, 80 g']), { allergens: ['gluten'] }).length > 0);
+    assert.deepEqual(restrictions(withMeal('Snack', ['rice noodles, 80 g']), { allergens: ['gluten'] }), []);
+    assert.ok(restrictions(withMeal('Snack', ['macadamia, 30 g']), { allergens: ['tree_nuts'] }).length > 0);
+    assert.deepEqual(restrictions(withMeal('Snack', ['nutritional yeast, 10 g', 'coconut, 30 g']), { allergens: ['tree_nuts'] }), []);
+  });
+
   it('пустой план не проходит', () => {
     assert.equal(issues(plan(), NO_RESTRICTIONS).length, 1);
   });

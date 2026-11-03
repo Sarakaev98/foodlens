@@ -38,7 +38,7 @@ export function TagInput({ values, onChange, placeholder, accessibilityLabel, ma
           returnKeyType="done"
           style={[inputStyles.input, styles.input]}
         />
-        <Button label="Добавить" variant="secondary" onPress={add} disabled={text.trim() === ''} />
+        <Button label="Add" variant="secondary" onPress={add} disabled={text.trim() === ''} />
       </View>
       {values.length > 0 ? (
         <View style={styles.tags}>
@@ -46,7 +46,7 @@ export function TagInput({ values, onChange, placeholder, accessibilityLabel, ma
             <Pressable
               key={value}
               accessibilityRole="button"
-              accessibilityLabel={`Удалить ${value}`}
+              accessibilityLabel={`Remove ${value}`}
               onPress={() => onChange(values.filter((item) => item !== value))}
               style={styles.tag}
             >

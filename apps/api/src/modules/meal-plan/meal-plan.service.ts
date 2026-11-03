@@ -60,7 +60,7 @@ export class MealPlanService {
       startDate: new Date().toISOString().slice(0, 10),
       days: 1,
       mealsPerDay,
-      locale: 'ru',
+      locale: 'en',
       recentMealNames: this.recentMeals.get(userId) ?? [],
       variation: chooseMealPlanVariation(plan, this.lastVariation.get(userId) ?? null, this.random),
     };

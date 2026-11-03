@@ -31,7 +31,7 @@ function nutritionPer(product: Product): 'g' | 'ml' {
 }
 
 function inferredNote(field: Detected<unknown>): string {
-  return field.provenance === 'inferred' ? ' (по виду упаковки)' : '';
+  return field.provenance === 'inferred' ? ' (based on packaging)' : '';
 }
 
 export function ProductResultScreen({ product, score, goalMatch, photo, barcode, onTakeNutritionPhoto, onScanAnother }: ProductResultScreenProps) {
@@ -41,7 +41,8 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
     ...Object.entries(product.nutritionMetadata?.fields ?? {}).filter(([, item]) => item.quality !== 'verified').map(([key]) => key),
   ])];
   const displayIngredients = product.ingredientsDisplay?.items ?? ingredients.value;
-  const foreignAdditives = additives.value?.some((item) => !item.code && item.name !== null && isForeignText(item.name)) ?? false;
+  const displayAdditives = additives.value === null ? null : product.additivesDisplay ?? additives.value;
+  const foreignAdditives = displayAdditives?.some((item) => !item.code && item.name !== null && isForeignText(item.name)) ?? false;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top']}>
@@ -50,17 +51,17 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
           {photo ? <Image source={{ uri: photo.uri }} style={styles.photo} resizeMode="cover" /> : null}
           <View style={styles.identityText}>
             <Text style={styles.name} numberOfLines={4}>
-              {name.value ?? 'Отсканированный продукт'}
+              {product.nameDisplay ?? name.value ?? 'Scanned Product'}
             </Text>
-            {barcode ? <Text style={typography.caption}>Штрихкод: {barcode}</Text> : null}
+            {barcode ? <Text style={typography.caption}>Barcode: {barcode}</Text> : null}
             {brand.value ? <Text style={typography.subtitle}>{brand.value}</Text> : null}
           </View>
         </View>
 
         {onTakeNutritionPhoto ? (
           <View style={styles.photoHint}>
-            <Text style={typography.subtitle}>Данные о питании неполные. Сфотографируйте таблицу на упаковке, чтобы уточнить оценку.</Text>
-            <Button label="Сфотографировать таблицу" onPress={onTakeNutritionPhoto} />
+            <Text style={typography.subtitle}>Nutrition data is incomplete. Take a photo of the nutrition label to refine the score.</Text>
+            <Button label="Photograph Nutrition Label" onPress={onTakeNutritionPhoto} />
           </View>
         ) : null}
 
@@ -74,51 +75,51 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
         <GoalMatchCard goalMatch={goalMatch} product={product} />
 
         <ProductSection
-          title="Пищевая ценность"
+          title="Nutrition Facts"
           subtitle={nutrition ? BASIS_LABELS[nutrition.basis] : undefined}
         >
           {nutrition ? (
             <NutritionTable nutrition={nutrition} estimated={estimated} />
           ) : (
-            <NotDetected text="Таблица пищевой ценности не найдена. Сфотографируйте её отдельно." />
+            <NotDetected text="Nutrition label not found. Take a separate photo of it." />
           )}
         </ProductSection>
 
-        <ProductSection title="Состав">
+        <ProductSection title="Ingredients">
           {displayIngredients ? (
             <Text style={typography.body}>
               {displayIngredients.map((item) => (item.percent !== null ? `${item.name} (${item.percent}%)` : item.name)).join(', ')}
             </Text>
           ) : (
-            <NotDetected text="Состав не найден" />
+            <NotDetected text="Ingredients not found" />
           )}
         </ProductSection>
 
-        <ProductSection title="Аллергены">
+        <ProductSection title="Allergens">
           {allergens.value === null ? (
             <NotDetected text={NOT_DETECTED_LABEL} />
           ) : allergens.value.length === 0 ? (
-            <Text style={typography.body}>На упаковке не указаны</Text>
+            <Text style={typography.body}>None listed on the package</Text>
           ) : (
             <View style={styles.chips}>
               {allergens.value.map((allergen) => (
                 <Text key={allergen.code} style={[styles.chip, allergen.presence === 'contains' && styles.chipStrong]}>
-                  {allergen.presence === 'may_contain' ? 'Может содержать: ' : ''}
+                  {allergen.presence === 'may_contain' ? 'May contain: ' : ''}
                   {ALLERGEN_LABELS[allergen.code]}
-                  {allergen.provenance === 'inferred' ? ' (по составу)' : ''}
+                  {allergen.provenance === 'inferred' ? ' (from ingredients)' : ''}
                 </Text>
               ))}
             </View>
           )}
         </ProductSection>
 
-        <ProductSection title="Пищевые добавки" subtitle={foreignAdditives ? ORIGINAL_TEXT_LABEL : undefined}>
-          {additives.value === null ? (
+        <ProductSection title="Additives" subtitle={foreignAdditives ? ORIGINAL_TEXT_LABEL : undefined}>
+          {displayAdditives === null ? (
             <NotDetected text={NOT_DETECTED_LABEL} />
-          ) : additives.value.length === 0 ? (
-            <Text style={typography.body}>В составе не найдены</Text>
+          ) : displayAdditives.length === 0 ? (
+            <Text style={typography.body}>None found in ingredients</Text>
           ) : (
-            additives.value.map((additive) => (
+            displayAdditives.map((additive) => (
               <Text key={additive.code ?? additive.name} style={typography.body}>
                 {additiveLabel(additive)}
               </Text>
@@ -127,11 +128,11 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
         </ProductSection>
 
         <Text style={typography.caption}>
-          Данные могут содержать неточности, сверяйтесь с упаковкой. Фото не сохраняется.
+          Data may contain inaccuracies, so check the package. Photos are not saved.
         </Text>
         {usesOpenFoodFacts(product) ? (
           <Text style={typography.caption} accessibilityRole="link" onPress={() => void Linking.openURL('https://world.openfoodfacts.org')}>
-            Часть данных: Open Food Facts, лицензия ODbL.
+            Some data from Open Food Facts, licensed under ODbL.
           </Text>
         ) : null}
         {usesFatSecret(product) ? (
@@ -139,7 +140,7 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
             Powered by fatsecret Platform API
           </Text>
         ) : null}
-        <Button label="Сканировать другой продукт" onPress={onScanAnother} />
+        <Button label="Scan Another Product" onPress={onScanAnother} />
       </ScrollView>
     </SafeAreaView>
   );

@@ -360,9 +360,9 @@ describe('CameraGuide', () => {
 
   it('texts and accessibility labels', () => {
     const {product: productText, label: labelText} = guide.SCAN_GUIDE_TEXT;
-    assert.equal(productText.title, 'Наведите на штрихкод');
-    assert.equal(labelText.title, 'Наведите на таблицу пищевой ценности');
-    assert.equal(guide.SCAN_GUIDE_TEXT.barcodeFound, 'Штрихкод найден');
+    assert.equal(productText.title, 'Point at the Barcode');
+    assert.equal(labelText.title, 'Point at the Nutrition Label');
+    assert.equal(guide.SCAN_GUIDE_TEXT.barcodeFound, 'Barcode Found');
     const tree = render(jsx(CameraGuide, {screenWidth: 375, screenHeight: 667, barcodeFound: false, mode: 'product'}));
     assert.equal(tree.props.pointerEvents, 'none', 'touches pass through to the camera and buttons');
     const content = text(tree);
@@ -410,7 +410,7 @@ describe('CameraCapture permission states and camera settings', () => {
       'react-native-safe-area-context': {SafeAreaView: 'SafeAreaView', useSafeAreaInsets: () => ({top: 47, bottom: 34, left: 0, right: 0})},
       '@/shared/ui': {...theme, typography: {}, Button: 'Button', CenteredMessage: 'CenteredMessage'},
       '../barcode/barcodeDetector': detectorModule,
-      '../scanErrors': {SCAN_FAILURE_MESSAGES: {camera_permission_denied: {description: 'Доступ к камере запрещён'}}},
+      '../scanErrors': {SCAN_FAILURE_MESSAGES: {camera_permission_denied: {description: 'Camera access denied'}}},
       '../scanGuide': guide, './CameraGuide': guideModule, './FocusIndicator': {FocusIndicator: 'FocusIndicator'},
     });
     return () => { index = 0; return render(jsx(CameraCapture, {mode: 'product', onModeChange: () => {}, onCaptured: () => {}, onCaptureFailed: () => {}, onPickFromGallery: () => {}, ...props})); };
@@ -426,14 +426,14 @@ describe('CameraCapture permission states and camera settings', () => {
 
   it('not granted, can ask → request button and gallery fallback; no camera', () => {
     const tree = camera({granted: false, canAskAgain: true});
-    assert.deepEqual(buttons(tree), ['Разрешить доступ к камере', 'Выбрать из галереи']);
+    assert.deepEqual(buttons(tree), ['Allow Camera Access', 'Choose from Library']);
     assert.equal(all(tree, n => n.type === 'CameraView').length, 0);
   });
 
   it('permanently denied → settings button and gallery fallback', () => {
     const tree = camera({granted: false, canAskAgain: false});
-    assert.deepEqual(buttons(tree), ['Открыть настройки', 'Выбрать из галереи']);
-    assert.ok(text(tree).includes('Доступ к камере запрещён'));
+    assert.deepEqual(buttons(tree), ['Open Settings', 'Choose from Library']);
+    assert.ok(text(tree).includes('Camera access denied'));
   });
 
   it('granted → back camera, continuous autofocus, no zoom, product barcodes only, guide overlay', () => {
@@ -444,21 +444,21 @@ describe('CameraCapture permission states and camera settings', () => {
     assert.equal(view.props.zoom, 0);
     assert.deepEqual([...view.props.barcodeScannerSettings.barcodeTypes], ['ean13', 'ean8', 'upc_a', 'upc_e']);
     assert.equal(typeof view.props.onBarcodeScanned, 'function');
-    assert.ok(text(tree).includes('Наведите на штрихкод'));
-    assert.ok(all(tree, n => n.props?.accessibilityLabel === 'Сделать снимок').length === 1);
-    assert.ok(all(tree, n => n.props?.accessibilityLabel === 'Выбрать из галереи').length === 1);
+    assert.ok(text(tree).includes('Point at the Barcode'));
+    assert.ok(all(tree, n => n.props?.accessibilityLabel === 'Take photo').length === 1);
+    assert.ok(all(tree, n => n.props?.accessibilityLabel === 'Choose from library').length === 1);
   });
 
   it('all modes are offered and the label mode does not scan barcodes', () => {
     const product = camera(granted);
-    assert.deepEqual(all(product, n => n.props?.accessibilityRole === 'tab').map(text), ['Продукт', 'Таблица', 'Еда']);
-    assert.deepEqual(all(camera(granted, {modes: ['product', 'label']}), n => n.props?.accessibilityRole === 'tab').map(text), ['Продукт', 'Таблица'], 'mealPhoto flag off');
+    assert.deepEqual(all(product, n => n.props?.accessibilityRole === 'tab').map(text), ['Product', 'Label', 'Meal']);
+    assert.deepEqual(all(camera(granted, {modes: ['product', 'label']}), n => n.props?.accessibilityRole === 'tab').map(text), ['Product', 'Label'], 'mealPhoto flag off');
     const meal = camera(granted, {mode: 'meal'});
     assert.equal(cameraView(meal).props.onBarcodeScanned, undefined, 'the meal mode does not scan barcodes');
-    assert.ok(text(meal).includes('Сфотографируйте тарелку'));
+    assert.ok(text(meal).includes('Take a Photo of Your Plate'));
     const label = camera(granted, {mode: 'label'});
     assert.equal(cameraView(label).props.onBarcodeScanned, undefined);
-    assert.ok(text(label).includes('Наведите на таблицу пищевой ценности'));
+    assert.ok(text(label).includes('Point at the Nutrition Label'));
     assert.equal(all(camera(granted, {onModeChange: undefined}), n => n.props?.accessibilityRole === 'tab').length, 0, 'extra photo keeps the chosen mode');
   });
 
@@ -469,15 +469,15 @@ describe('CameraCapture permission states and camera settings', () => {
     const tree = render();
     assert.deepEqual(found, ['4607001771234']);
     assert.equal(cameraView(tree).props.onBarcodeScanned, undefined, 'no more scans after a success');
-    assert.ok(text(tree).includes('Штрихкод найден'));
-    assert.ok(all(tree, n => n.type === 'Button').some(n => n.props.label === 'Анализировать продукт'));
-    all(tree, n => text(n) === 'Другой штрихкод' && n.type === 'Pressable')[0].props.onPress();
+    assert.ok(text(tree).includes('Barcode Found'));
+    assert.ok(all(tree, n => n.type === 'Button').some(n => n.props.label === 'Analyze Product'));
+    all(tree, n => text(n) === 'Scan Another Barcode' && n.type === 'Pressable')[0].props.onPress();
     assert.equal(typeof cameraView(render()).props.onBarcodeScanned, 'function');
   });
 
   it('torch is a real camera prop; a tap runs a one-shot focus and returns to continuous autofocus', () => {
     const render = mount(granted);
-    all(render(), n => n.props?.accessibilityLabel === 'Фонарик')[0].props.onPress();
+    all(render(), n => n.props?.accessibilityLabel === 'Flashlight')[0].props.onPress();
     assert.equal(cameraView(render()).props.enableTorch, true);
     const tap = all(render(), n => n.props?.accessibilityLabel === guide.SCAN_GUIDE_TEXT.focusHint)[0];
     tap.props.onPress();
@@ -533,7 +533,7 @@ describe('AnalyzingView stages', () => {
   });
 
   it('the agreed texts, without technical names', () => {
-    assert.deepEqual([...ANALYZING_STAGES.product], ['Распознаём продукт', 'Ищем данные', 'Анализируем состав', 'Рассчитываем оценку']);
+    assert.deepEqual([...ANALYZING_STAGES.product], ['Recognizing product', 'Looking up data', 'Analyzing ingredients', 'Calculating score']);
     assert.doesNotMatch(Object.values(ANALYZING_STAGES).flat().join(' '), /Gemini|Tavily|Open Food|OFF|AI/);
   });
 

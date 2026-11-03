@@ -5,7 +5,7 @@ import {GoogleGoalMatchProvider,AIProviderError,GOOGLE_GOAL_MATCH_MODEL,MOCK_GOA
 
 const KEY='unit-test-secret-never-a-real-key';
 const output=MOCK_GOAL_MATCH_RECORDINGS.find(x=>x.id==='greek_yogurt')!.responses[0];
-const input={version:'goal-match-ai-input-v1',goal:'eat_healthier',locale:'ru',product:{name:'Greek yogurt',per100:{kcal:66}}} as GoalMatchAiInput;
+const input={version:'goal-match-ai-input-v1',goal:'eat_healthier',locale:'en',product:{name:'Greek yogurt',per100:{kcal:66}}} as GoalMatchAiInput;
 const response=(value:unknown=output)=>new Response(JSON.stringify({candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(value)}]}}]}),{status:200});
 function provider(transport:typeof fetch,extra:Partial<ConstructorParameters<typeof GoogleGoalMatchProvider>[0]>={}){
   return new GoogleGoalMatchProvider({apiKey:KEY,project:'foodlens-513112',fetch:transport,...extra});

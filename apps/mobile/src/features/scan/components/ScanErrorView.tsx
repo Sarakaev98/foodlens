@@ -20,10 +20,10 @@ export function ScanErrorView({ code, canRetry, onRetry, onScanAgain, onEditPhot
     <SafeAreaView style={styles.container}>
       <Text style={[typography.title, styles.center]}>{message.title}</Text>
       <Text style={[typography.subtitle, styles.center]}>{message.description}</Text>
-      {message.retryable && canRetry ? <Button label="Повторить" onPress={onRetry} /> : null}
-      {onEditPhotos ? <Button label="Изменить фото" variant="secondary" onPress={onEditPhotos} /> : null}
-      {isPermission ? <Button label="Открыть настройки" onPress={() => void Linking.openSettings()} /> : null}
-      <Button label="Сканировать снова" variant="secondary" onPress={onScanAgain} />
+      {message.retryable && canRetry ? <Button label="Try Again" onPress={onRetry} /> : null}
+      {onEditPhotos ? <Button label="Edit Photos" variant="secondary" onPress={onEditPhotos} /> : null}
+      {isPermission ? <Button label="Open Settings" onPress={() => void Linking.openSettings()} /> : null}
+      <Button label="Scan Again" variant="secondary" onPress={onScanAgain} />
     </SafeAreaView>
   );
 }

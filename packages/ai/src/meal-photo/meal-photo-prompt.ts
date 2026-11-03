@@ -5,7 +5,7 @@ export const MEAL_PHOTO_SYSTEM_PROMPT = [
   'List 1-6 visible components with estimated grams, kcal and macros for that portion. Guess portion size from plate and cutlery.',
   'If sauce, oil, filling or cooking method is unclear, make a typical assumption, lower that item confidence and add it to assumptions.',
   'kcal must match 4*protein+4*carbs+9*fat. total_kcal is the sum of items. kcal_min/kcal_max give a realistic range.',
-  'Write meal_name, item names and at most 2 short assumptions in Russian.',
+  'Write meal_name, item names and at most 2 short assumptions in English. Never use Russian.',
 ].join('\n');
 
 export const MEAL_PHOTO_USER_PROMPT = 'Estimate this meal.';

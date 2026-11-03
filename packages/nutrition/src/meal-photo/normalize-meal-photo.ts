@@ -141,7 +141,7 @@ function normalizeItem(item: RawMealPhotoEstimate['items'][number]): { item: Mea
 function mealName(raw: string, items: readonly MealPhotoItem[]): string {
   const name = raw.trim().slice(0, MEAL_PHOTO_LIMITS.maxNameLength);
   if (name) return name;
-  return items.length === 1 ? items[0]!.name : 'Блюдо';
+  return items.length === 1 ? items[0]!.name : 'Meal';
 }
 
 /** Диапазон модели, если он правдоподобен и содержит итог; иначе разброс по уверенности. Шаг 10 ккал. */

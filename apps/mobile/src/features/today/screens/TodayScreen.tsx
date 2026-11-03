@@ -14,9 +14,9 @@ export function TodayScreen() {
   if (targets.status === 'error') {
     return (
       <CenteredMessage
-        title="Не удалось загрузить цели"
-        description="Проверьте подключение к интернету"
-        actionLabel="Повторить"
+        title="Couldn’t Load Goals"
+        description="Check your internet connection"
+        actionLabel="Try Again"
         onAction={targets.reload}
       />
     );
@@ -25,29 +25,29 @@ export function TodayScreen() {
   const { caloriesKcal, proteinG, carbsG, fatG } = targets.targets;
   const eaten = log?.totals;
   return (
-    <FormScreen title="Сегодня">
+    <FormScreen title="Today">
       <CaloriesCard caloriesKcal={caloriesKcal} consumedKcal={eaten?.caloriesKcal} />
       <View style={styles.macros}>
-        <MacroCard label="Белки" grams={proteinG} consumedG={eaten?.proteinG} />
-        <MacroCard label="Углеводы" grams={carbsG} consumedG={eaten?.carbsG} />
-        <MacroCard label="Жиры" grams={fatG} consumedG={eaten?.fatG} />
+        <MacroCard label="Protein" grams={proteinG} consumedG={eaten?.proteinG} />
+        <MacroCard label="Carbs" grams={carbsG} consumedG={eaten?.carbsG} />
+        <MacroCard label="Fat" grams={fatG} consumedG={eaten?.fatG} />
       </View>
       {log && log.entries.length > 0 ? (
         <View style={styles.entries}>
-          <Text style={typography.subtitle}>Съедено</Text>
+          <Text style={typography.subtitle}>Eaten</Text>
           {log.entries.map((entry) => (
             <View key={entry.id} style={styles.entry}>
               <Text style={[typography.body, styles.entryName]} numberOfLines={2}>
                 {entry.name}
               </Text>
-              <Text style={typography.body}>≈{formatInteger(entry.caloriesKcal)} ккал</Text>
+              <Text style={typography.body}>≈{formatInteger(entry.caloriesKcal)} kcal</Text>
             </View>
           ))}
         </View>
       ) : null}
       <Text style={typography.caption}>
-        Это приблизительная персональная оценка на основе вашего профиля, а не медицинская рекомендация. Цели
-        пересчитываются автоматически при изменении профиля.
+        This is an approximate personal estimate based on your profile, not medical advice. Goals update
+        automatically when you change your profile.
       </Text>
     </FormScreen>
   );

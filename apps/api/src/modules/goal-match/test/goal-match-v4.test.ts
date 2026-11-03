@@ -73,7 +73,7 @@ describe('Mock Goal Match provider', () => {
     assert.ok(input.missing.includes('proteinG'));
     const output = await new MockProvider().evaluateGoalMatch(input);
     assert.equal(validateGoalMatchAiOutput(output, input).valid, true);
-    assert.ok(!JSON.stringify(output).includes('бел'));
+    assert.ok(!/protein|бел/i.test(JSON.stringify(output)));
   });
 
   it('mock не копирует v3: оценки отличаются от расчётных, неизвестный продукт → AIUnavailableError', async () => {

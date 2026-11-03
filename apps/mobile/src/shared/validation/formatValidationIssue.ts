@@ -5,21 +5,21 @@ export function formatValidationIssue(issue: ValidationIssue): string {
   const params = issue.params ?? {};
   switch (issue.code) {
     case 'required':
-      return 'Заполните поле';
+      return 'This field is required';
     case 'invalid_type':
-      return 'Некорректное значение';
+      return 'Invalid value';
     case 'not_integer':
-      return 'Введите целое число';
+      return 'Enter a whole number';
     case 'out_of_range':
-      return `Допустимо от ${params.min} до ${params.max}`;
+      return `Must be between ${params.min} and ${params.max}`;
     case 'unknown_value':
-      return 'Выберите значение из списка';
+      return 'Choose an option from the list';
     case 'too_long':
-      return `Не длиннее ${params.max} символов`;
+      return `Up to ${params.max} characters`;
     case 'too_many':
-      return `Не больше ${params.max} значений`;
+      return `Up to ${params.max} items`;
     case 'exclusive_value':
-      return 'Этот вариант нельзя сочетать с другими';
+      return 'This option can’t be combined with others';
   }
 }
 

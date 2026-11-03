@@ -13,7 +13,7 @@ export function MealPlanScreen() {
 
   if (state.status === 'loading' || nutrition.status === 'loading') return <CenteredMessage loading />;
   if (nutrition.status === 'error') {
-    return <CenteredMessage title="Не удалось загрузить цели" description="Проверьте подключение к интернету" actionLabel="Повторить" onAction={nutrition.reload} />;
+    return <CenteredMessage title="Couldn’t Load Goals" description="Check your internet connection" actionLabel="Try Again" onAction={nutrition.reload} />;
   }
 
   const result = state.status === 'empty' ? null : state.result;
@@ -23,9 +23,9 @@ export function MealPlanScreen() {
 
   return (
     <FormScreen
-      title="Ваш план питания"
+      title="Your Meal Plan"
       safeBottom={false}
-      footer={<Button label={day ? 'Обновить план' : 'Составить план'} onPress={generate} loading={generating} />}
+      footer={<Button label={day ? 'Refresh Plan' : 'Create Plan'} onPress={generate} loading={generating} />}
     >
       <PlanSummaryCard targets={nutrition.targets} totals={day?.totals ?? null} />
       {state.status === 'error' ? <Text style={[typography.body, styles.error]}>{MEAL_PLAN_FAILURES[state.failure]}</Text> : null}
@@ -39,11 +39,11 @@ export function MealPlanScreen() {
           {meals.map((meal) => (
             <MealCard key={meal.id} meal={meal} />
           ))}
-          {result?.withinTargets === false ? <Text style={typography.caption}>Рацион немного отличается от вашей цели. Можно обновить план.</Text> : null}
-          <Text style={typography.caption}>Это общая рекомендация на основе вашего профиля, а не медицинское назначение.</Text>
+          {result?.withinTargets === false ? <Text style={typography.caption}>This plan is slightly off your goal. You can refresh it.</Text> : null}
+          <Text style={typography.caption}>This is general guidance based on your profile, not medical advice.</Text>
         </View>
       ) : (
-        <Text style={[typography.subtitle, styles.center]}>Составим рацион на день с учётом цели, калорий, предпочтений и аллергенов из вашего профиля.</Text>
+        <Text style={[typography.subtitle, styles.center]}>We’ll build a one-day meal plan around the goal, calories, preferences and allergens in your profile.</Text>
       )}
     </FormScreen>
   );

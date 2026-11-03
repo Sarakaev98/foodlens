@@ -12,8 +12,8 @@ import type { NutritionTargetsService } from '../../nutrition-targets/nutrition-
 import { MultiSourceProductLookup } from '../../product-lookup/multi-source-product-lookup';
 import type { ProductLookupResult } from '../../product-lookup/product-lookup.provider';
 Logger.overrideLogger(false);
-const product=(names:string[]):Product=>demoProduct({id:'generic-ingredients',name:'Обычный пищевой продукт',portion:100,values:[350,6,7.5,65,12,4,2,3],sugarSource:'added',processing:'ultra_processed',productForm:'food',ingredients:names});
-const words:Record<string,string>={'томаты':'tomatoes','сахар':'sugar','соль':'salt','уксус':'vinegar',domates:'tomatoes','şeker':'sugar',tuz:'salt',sirke:'vinegar','загуститель':'thickener','гуаровая камедь':'guar gum','лимонная кислота':'citric acid','мука':'flour','растительное масло':'vegetable oil'};
+const product=(names:string[]):Product=>demoProduct({id:'generic-ingredients',name:'Generic food product',portion:100,values:[350,6,7.5,65,12,4,2,3],sugarSource:'added',processing:'ultra_processed',productForm:'food',ingredients:names});
+const words:Record<string,string>={'томаты':'tomatoes','сахар':'sugar','соль':'salt','уксус':'vinegar',domates:'tomatoes','şeker':'sugar',tuz:'salt',sirke:'vinegar','загуститель':'thickener','гуаровая камедь':'guar gum','лимонная кислота':'citric acid','мука':'flour','растительное масло':'vegetable oil','Обычный пищевой продукт':'Regular food product','Сгущённое молоко Рогачёв':'Rogachev Condensed Milk','лимонная кислота ':'citric acid','краситель':'colouring'};
 function translator(){const calls:readonly string[][]=[];return {calls,translateIngredients:async(texts:readonly string[])=>{(calls as string[][]).push([...texts]);return texts.map(text=>{assert.ok(words[text],text);return words[text]!;});}};}
 describe('English ingredients are a separate presentation projection',()=>{
  for(const text of ['Tomatoes, sugar, salt, vinegar','guar gum (E412), sugar 3%, citric acid','maltodextrin','natural flavourings','vitamin B12 (E300)','xanthan gum, monosodium glutamate (E621)','Grade a pasteurized skimmed milk, live active yogurt cultures (l. bulgaricus, s. thermophilus)'])it(`English is unchanged without AI: ${text}`,async()=>{
@@ -62,6 +62,24 @@ describe('English ingredients are a separate presentation projection',()=>{
  it('deduplicates identical fragments while retaining all occurrences',()=>{
   const plan=ingredientTranslationPlan([{name:'сахар (сахар), E-412; 2,5%',percent:null}]);
   assert.deepEqual(plan.texts,['сахар']);assert.equal(plan.assemble(['sugar'])[0]!.name,'sugar (sugar), E-412; 2,5%');
+ });
+ it('Cyrillic product name and additive names are translated in the same single batch; originals untouched',async()=>{
+  const ai=translator(),base=product(['сахар']);
+  const p:Product={...base,name:observed('Сгущённое молоко Рогачёв'),additives:observed([{code:'E330',name:'лимонная кислота '},{code:null,name:'краситель'},{code:'E412',name:'guar gum'}])};
+  const snapshot=structuredClone(p),r=await new IngredientsDisplayService(ai).decorate(p);
+  assert.equal(ai.calls.length,1);assert.deepEqual(ai.calls[0],['сахар','Сгущённое молоко Рогачёв','лимонная кислота ','краситель']);
+  assert.equal(r.nameDisplay,'Rogachev Condensed Milk');
+  assert.deepEqual(r.additivesDisplay,[{code:'E330',name:'citric acid'},{code:null,name:'colouring'},{code:'E412',name:'guar gum'}]);
+  assert.equal(r.ingredientsDisplay!.items[0]!.name,'sugar');assert.deepEqual(p,snapshot);assert.equal(r.name,p.name);assert.equal(r.additives,p.additives);
+ });
+ it('Latin product names need no translation; unsafe name translation keeps the original and hides only foreign additive names',async()=>{
+  const ai=translator(),r=await new IngredientsDisplayService(ai).decorate(product(['sugar']));
+  assert.equal(ai.calls.length,0);assert.equal(r.nameDisplay,undefined);assert.equal(r.additivesDisplay,undefined);
+  const p:Product={...product([]),ingredients:NOT_DETECTED,name:observed('Чипсы'),additives:observed([{code:'E621',name:'глутамат'},{code:null,name:'краситель'}])};
+  const bad=await new IngredientsDisplayService({translateIngredients:async()=>['Чипсы','глутамат','краситель']}).decorate(p);
+  assert.equal(bad.nameDisplay,undefined);assert.deepEqual(bad.additivesDisplay,[{code:'E621',name:null},{code:null,name:'краситель'}]);
+  const failed=await new IngredientsDisplayService({translateIngredients:async()=>{throw Error('unavailable');}}).decorate(p);
+  assert.equal(failed.nameDisplay,undefined);assert.equal(failed.additivesDisplay,undefined);assert.equal(failed.ingredientsDisplay,undefined);
  });
  it('missing ingredients needs neither AI nor a display placeholder',async()=>{
   const ai=translator(),p={...product([]),ingredients:NOT_DETECTED};assert.equal(await new IngredientsDisplayService(ai).decorate(p),p);assert.equal(ai.calls.length,0);

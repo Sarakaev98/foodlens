@@ -14,7 +14,7 @@ interface GoalFieldProps {
 
 export function GoalField({ draft, onChange, issues }: GoalFieldProps) {
   return (
-    <FormField label="Цель" error={findIssueMessage(issues, 'goal')}>
+    <FormField label="Goal" error={findIssueMessage(issues, 'goal')}>
       <ChoiceList options={OPTIONS} value={draft.goal} onChange={(goal) => onChange({ goal })} />
     </FormField>
   );

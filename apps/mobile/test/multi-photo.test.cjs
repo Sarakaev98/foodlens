@@ -84,7 +84,7 @@ describe('useProductScan with several photos', () => {
       react,
       'expo-image-picker': {requestMediaLibraryPermissionsAsync: async () => ({granted: false})},
       '../scanErrors': {toScanFailure: () => ({code: 'backend_unavailable'}),
-        SCAN_FAILURE_MESSAGES: {capture_failed: {title: 'Не удалось сделать снимок'}, library_permission_denied: {title: 'Нет доступа к фото'}}},
+        SCAN_FAILURE_MESSAGES: {capture_failed: {title: 'Couldn’t Take Photo'}, library_permission_denied: {title: 'No Photo Access'}}},
       '../services/scanApi': {scanApi: {
         analyze: async (p, o) => { api.single.push({p, o}); if (apiFails) throw new Error('x'); return ok; },
         analyzeMany: async (s, o) => { api.many.push({s, o}); if (apiFails) throw new Error('x'); return ok; },
@@ -162,11 +162,11 @@ describe('useProductScan with several photos', () => {
     t.run().onCaptureFailed();
     let {state} = t.run();
     assert.equal(state.status, 'preview'); assert.equal(state.photos.length, 2);
-    assert.equal(state.notice, 'Не удалось сделать снимок');
+    assert.equal(state.notice, 'Couldn’t Take Photo');
     t.run().addPhoto('ingredients');
     t.run().pickFromGallery(); await t.flush();
     ({state} = t.run());
-    assert.equal(state.status, 'preview'); assert.equal(state.notice, 'Нет доступа к фото');
+    assert.equal(state.status, 'preview'); assert.equal(state.notice, 'No Photo Access');
   });
   it('a failed first capture still opens the error screen', () => {
     const t = setup();
@@ -250,59 +250,59 @@ describe('PhotoPreview', () => {
     const press = (tree, label) => all(tree, n => n.props?.accessibilityLabel === label)[0].props.onPress();
     return {draw, press, events};
   }
-  it('one photo: Анализировать and Добавить фото, label, retake, no remove', () => {
+  it('one photo: Analyze and Add Photo, label, retake, no remove', () => {
     const {draw} = preview({photos: [slot('a', 'product')]});
     const tree = draw(), content = text(tree);
-    for (const label of ['Анализировать', 'Добавить фото', 'Фото продукта', 'Переснять']) assert.ok(content.includes(label), label);
-    assert.equal(all(tree, n => n.props?.accessibilityLabel === 'Убрать: Фото продукта').length, 0);
+    for (const label of ['Analyze', 'Add Photo', 'Product photo', 'Retake']) assert.ok(content.includes(label), label);
+    assert.equal(all(tree, n => n.props?.accessibilityLabel === 'Remove: Product photo').length, 0);
   });
-  it('Добавить фото asks what to shoot and offers only the two options', () => {
+  it('Add Photo asks what to shoot and offers only the two options', () => {
     const p = preview({photos: [slot('a', 'product')]});
-    p.press(p.draw(), 'Добавить фото');
+    p.press(p.draw(), 'Add Photo');
     const tree = p.draw();
-    assert.ok(text(tree).includes('Что сфотографировать дополнительно?'));
-    assert.equal(text(tree).includes('Анализировать'), false);
-    p.press(tree, 'Таблицу питания');
+    assert.ok(text(tree).includes('What else would you like to photograph?'));
+    assert.equal(text(tree).includes('Analyze'), false);
+    p.press(tree, 'Nutrition Label');
     assert.deepEqual(p.events, [['add', 'nutrition']]);
-    assert.ok(text(p.draw()).includes('Анализировать'), 'the question closes');
+    assert.ok(text(p.draw()).includes('Analyze'), 'the question closes');
   });
-  it('the question can be cancelled, and Состав maps to the ingredients role', () => {
+  it('the question can be cancelled, and Ingredients maps to the ingredients role', () => {
     const p = preview({photos: [slot('a', 'product')]});
-    p.press(p.draw(), 'Добавить фото');
-    p.press(p.draw(), 'Отмена');
-    assert.ok(text(p.draw()).includes('Анализировать'));
-    p.press(p.draw(), 'Добавить фото');
-    p.press(p.draw(), 'Состав');
+    p.press(p.draw(), 'Add Photo');
+    p.press(p.draw(), 'Cancel');
+    assert.ok(text(p.draw()).includes('Analyze'));
+    p.press(p.draw(), 'Add Photo');
+    p.press(p.draw(), 'Ingredients');
     assert.deepEqual(p.events, [['add', 'ingredients']]);
   });
   it('each thumbnail has a label and accessible retake and remove', () => {
     const p = preview({photos: [slot('a', 'product'), slot('b', 'nutrition'), slot('c', 'ingredients')]});
     const tree = p.draw(), content = text(tree);
-    for (const label of ['Фото продукта', 'Таблица питания', 'Состав']) {
+    for (const label of ['Product photo', 'Nutrition label', 'Ingredients']) {
       assert.ok(content.includes(label));
-      for (const action of ['Показать', 'Переснять', 'Убрать'])
+      for (const action of ['Show', 'Retake', 'Remove'])
         assert.equal(all(tree, n => n.props?.accessibilityLabel === `${action}: ${label}`).length, 1, `${action}: ${label}`);
     }
-    p.press(tree, 'Убрать: Таблица питания');
-    p.press(tree, 'Переснять: Состав');
+    p.press(tree, 'Remove: Nutrition label');
+    p.press(tree, 'Retake: Ingredients');
     assert.deepEqual(p.events, [['remove', 1], ['retake', 2]]);
   });
-  it('three photos: no Добавить фото, the limit is stated', () => {
+  it('three photos: no Add Photo, the limit is stated', () => {
     const {draw} = preview({photos: [slot('a', 'product'), slot('b', 'nutrition'), slot('c', 'ingredients')]});
     const content = text(draw());
-    assert.equal(content.includes('Добавить фото'), false);
-    assert.match(content, /Максимум\s+3\s+фото/);
+    assert.equal(content.includes('Add Photo'), false);
+    assert.match(content, /Up to\s+3\s+photos/);
   });
   it('tapping a thumbnail shows that photo large, and a removed selection falls back to the first', () => {
     const photos = [slot('a', 'product'), slot('b', 'nutrition')];
     const p = preview({photos});
-    p.press(p.draw(), 'Показать: Таблица питания');
+    p.press(p.draw(), 'Show: Nutrition label');
     const large = all(p.draw(), n => n.type === 'Image' && n.props.resizeMode === 'contain')[0];
     assert.equal(large.props.source.uri, 'file:///b.jpg');
-    assert.equal(large.props.accessibilityLabel, 'Снимок: Таблица питания');
+    assert.equal(large.props.accessibilityLabel, 'Photo: Nutrition label');
   });
   it('shows the notice', () => {
-    assert.ok(text(preview({photos: [slot('a', 'product')], notice: 'Не удалось сделать снимок'}).draw()).includes('Не удалось сделать снимок'));
+    assert.ok(text(preview({photos: [slot('a', 'product')], notice: 'Couldn’t Take Photo'}).draw()).includes('Couldn’t Take Photo'));
   });
 });
 
@@ -311,12 +311,12 @@ describe('ScanErrorView photo editing', () => {
     'react/jsx-runtime': jsxRuntime, 'react-native': {...rn, Linking: {}},
     'react-native-safe-area-context': {SafeAreaView: 'SafeAreaView'},
     '@/shared/ui': {...theme, typography: {title: {}, subtitle: {}}, Button: ({label}) => jsx('Text', {children: label})},
-    '../scanErrors': {SCAN_FAILURE_MESSAGES: {image_rejected: {title: 'Фото не подошло', description: 'x', retryable: false}}},
+    '../scanErrors': {SCAN_FAILURE_MESSAGES: {image_rejected: {title: 'Photo Can’t Be Used', description: 'x', retryable: false}}},
   });
   const draw = props => text(render(jsx(ScanErrorView, {code: 'image_rejected', canRetry: true, onRetry: () => {}, onScanAgain: () => {}, ...props})));
-  it('offers Изменить фото only when there are photos to edit', () => {
-    assert.ok(draw({onEditPhotos: () => {}}).includes('Изменить фото'));
-    assert.equal(draw({}).includes('Изменить фото'), false);
+  it('offers Edit Photos only when there are photos to edit', () => {
+    assert.ok(draw({onEditPhotos: () => {}}).includes('Edit Photos'));
+    assert.equal(draw({}).includes('Edit Photos'), false);
   });
 });
 
@@ -324,9 +324,9 @@ describe('text from the package', () => {
   const profile = load('src/features/profile/profile.labels.ts');
   const core = require('../../../packages/core/dist/index.js');
   const labels = load('src/features/scan/productLabels.ts', {'@/features/profile': profile, '@foodlens/core': core});
-  it('detects non-Russian text and does not flag Russian with digits or E-numbers', () => {
-    for (const foreign of ['سكر', 'wheat flour', 'lecithin', '大豆', 'Zucker']) assert.equal(labels.isForeignText(foreign), true, foreign);
-    for (const russian of ['сахар', 'Пшеничная мука 45%', 'лецитин (E322)', '']) assert.equal(labels.isForeignText(russian), false, russian);
+  it('detects non-Latin text and does not flag Latin text with digits or E-numbers', () => {
+    for (const foreign of ['سكر', 'сахар', 'Пшеничная мука 45%', 'лецитин (E322)', '大豆']) assert.equal(labels.isForeignText(foreign), true, foreign);
+    for (const latin of ['wheat flour', 'Wheat flour 45%', 'lecithin (E322)', 'Zucker', '']) assert.equal(labels.isForeignText(latin), false, latin);
   });
   it('attribution appears only when the database supplied something', () => {
     const {NOT_DETECTED, observed, fromOpenFoodFacts} = core;
@@ -342,7 +342,8 @@ describe('text from the package', () => {
   });
   it('additives: a foreign name next to an E-number is dropped, nothing is invented', () => {
     assert.equal(labels.additiveLabel({code: 'E322', name: 'ليسيثين'}), 'E322');
-    assert.equal(labels.additiveLabel({code: 'E322', name: 'лецитин'}), 'E322 · лецитин');
+    assert.equal(labels.additiveLabel({code: 'E322', name: 'лецитин'}), 'E322');
+    assert.equal(labels.additiveLabel({code: 'E322', name: 'lecithin'}), 'E322 · lecithin');
     assert.equal(labels.additiveLabel({code: null, name: 'ليسيثين'}), 'ليسيثين');
     assert.equal(labels.additiveLabel({code: 'E330', name: null}), 'E330');
   });

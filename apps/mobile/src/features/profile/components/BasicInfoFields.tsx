@@ -19,39 +19,39 @@ export function BasicInfoFields({ draft, onChange, issues }: BasicInfoFieldsProp
 
   return (
     <>
-      <FormField label="Возраст" error={ageError}>
+      <FormField label="Age" error={ageError}>
         <NumberInput
-          accessibilityLabel="Возраст"
+          accessibilityLabel="Age"
           value={draft.age}
           onChange={(age) => onChange({ age })}
-          unit="лет"
+          unit="years"
           placeholder={`${PROFILE_LIMITS.age.min}–${PROFILE_LIMITS.age.max}`}
           invalid={ageError !== undefined}
         />
       </FormField>
-      <FormField label="Пол" hint="Нужен для расчёта нормы калорий" error={findIssueMessage(issues, 'sex')}>
+      <FormField label="Sex" hint="Used to calculate your calorie target" error={findIssueMessage(issues, 'sex')}>
         <ChipGroup
           options={SEX_OPTIONS}
           selected={draft.sex ? [draft.sex] : []}
           onToggle={(sex) => onChange({ sex })}
         />
       </FormField>
-      <FormField label="Рост" error={heightError}>
+      <FormField label="Height" error={heightError}>
         <NumberInput
-          accessibilityLabel="Рост"
+          accessibilityLabel="Height"
           value={draft.heightCm}
           onChange={(heightCm) => onChange({ heightCm })}
-          unit="см"
+          unit="cm"
           placeholder="170"
           invalid={heightError !== undefined}
         />
       </FormField>
-      <FormField label="Вес" error={weightError}>
+      <FormField label="Weight" error={weightError}>
         <NumberInput
-          accessibilityLabel="Вес"
+          accessibilityLabel="Weight"
           value={draft.weightKg}
           onChange={(weightKg) => onChange({ weightKg })}
-          unit="кг"
+          unit="kg"
           placeholder="70"
           invalid={weightError !== undefined}
         />

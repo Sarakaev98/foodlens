@@ -63,17 +63,17 @@ function hooks() {
 
 const formatNumber = load('src/features/today/formatNumber.ts');
 const ESTIMATE = {
-  mealName: 'Курица с рисом и овощами',
+  mealName: 'Chicken with Rice and Vegetables',
   items: [
-    {name: 'Курица', estimatedGrams: 150, caloriesKcal: 248, proteinG: 46, carbsG: 0, fatG: 6, confidence: 'medium'},
-    {name: 'Рис', estimatedGrams: 180, caloriesKcal: 234, proteinG: 5, carbsG: 51, fatG: 1, confidence: 'medium'},
-    {name: 'Овощи', estimatedGrams: 100, caloriesKcal: 35, proteinG: 2, carbsG: 7, fatG: 0, confidence: 'high'},
-    {name: 'Соус', estimatedGrams: 30, caloriesKcal: 90, proteinG: 0, carbsG: 4, fatG: 8, confidence: 'low'},
+    {name: 'Chicken', estimatedGrams: 150, caloriesKcal: 248, proteinG: 46, carbsG: 0, fatG: 6, confidence: 'medium'},
+    {name: 'Rice', estimatedGrams: 180, caloriesKcal: 234, proteinG: 5, carbsG: 51, fatG: 1, confidence: 'medium'},
+    {name: 'Vegetables', estimatedGrams: 100, caloriesKcal: 35, proteinG: 2, carbsG: 7, fatG: 0, confidence: 'high'},
+    {name: 'Sauce', estimatedGrams: 30, caloriesKcal: 90, proteinG: 0, carbsG: 4, fatG: 8, confidence: 'low'},
   ],
   total: {caloriesKcal: 607, proteinG: 53, carbsG: 62, fatG: 15},
   calorieRange: {min: 500, max: 720},
   confidence: 'medium',
-  assumptions: ['Возможно, использовано масло'],
+  assumptions: ['Oil may have been used'],
 };
 const PHOTO = {uri: 'file:///meal.jpg', width: 1600, height: 1200};
 
@@ -147,7 +147,7 @@ describe('scanErrors: meal photo', () => {
     assert.equal(toScanFailure(new ApiError(504, {code: 'AI_TIMEOUT'})).code, 'ai_timeout');
     assert.equal(toScanFailure(new ApiError(0, null, true)).code, 'request_timeout');
     assert.equal(toScanFailure(new ApiError(0, null)).code, 'network_unavailable');
-    assert.equal(SCAN_FAILURE_MESSAGES.meal_not_recognized.title, 'Не удалось распознать еду');
+    assert.equal(SCAN_FAILURE_MESSAGES.meal_not_recognized.title, 'Couldn’t Recognize the Meal');
     assert.doesNotMatch(SCAN_FAILURE_MESSAGES.meal_not_recognized.description, /AI|Gemini|food/);
   });
 });
@@ -158,7 +158,7 @@ describe('AnalyzingView: meal stages', () => {
   });
 
   it('3. loading texts for the meal', () => {
-    assert.deepEqual([...ANALYZING_STAGES.meal], ['Распознаём блюдо', 'Оцениваем порции', 'Считаем калории']);
+    assert.deepEqual([...ANALYZING_STAGES.meal], ['Recognizing meal', 'Estimating portions', 'Counting calories']);
   });
 });
 
@@ -168,13 +168,13 @@ describe('PhotoPreview: meal photo', () => {
     '../services/scanPhotos': load('src/features/scan/services/scanPhotos.ts'),
   });
 
-  it('2. one photo labelled as a meal, «Анализировать», no extra photos', () => {
-    const tree = render(jsx(PhotoPreview, {photos: [{photo: PHOTO, role: 'product'}], allowExtraPhotos: false, photoLabel: 'Фото блюда',
+  it('2. one photo labelled as a meal, «Analyze», no extra photos', () => {
+    const tree = render(jsx(PhotoPreview, {photos: [{photo: PHOTO, role: 'product'}], allowExtraPhotos: false, photoLabel: 'Meal photo',
       onAnalyze: () => {}, onAddPhoto: () => {}, onRetake: () => {}, onRemove: () => {}}));
-    assert.ok(text(tree).includes('Фото блюда'));
-    assert.equal(text(tree).includes('Фото продукта'), false);
+    assert.ok(text(tree).includes('Meal photo'));
+    assert.equal(text(tree).includes('Product photo'), false);
     const buttons = all(tree, n => n.type === 'Button').map(n => n.props.label);
-    assert.deepEqual(buttons, ['Анализировать']);
+    assert.deepEqual(buttons, ['Analyze']);
   });
 });
 
@@ -194,39 +194,39 @@ describe('MealResultScreen', () => {
   it('4. calories and macros are approximate', () => {
     const tree = mount(ESTIMATE, async () => {}).view();
     const content = text(tree);
-    assert.ok(content.includes('≈607 ккал'));
-    assert.ok(content.includes('Белки≈53 г'));
-    assert.ok(content.includes('Жиры≈15 г'));
-    assert.ok(content.includes('Углеводы≈62 г'));
-    assert.ok(content.includes('≈ 500–720 ккал'), 'medium confidence shows the range');
-    assert.ok(content.includes('Курица с рисом и овощами'));
+    assert.ok(content.includes('≈607 kcal'));
+    assert.ok(content.includes('Protein≈53 g'));
+    assert.ok(content.includes('Fat≈15 g'));
+    assert.ok(content.includes('Carbs≈62 g'));
+    assert.ok(content.includes('≈ 500–720 kcal'), 'medium confidence shows the range');
+    assert.ok(content.includes('Chicken with Rice and Vegetables'));
   });
 
   it('confident estimate shows one number, no range', () => {
     const {calorieRangeText} = mount(ESTIMATE, async () => {});
     assert.equal(calorieRangeText({...ESTIMATE, confidence: 'high'}), null);
-    assert.equal(calorieRangeText(ESTIMATE), '≈ 500–720 ккал');
+    assert.equal(calorieRangeText(ESTIMATE), '≈ 500–720 kcal');
   });
 
   it('5. the recognized items with grams', () => {
     const content = text(mount(ESTIMATE, async () => {}).view());
-    assert.ok(content.includes('Что распознано'));
-    for (const [name, grams] of [['Курица', 150], ['Рис', 180], ['Овощи', 100], ['Соус', 30]]) assert.ok(content.includes(`${name}≈${grams} г`), name);
+    assert.ok(content.includes('What We Found'));
+    for (const [name, grams] of [['Chicken', 150], ['Rice', 180], ['Vegetables', 100], ['Sauce', 30]]) assert.ok(content.includes(`${name}≈${grams} g`), name);
   });
 
   it('6. the approximation disclaimer is shown', () => {
     const {view, MEAL_ESTIMATE_DISCLAIMER} = mount(ESTIMATE, async () => {});
     const content = text(view());
-    assert.ok(content.includes('Примерная оценка по фотографии'));
+    assert.ok(content.includes('Approximate estimate from photo'));
     assert.ok(content.includes(MEAL_ESTIMATE_DISCLAIMER));
-    assert.match(MEAL_ESTIMATE_DISCLAIMER, /зависят от порции и способа приготовления/);
+    assert.match(MEAL_ESTIMATE_DISCLAIMER, /depend on portion size and cooking method/);
   });
 
-  it('7, 10. «Добавить в Сегодня» adds once; a double tap does not send a duplicate', async () => {
+  it('7, 10. «Add to Today» adds once; a double tap does not send a duplicate', async () => {
     const calls = [];
     let resolve;
     const {view} = mount(ESTIMATE, (id, estimate) => { calls.push({id, estimate}); return new Promise(r => { resolve = r; }); });
-    button(view(), 'Добавить в Сегодня').props.onPress();
+    button(view(), 'Add to Today').props.onPress();
     const adding = all(view(), n => n.type === 'Button' && n.props.loading === true);
     assert.equal(adding.length, 1, 'loading while adding');
     adding[0].props.onPress();
@@ -234,8 +234,8 @@ describe('MealResultScreen', () => {
     resolve();
     await flush();
     const tree = view();
-    assert.ok(text(tree).includes('✓ Добавлено в Сегодня'));
-    assert.equal(button(tree, 'Добавить в Сегодня'), undefined);
+    assert.ok(text(tree).includes('✓ Added to Today'));
+    assert.equal(button(tree, 'Add to Today'), undefined);
     assert.deepEqual(calls, [{id: 'meal_fixed', estimate: ESTIMATE}]);
   });
 
@@ -243,13 +243,13 @@ describe('MealResultScreen', () => {
     const ids = [];
     let fail = true;
     const {view} = mount(ESTIMATE, async id => { ids.push(id); if (fail) throw new Error('offline'); });
-    button(view(), 'Добавить в Сегодня').props.onPress();
+    button(view(), 'Add to Today').props.onPress();
     await flush();
-    assert.ok(text(view()).includes('Не удалось добавить'));
+    assert.ok(text(view()).includes('Couldn’t add'));
     fail = false;
-    button(view(), 'Повторить добавление').props.onPress();
+    button(view(), 'Try Adding Again').props.onPress();
     await flush();
-    assert.ok(text(view()).includes('✓ Добавлено в Сегодня'));
+    assert.ok(text(view()).includes('✓ Added to Today'));
     assert.deepEqual(ids, ['meal_fixed', 'meal_fixed']);
   });
 });
@@ -274,7 +274,7 @@ describe('Today: adding a meal estimate', () => {
     const unsubscribe = store.todayLogStore.subscribe(log => seen.push(log.totals.caloriesKcal));
     await addMealEstimateToToday('meal_1', ESTIMATE);
     unsubscribe();
-    assert.deepEqual(JSON.parse(JSON.stringify(posted)), [{id: 'meal_1', date: '2026-11-03', name: 'Курица с рисом и овощами', source: 'meal_photo_estimate',
+    assert.deepEqual(JSON.parse(JSON.stringify(posted)), [{id: 'meal_1', date: '2026-11-03', name: 'Chicken with Rice and Vegetables', source: 'meal_photo_estimate',
       caloriesKcal: 607, proteinG: 53, carbsG: 62, fatG: 15}]);
     assert.deepEqual(seen, [607]);
     assert.equal(store.todayLogStore.get().entries.length, 1);
@@ -285,11 +285,11 @@ describe('Today: adding a meal estimate', () => {
     const {CaloriesCard} = load('src/features/today/components/CaloriesCard.tsx', today);
     const {MacroCard} = load('src/features/today/components/MacroCard.tsx', today);
     const calories = render(jsx(CaloriesCard, {caloriesKcal: 2490, consumedKcal: 607}));
-    assert.ok(text(calories).includes('Съедено сегодня'));
-    assert.ok(text(calories).includes(`607из ${formatNumber.formatInteger(2490)} ккал`));
+    assert.ok(text(calories).includes('Eaten Today'));
+    assert.ok(text(calories).includes(`607of ${formatNumber.formatInteger(2490)} kcal`));
     assert.equal(all(calories, n => n.props?.accessibilityRole === 'progressbar')[0].props.accessibilityValue.now, 607);
-    assert.ok(text(render(jsx(MacroCard, {label: 'Белки', grams: 150, consumedG: 53}))).includes('53 / 150 г'));
-    assert.ok(text(render(jsx(CaloriesCard, {caloriesKcal: 2490}))).includes('Дневная цель'), 'without a log only the target');
+    assert.ok(text(render(jsx(MacroCard, {label: 'Protein', grams: 150, consumedG: 53}))).includes('53 / 150 g'));
+    assert.ok(text(render(jsx(CaloriesCard, {caloriesKcal: 2490}))).includes('Daily Goal'), 'without a log only the target');
   });
 
   it('local date is the phone day in YYYY-MM-DD', () => {

@@ -24,9 +24,9 @@ async function rejectsWith(promise: Promise<unknown>, code: string, status: numb
 describe('MealPhotoService', () => {
   it('фото → оценка: итог равен сумме компонентов, диапазон содержит итог', async () => {
     const { estimate } = await new MealPhotoService(new MockProvider()).analyze(photo);
-    assert.equal(estimate.mealName, 'Курица с рисом и овощами');
+    assert.equal(estimate.mealName, 'Chicken with Rice and Vegetables');
     assert.deepEqual(estimate.items.map((item) => [item.name, item.estimatedGrams]), [
-      ['Куриная грудка на гриле', 150], ['Рис отварной', 180], ['Овощи', 100], ['Соус', 30],
+      ['Grilled chicken breast', 150], ['Boiled rice', 180], ['Vegetables', 100], ['Sauce', 30],
     ]);
     assert.deepEqual(estimate.total, { caloriesKcal: 607, proteinG: 53, carbsG: 62, fatG: 15 });
     assert.ok(estimate.calorieRange.min <= 607 && 607 <= estimate.calorieRange.max);

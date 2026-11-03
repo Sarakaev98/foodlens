@@ -31,7 +31,7 @@ export function PhotoPreview({ photos, barcode, notice, allowExtraPhotos = true,
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Image source={{ uri: current.photo.uri }} style={styles.image} resizeMode="contain" accessibilityLabel={`Снимок: ${photoLabel ?? SCAN_PHOTO_LABELS[current.role]}`} />
+      <Image source={{ uri: current.photo.uri }} style={styles.image} resizeMode="contain" accessibilityLabel={`Photo: ${photoLabel ?? SCAN_PHOTO_LABELS[current.role]}`} />
       <View style={styles.strip}>
         {photos.map((slot, i) => {
           const label = photoLabel ?? SCAN_PHOTO_LABELS[slot.role];
@@ -39,7 +39,7 @@ export function PhotoPreview({ photos, barcode, notice, allowExtraPhotos = true,
             <View key={slot.photo.uri} style={styles.slot}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Показать: ${label}`}
+                accessibilityLabel={`Show: ${label}`}
                 accessibilityState={{ selected: i === index }}
                 onPress={() => setSelected(i)}
               >
@@ -48,18 +48,18 @@ export function PhotoPreview({ photos, barcode, notice, allowExtraPhotos = true,
               <Text style={styles.label} numberOfLines={2}>
                 {label}
               </Text>
-              <SlotAction text="Переснять" accessibilityLabel={`Переснять: ${label}`} onPress={() => onRetake(i)} />
-              {photos.length > 1 ? <SlotAction text="Убрать" accessibilityLabel={`Убрать: ${label}`} onPress={() => onRemove(i)} /> : null}
+              <SlotAction text="Retake" accessibilityLabel={`Retake: ${label}`} onPress={() => onRetake(i)} />
+              {photos.length > 1 ? <SlotAction text="Remove" accessibilityLabel={`Remove: ${label}`} onPress={() => onRemove(i)} /> : null}
             </View>
           );
         })}
       </View>
       <View style={styles.actions}>
-        {barcode ? <Text style={[typography.caption, styles.center]}>Штрихкод: {barcode}</Text> : null}
+        {barcode ? <Text style={[typography.caption, styles.center]}>Barcode: {barcode}</Text> : null}
         {notice ? <Text style={[typography.caption, styles.center]}>{notice}</Text> : null}
         {choosing ? (
           <>
-            <Text style={[typography.subtitle, styles.center]}>Что сфотографировать дополнительно?</Text>
+            <Text style={[typography.subtitle, styles.center]}>What else would you like to photograph?</Text>
             {EXTRA_PHOTO_OPTIONS.map((option) => (
               <Button
                 key={option.role}
@@ -70,15 +70,15 @@ export function PhotoPreview({ photos, barcode, notice, allowExtraPhotos = true,
                 }}
               />
             ))}
-            <Button label="Отмена" variant="secondary" onPress={() => setChoosing(false)} />
+            <Button label="Cancel" variant="secondary" onPress={() => setChoosing(false)} />
           </>
         ) : (
           <>
-            <Button label="Анализировать" onPress={onAnalyze} />
+            <Button label="Analyze" onPress={onAnalyze} />
             {!allowExtraPhotos ? null : photos.length < MAX_SCAN_PHOTOS ? (
-              <Button label="Добавить фото" variant="secondary" onPress={() => setChoosing(true)} />
+              <Button label="Add Photo" variant="secondary" onPress={() => setChoosing(true)} />
             ) : (
-              <Text style={[typography.caption, styles.center]}>Максимум {MAX_SCAN_PHOTOS} фото</Text>
+              <Text style={[typography.caption, styles.center]}>Up to {MAX_SCAN_PHOTOS} photos</Text>
             )}
           </>
         )}

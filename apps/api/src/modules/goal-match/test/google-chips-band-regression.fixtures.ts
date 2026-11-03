@@ -23,7 +23,7 @@ export const CHIPS_PRE_PROMPT_V2_RESPONSES: readonly GoalMatchAiOutput[] = [
         "facts": [
           "semantics.processing.value"
         ],
-        "text": "Продукт является ультрапереработанным"
+        "text": "The product is ultra-processed"
       },
       {
         "code": "high_salt",
@@ -33,7 +33,7 @@ export const CHIPS_PRE_PROMPT_V2_RESPONSES: readonly GoalMatchAiOutput[] = [
           "product.per100.saltG",
           "facts.levels.salt"
         ],
-        "text": "Умеренное или повышенное содержание соли"
+        "text": "Moderate to high salt content"
       },
       {
         "code": "fits_portion",
@@ -42,10 +42,10 @@ export const CHIPS_PRE_PROMPT_V2_RESPONSES: readonly GoalMatchAiOutput[] = [
         "facts": [
           "facts.share.dailyKcalPct"
         ],
-        "text": "Порция составляет 8% от суточных калорий"
+        "text": "A serving is 8% of daily calories"
       }
     ],
-    "summary": "Ультрапереработанный продукт с высоким содержанием жиров и соли.",
+    "summary": "An ultra-processed product high in fat and salt.",
     "warnings": []
   },
   {
@@ -69,7 +69,7 @@ export const CHIPS_PRE_PROMPT_V2_RESPONSES: readonly GoalMatchAiOutput[] = [
         "facts": [
           "semantics.processing.value"
         ],
-        "text": "Продукт ультрапереработан"
+        "text": "Ultra-processed product"
       },
       {
         "code": "high_salt",
@@ -79,7 +79,7 @@ export const CHIPS_PRE_PROMPT_V2_RESPONSES: readonly GoalMatchAiOutput[] = [
           "product.per100.saltG",
           "facts.levels.salt"
         ],
-        "text": "Умеренное количество соли (1.4 г на 100 г)"
+        "text": "Moderate amount of salt (1.4 g per 100 g)"
       },
       {
         "code": "fits_portion",
@@ -88,10 +88,10 @@ export const CHIPS_PRE_PROMPT_V2_RESPONSES: readonly GoalMatchAiOutput[] = [
         "facts": [
           "facts.share.dailyKcalPct"
         ],
-        "text": "Порция составляет 8% от суточных калорий"
+        "text": "A serving is 8% of daily calories"
       }
     ],
-    "summary": "Продукт является ультрапереработанным с высоким содержанием жиров и умеренным количеством соли.",
+    "summary": "The product is ultra-processed, high in fat and moderate in salt.",
     "warnings": []
   }
 ];

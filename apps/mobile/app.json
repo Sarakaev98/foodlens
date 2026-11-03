@@ -27,7 +27,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "FoodLens использует камеру, чтобы сфотографировать упаковку продукта для анализа.",
+          "cameraPermission": "FoodLens uses the camera to photograph product packaging for analysis.",
           "microphonePermission": false,
           "recordAudioAndroid": false
         }
@@ -35,7 +35,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "FoodLens открывает выбранное фото упаковки, чтобы проанализировать продукт.",
+          "photosPermission": "FoodLens opens the package photo you choose to analyze the product.",
           "cameraPermission": false,
           "microphonePermission": false
         }
