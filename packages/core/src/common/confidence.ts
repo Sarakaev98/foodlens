@@ -1,11 +1,11 @@
-import type { Brand } from './brand';
+/** Уверенность в данных. Уровни, а не проценты: UI и scoring работают с понятными градациями. */
+export const CONFIDENCE_LEVELS = ['high', 'medium', 'low'] as const;
 
-/** Уверенность в диапазоне [0, 1]. Создаётся только через toConfidence(). */
-export type Confidence = Brand<number, 'Confidence'>;
+export type ConfidenceLevel = (typeof CONFIDENCE_LEVELS)[number];
 
-export function toConfidence(value: number): Confidence {
-  if (!Number.isFinite(value) || value < 0 || value > 1) {
-    throw new RangeError(`Confidence must be within [0, 1], got ${value}`);
-  }
-  return value as Confidence;
+const CONFIDENCE_RANK: Readonly<Record<ConfidenceLevel, number>> = { low: 0, medium: 1, high: 2 };
+
+/** Самый низкий из уровней: итог не может быть увереннее своих частей. */
+export function lowestConfidence(first: ConfidenceLevel, ...rest: readonly ConfidenceLevel[]): ConfidenceLevel {
+  return rest.reduce((lowest, level) => (CONFIDENCE_RANK[level] < CONFIDENCE_RANK[lowest] ? level : lowest), first);
 }

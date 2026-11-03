@@ -25,12 +25,12 @@ export default function TabsLayout() {
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Today', tabBarIcon: tabIcon('today-outline') }} />
-      <Tabs.Screen name="scan" options={{ title: 'Scan', tabBarIcon: tabIcon('scan-outline') }} />
+      <Tabs.Screen name="index" options={{ title: 'Сегодня', tabBarIcon: tabIcon('today-outline') }} />
+      <Tabs.Screen name="scan" options={{ title: 'Скан', tabBarIcon: tabIcon('scan-outline') }} />
       <Tabs.Protected guard={mealPlanEnabled}>
-        <Tabs.Screen name="plan" options={{ title: 'Plan', tabBarIcon: tabIcon('restaurant-outline') }} />
+        <Tabs.Screen name="plan" options={{ title: 'План', tabBarIcon: tabIcon('restaurant-outline') }} />
       </Tabs.Protected>
-      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person-outline') }} />
+      <Tabs.Screen name="profile" options={{ title: 'Профиль', tabBarIcon: tabIcon('person-outline') }} />
     </Tabs>
   );
 }

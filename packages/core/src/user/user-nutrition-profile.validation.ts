@@ -12,6 +12,8 @@ import {
   ACTIVITY_LEVELS,
   BIOLOGICAL_SEXES,
   DIETARY_PREFERENCES,
+  normalizeDietaryPreferences,
+  isLegacyDietaryPreference,
   NUTRITION_GOALS,
   type DietaryPreference,
   type UserNutritionProfileField,
@@ -27,12 +29,17 @@ export const PROFILE_LIMITS = {
 } as const;
 
 const dietaryPreferencesValidator: FieldValidator<DietaryPreference[]> = (value, field) => {
-  const parsed = uniqueListOf(oneOf(DIETARY_PREFERENCES), { maxItems: DIETARY_PREFERENCES.length })(value, field);
+  // Legacy clients may still send removed values; unknown new values remain validation errors.
+  const legacy = Array.isArray(value) && value.some(isLegacyDietaryPreference);
+  const candidate = legacy ? value.filter(item => !isLegacyDietaryPreference(item)) : value;
+  const parsed = uniqueListOf(oneOf(DIETARY_PREFERENCES), { maxItems: DIETARY_PREFERENCES.length })(candidate, field);
+  if (legacy && parsed.ok) return { ok: true, value: normalizeDietaryPreferences(parsed.value) };
   if (!parsed.ok) return parsed;
   if (parsed.value.length === 0) return { ok: false, issue: { field, code: 'required' } };
   if (parsed.value.includes('none') && parsed.value.length > 1) {
     return { ok: false, issue: { field, code: 'exclusive_value', params: { value: 'none' } } };
   }
+  if (parsed.value.length > 1) return { ok: false, issue: { field, code: 'too_many', params: { max: 1 } } };
   return parsed;
 };
 

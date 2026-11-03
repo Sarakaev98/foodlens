@@ -33,8 +33,6 @@ export const DIETARY_PREFERENCE_LABELS: Record<DietaryPreference, string> = {
   vegetarian: 'Вегетарианство',
   vegan: 'Веганство',
   pescatarian: 'Пескетарианство',
-  halal: 'Халяль',
-  other: 'Другое',
 };
 
 export const ALLERGEN_LABELS: Record<AllergenCode, string> = {

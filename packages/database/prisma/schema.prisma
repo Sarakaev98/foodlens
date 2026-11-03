@@ -36,8 +36,6 @@ enum DietaryPreference {
   vegetarian
   vegan
   pescatarian
-  halal
-  other
 }
 
 enum Allergen {

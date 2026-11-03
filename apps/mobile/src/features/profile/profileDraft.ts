@@ -1,5 +1,6 @@
 import {
   validateUserNutritionProfileInput,
+  normalizeDietaryPreferences,
   type UserNutritionProfileField,
   type UserNutritionProfileInput,
   type ValidationResult,
@@ -32,7 +33,7 @@ export function draftFromProfile(profile: UserNutritionProfileInput): UserNutrit
     heightCm: profile.heightCm,
     weightKg: profile.weightKg,
     activityLevel: profile.activityLevel,
-    dietaryPreferences: [...profile.dietaryPreferences],
+    dietaryPreferences: normalizeDietaryPreferences(profile.dietaryPreferences),
     allergens: [...profile.allergens],
     avoidedIngredients: [...profile.avoidedIngredients],
   };

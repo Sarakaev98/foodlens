@@ -5,8 +5,11 @@ import { AiModule } from './modules/ai/ai.module';
 import { DatabaseModule } from './modules/database/database.module';
 import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module';
 import { HealthModule } from './modules/health/health.module';
+import { MealPlanModule } from './modules/meal-plan/meal-plan.module';
 import { NutritionTargetsModule } from './modules/nutrition-targets/nutrition-targets.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { ScanModule } from './modules/scan/scan.module';
+import { TodayModule } from './modules/today/today.module';
 
 @Module({})
 export class AppModule {
@@ -21,6 +24,9 @@ export class AppModule {
         AiModule,
         ProfileModule,
         NutritionTargetsModule,
+        ScanModule,
+        MealPlanModule,
+        TodayModule,
       ],
     };
   }

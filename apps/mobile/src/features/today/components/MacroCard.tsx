@@ -5,15 +5,23 @@ import { formatInteger } from '../formatNumber';
 interface MacroCardProps {
   readonly label: string;
   readonly grams: number;
+  /** Съедено за сегодня. Нет: показываем только цель. */
+  readonly consumedG?: number;
 }
 
-export function MacroCard({ label, grams }: MacroCardProps) {
+export function MacroCard({ label, grams, consumedG }: MacroCardProps) {
   return (
     <View style={styles.card}>
       <Text style={typography.caption}>{label}</Text>
-      <Text style={styles.value}>
-        {formatInteger(grams)} <Text style={styles.unit}>г</Text>
-      </Text>
+      {consumedG === undefined ? (
+        <Text style={styles.value}>
+          {formatInteger(grams)} <Text style={styles.unit}>г</Text>
+        </Text>
+      ) : (
+        <Text style={styles.value}>
+          {formatInteger(consumedG)} <Text style={styles.unit}>/ {formatInteger(grams)} г</Text>
+        </Text>
+      )}
     </View>
   );
 }

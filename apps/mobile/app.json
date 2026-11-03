@@ -23,7 +23,23 @@
     },
     "scheme": "foodlens",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "FoodLens использует камеру, чтобы сфотографировать упаковку продукта для анализа.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "FoodLens открывает выбранное фото упаковки, чтобы проанализировать продукт.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }

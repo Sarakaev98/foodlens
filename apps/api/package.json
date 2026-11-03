@@ -7,22 +7,26 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main.js",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-test/**/*.test.js\""
   },
   "dependencies": {
     "@foodlens/ai": "workspace:*",
     "@foodlens/core": "workspace:*",
     "@foodlens/database": "workspace:*",
     "@foodlens/nutrition": "workspace:*",
+    "@foodlens/scoring": "workspace:*",
     "@nestjs/common": "^12.3.2",
     "@nestjs/core": "^12.3.2",
     "@nestjs/platform-express": "^12.3.2",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.2"
+    "rxjs": "^7.8.2",
+    "zxing-wasm": "3.1.6"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.11",
     "@types/express": "^5.0.0",
-    "@types/node": "^22.20.5"
+    "@types/node": "^22.20.5",
+    "bwip-js": "^4.11.4"
   }
 }

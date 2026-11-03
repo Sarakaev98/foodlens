@@ -14,9 +14,14 @@
   "files": ["dist"],
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-test/**/*.test.js\"",
+    "benchmark": "tsc -p tsconfig.test.json && node dist-test/test/benchmark/product-score-report.js"
   },
   "dependencies": {
     "@foodlens/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5"
   }
 }

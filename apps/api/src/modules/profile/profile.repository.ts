@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type { UserNutritionProfile, UserNutritionProfileInput } from '@foodlens/core';
+import { normalizeDietaryPreferences, type UserNutritionProfile, type UserNutritionProfileInput } from '@foodlens/core';
 import type { DatabaseClient } from '@foodlens/database';
 import { DATABASE_CLIENT } from '../database/database.tokens';
 import { toUserNutritionProfile } from './user-nutrition-profile.mapper';
@@ -22,7 +22,7 @@ export class ProfileRepository {
       heightCm: input.heightCm,
       weightKg: input.weightKg,
       activityLevel: input.activityLevel,
-      dietaryPreferences: [...input.dietaryPreferences],
+      dietaryPreferences: normalizeDietaryPreferences(input.dietaryPreferences),
       allergens: [...input.allergens],
       avoidedIngredients: [...input.avoidedIngredients],
     };
