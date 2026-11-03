@@ -5,7 +5,7 @@ export type GeminiRequestType =
   | 'goal_match'
   | 'nutrition_search'
   | 'nutrition_extraction'
-  | 'ingredients_extraction'
+  | 'ingredients_extraction'|'ingredients_translation'
   | 'meal_plan'
   | 'meal_photo';
 

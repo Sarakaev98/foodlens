@@ -3,6 +3,7 @@ import { GoogleNutritionSearch } from '@foodlens/ai';
 import { scanDebugEnabled } from '../../common/scan-debug';
 import type { AppConfig } from '../../config/app-config';
 import { APP_CONFIG } from '../../config/app-config.module';
+import { AiModule } from '../ai/ai.module';
 import { nestLogger } from '../ai/ai-provider.factory';
 import { CachedProductLookupProvider } from './cached-product-lookup.provider';
 import { FatSecretProductLookupProvider } from './fatsecret.provider';
@@ -17,10 +18,10 @@ import { PRODUCT_LOOKUP, type ProductLookupProvider } from './product-lookup.pro
 const FATSECRET_FOUND_TTL_MS = 12 * 60 * 60 * 1000;
 
 /** Страницы ищет выбранный сервис, а текст без таблицы разбирает Gemini без Search. Без ключа Tavily источник не подключается. */
-function createWebSearcher(config: AppConfig): NutritionSearcher | null {
+function createWebSearcher(config: AppConfig, textAI?: GoogleNutritionSearch): NutritionSearcher | null {
   const { webSearch, tavily } = config.productLookup;
   if (webSearch === 'off') return null;
-  const google = new GoogleNutritionSearch({ ...config.goalMatchAi.google, logger: nestLogger('GoogleNutritionSearch') });
+  const google = textAI ?? new GoogleNutritionSearch({ ...config.goalMatchAi.google, logger: nestLogger('GoogleNutritionSearch') });
   if (webSearch === 'gemini') return google;
   if (!tavily.apiKey) return null;
   const budget = new TavilyCreditBudget(tavily.monthlyCreditLimit);
@@ -32,14 +33,14 @@ function createWebSearcher(config: AppConfig): NutritionSearcher | null {
 }
 
 /** Порядок задаёт приоритет. Новый источник добавляется здесь, scoring и ScanService о нём не знают. */
-export function createProductLookupSources(config: AppConfig): readonly ProductLookupProvider[] {
+export function createProductLookupSources(config: AppConfig, textAI?: GoogleNutritionSearch): readonly ProductLookupProvider[] {
   if (config.productLookup.provider === 'none') return [];
   const { contact, fatSecret } = config.productLookup;
   const sources: ProductLookupProvider[] = [new CachedProductLookupProvider(new OpenFoodFactsProductLookupProvider({ contact }))];
   if (fatSecret.clientId && fatSecret.clientSecret) {
     sources.push(new CachedProductLookupProvider(new FatSecretProductLookupProvider(fatSecret), Date.now, FATSECRET_FOUND_TTL_MS));
   }
-  const searcher = createWebSearcher(config);
+  const searcher = createWebSearcher(config, textAI);
   if (searcher) {
     const reader = new PageFetcher({ userAgent: `FoodLens/0.1.0 (${contact})` });
     const { maxQueries = MAX_SEARCHES_PER_PRODUCT, maxPages = MAX_PAGES_PER_SCAN } = config.productLookup.webSearchLimits;
@@ -48,12 +49,13 @@ export function createProductLookupSources(config: AppConfig): readonly ProductL
   return sources;
 }
 
-function createProductLookup(config: AppConfig): MultiSourceProductLookup {
-  return new MultiSourceProductLookup(createProductLookupSources(config));
+function createProductLookup(config: AppConfig, textAI: GoogleNutritionSearch): MultiSourceProductLookup {
+  return new MultiSourceProductLookup(createProductLookupSources(config, textAI));
 }
 
 @Module({
-  providers: [{ provide: PRODUCT_LOOKUP, useFactory: createProductLookup, inject: [APP_CONFIG] }],
+  imports: [AiModule],
+  providers: [{ provide: PRODUCT_LOOKUP, useFactory: createProductLookup, inject: [APP_CONFIG, GoogleNutritionSearch] }],
   exports: [PRODUCT_LOOKUP],
 })
 export class ProductLookupModule {}

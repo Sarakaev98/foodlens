@@ -10,6 +10,7 @@ import { NutritionTargetsService } from '../nutrition-targets/nutrition-targets.
 import { MultiSourceProductLookup, type EnrichedProduct } from '../product-lookup/multi-source-product-lookup';
 import { PRODUCT_LOOKUP, type ProductLookupProvider } from '../product-lookup/product-lookup.provider';
 import { confirmBarcodeIdentity, emptyBarcodeProduct, forScoring } from './barcode-product';
+import { IngredientsDisplayService } from './ingredients-display.service';
 import { withIngredientFacts } from './ingredient-facts';
 import { IMAGE_BARCODE_READER } from './image-barcode.token';
 import { readImageBarcode, type ImageBarcodeReader } from './image-barcode';
@@ -49,6 +50,7 @@ export class ScanService {
     @Optional() private readonly goalMatchV4?: GoalMatchService,
     @Optional() @Inject(PRODUCT_LOOKUP) productLookup?: MultiSourceProductLookup | ProductLookupProvider,
     @Optional() @Inject(IMAGE_BARCODE_READER) barcodeReader?: ImageBarcodeReader,
+    @Optional() private readonly ingredientsDisplay?: IngredientsDisplayService,
   ) {
     this.readBarcode = barcodeReader ?? readImageBarcode;
     this.lookups = productLookup instanceof MultiSourceProductLookup ? productLookup : new MultiSourceProductLookup(productLookup ? [productLookup] : []);
@@ -116,7 +118,7 @@ export class ScanService {
       this.logger.log(`nutrition_presence ${JSON.stringify({ requestId, ...nutritionPresence(product, score, goalMatch) })}`);
       logScanFinished(this.logger, summary);
       return {
-        product,
+        product: this.ingredientsDisplay ? await this.ingredientsDisplay.decorate(product) : product,
         score,
         goalMatch,
         ...(barcode ? { barcode } : {}),

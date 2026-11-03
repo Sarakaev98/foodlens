@@ -40,7 +40,7 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
     ...(product.fieldEvidence?.filter(item => item.dataQuality === 'estimated').map(item => item.field) ?? []),
     ...Object.entries(product.nutritionMetadata?.fields ?? {}).filter(([, item]) => item.quality !== 'verified').map(([key]) => key),
   ])];
-  const foreignIngredients = ingredients.value?.some((item) => isForeignText(item.name)) ?? false;
+  const displayIngredients = product.ingredientsDisplay?.items ?? ingredients.value;
   const foreignAdditives = additives.value?.some((item) => !item.code && item.name !== null && isForeignText(item.name)) ?? false;
 
   return (
@@ -84,13 +84,10 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
           )}
         </ProductSection>
 
-        <ProductSection
-          title="Состав"
-          subtitle={foreignIngredients ? ORIGINAL_TEXT_LABEL : undefined}
-        >
-          {ingredients.value ? (
+        <ProductSection title="Состав">
+          {displayIngredients ? (
             <Text style={typography.body}>
-              {ingredients.value.map((item) => (item.percent !== null ? `${item.name} (${item.percent}%)` : item.name)).join(', ')}
+              {displayIngredients.map((item) => (item.percent !== null ? `${item.name} (${item.percent}%)` : item.name)).join(', ')}
             </Text>
           ) : (
             <NotDetected text="Состав не найден" />
