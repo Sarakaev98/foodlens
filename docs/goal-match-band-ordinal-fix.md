@@ -66,17 +66,17 @@ Raw output:
 
 Raw factors:
 1. ultra_processed, negative/high:
-   “Продукт ультрапереработан”
+   “Продукт ультрапереработан” (“the product is ultra-processed”)
    facts: semantics.processing.value.
 2. high_salt, negative/medium:
-   “Содержание соли умеренное и составляет 1.4 г на 100 г”
+   “Содержание соли умеренное и составляет 1.4 г на 100 г” (“salt is moderate at 1.4 g per 100 g”)
    facts: product.per100.saltG, facts.levels.salt.
 3. fits_portion, positive/low:
-   “Порция составляет 8% от суточных калорий”
+   “Порция составляет 8% от суточных калорий” (“the portion is 8% of daily calories”)
    facts: facts.share.dailyKcalPct.
 
 Raw summary:
-“Ультрапереработанный продукт с высоким содержанием жиров и умеренным количеством соли.”
+“Ультрапереработанный продукт с высоким содержанием жиров и умеренным количеством соли.” (“Ultra-processed, high in fat, with moderate salt.”)
 
 Validator: valid=true, removedFactors=1, adjusted=true.
 The ordinal band guard passed. The existing numeric-reference check removed high_salt:
@@ -106,7 +106,7 @@ HTTP 200, 2157 ms. One request, no retry, no cache.
 - AI confidence high;
 - all six dimensions positive;
 - factors high_protein, low_sugar, low_salt;
-- summary: “Продукт с высоким содержанием белка, низким количеством сахара и соли.”
+- summary: “Продукт с высоким содержанием белка, низким количеством сахара и соли.” (“High in protein, low in sugar and salt.”)
 - warning fiber_unknown;
 - validator valid=true, removedFactors=0, adjusted=false;
 - final 8.0, source ai, confidence medium (existing missing-fiber cap).

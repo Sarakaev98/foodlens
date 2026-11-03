@@ -1,79 +1,79 @@
-# Goal Match v4: provider, Mock AI и оркестрация API
+# Goal Match v4: provider, Mock AI and API orchestration
 
-28 октября 2026, локальная копия на ПК (C:\Users\sarak\Documents\FoodLens). Commit и push не делались. Mobile, Product Score, Nutrition Engine, формула v3, golden-фикстуры v3, другие цели, `.env` и ключи не тронуты. Meta не вызывается.
+October 28, 2026, local copy on the PC (C:\Users\sarak\Documents\FoodLens). No commit or push was made. Mobile, Product Score, the Nutrition Engine, the v3 formula, the v3 golden fixtures, other goals, `.env` and keys were not touched. Meta is never called.
 
-## 1. Изменённые файлы (19, больше ничего)
+## 1. Changed files (19, nothing else)
 
-| Файл | Что |
+| File | What |
 |---|---|
-| packages/ai/src/ai-provider.ts | метод `evaluateGoalMatch(input: GoalMatchAiInput): Promise<GoalMatchAiOutput>` |
-| packages/ai/src/errors.ts | `AIUnavailableError` (код `unavailable`) |
-| packages/ai/src/index.ts, providers/mock/index.ts | экспорты |
-| packages/ai/src/providers/mock/mock-goal-match.ts (новый) | 5 записанных ответов, поиск записи |
-| packages/ai/src/providers/mock/mock-provider.ts | `evaluateGoalMatch`, опция `goalMatchRecordings`, `model` |
-| packages/ai/src/providers/meta/meta-provider.ts | `evaluateGoalMatch` зарезервирован: `not_implemented`, запроса нет |
-| packages/ai/src/test/mock-goal-match.test.ts (новый) | 3 теста mock |
-| apps/api/src/config/app-config.ts | `GOAL_MATCH_AI=off\|mock\|meta`, по умолчанию off |
-| apps/api/.env.example | описание `GOAL_MATCH_AI=off` |
+| packages/ai/src/ai-provider.ts | the `evaluateGoalMatch(input: GoalMatchAiInput): Promise<GoalMatchAiOutput>` method |
+| packages/ai/src/errors.ts | `AIUnavailableError` (code `unavailable`) |
+| packages/ai/src/index.ts, providers/mock/index.ts | exports |
+| packages/ai/src/providers/mock/mock-goal-match.ts (new) | 5 recorded answers, record lookup |
+| packages/ai/src/providers/mock/mock-provider.ts | `evaluateGoalMatch`, the `goalMatchRecordings` option, `model` |
+| packages/ai/src/providers/meta/meta-provider.ts | `evaluateGoalMatch` is reserved: `not_implemented`, no request |
+| packages/ai/src/test/mock-goal-match.test.ts (new) | 3 mock tests |
+| apps/api/src/config/app-config.ts | `GOAL_MATCH_AI=off\|mock\|meta`, off by default |
+| apps/api/.env.example | description of `GOAL_MATCH_AI=off` |
 | apps/api/src/modules/ai/ai-provider.factory.ts | `createGoalMatchAIProvider(config)` |
-| apps/api/src/modules/goal-match/goal-match.service.ts (новый) | оркестрация, таймаут, retry |
-| apps/api/src/modules/goal-match/goal-match-ai-cache.ts (новый) | LRU-кэш и ключ |
-| apps/api/src/modules/goal-match/goal-match.module.ts (новый) | DI |
-| apps/api/src/modules/goal-match/test/goal-match-v4.fixtures.ts, goal-match-v4.test.ts (новые) | API-тесты A–L и кэш |
-| apps/api/src/modules/scan/scan.service.ts | v4 только для eat_healthier при включённом AI |
-| apps/api/src/modules/scan/scan.module.ts, scan.controller.ts | подключение модуля, тип ответа `ScanResult` |
+| apps/api/src/modules/goal-match/goal-match.service.ts (new) | orchestration, timeout, retry |
+| apps/api/src/modules/goal-match/goal-match-ai-cache.ts (new) | LRU cache and key |
+| apps/api/src/modules/goal-match/goal-match.module.ts (new) | DI |
+| apps/api/src/modules/goal-match/test/goal-match-v4.fixtures.ts, goal-match-v4.test.ts (new) | API tests A–L and the cache |
+| apps/api/src/modules/scan/scan.service.ts | v4 only for eat_healthier with AI enabled |
+| apps/api/src/modules/scan/scan.module.ts, scan.controller.ts | module wiring, the `ScanResult` response type |
 
-Существующие тесты не менялись. Окончания строк сохранены как в исходных файлах (часть файлов CRLF).
+Existing tests did not change. Line endings were kept as in the original files (some files use CRLF).
 
 ## 2. Provider method
 
-`AIProvider.evaluateGoalMatch(input)` получает только `GoalMatchAiInput` (факты, уровни, план, без Product Score, балла v3 и ограничений профиля) и возвращает сырой `GoalMatchAiOutput`. Провайдер ничего не проверяет: это делают `validateGoalMatchAiOutput` и `reconcileGoalMatch` в оркестрации. `analyzeProduct` не тронут. Если ответа нет, провайдер бросает `AIUnavailableError`. `MetaProvider.evaluateGoalMatch` бросает `AIMethodNotImplementedError` без сетевого запроса (это проверено тестом).
+`AIProvider.evaluateGoalMatch(input)` receives only `GoalMatchAiInput` (facts, levels, the plan; no Product Score, no v3 score and no profile restrictions) and returns the raw `GoalMatchAiOutput`. The provider checks nothing: `validateGoalMatchAiOutput` and `reconcileGoalMatch` do that in the orchestration. `analyzeProduct` is untouched. If there is no answer, the provider throws `AIUnavailableError`. `MetaProvider.evaluateGoalMatch` throws `AIMethodNotImplementedError` without any network request (a test checks this).
 
 ## 3. Mock responses
 
-Mock узнаёт продукт по названию (подстрока, регистр и ё не важны) и ккал на 100 г/мл (±1). Балл v3 он не считает и не копирует. Для неизвестного продукта он бросает `AIUnavailableError`, и включается fallback.
+The mock recognizes a product by name (substring; case and ё do not matter) and by kcal per 100 g/ml (±1). It neither calculates nor copies the v3 score. For an unknown product it throws `AIUnavailableError`, and the fallback takes over.
 
-| Запись | Названия | ккал | band | score | Факторы | Предупреждения |
+| Record | Names | kcal | band | score | Factors | Warnings |
 |---|---|---|---|---|---|---|
 | greek_yogurt | греческий йогурт / greek yogurt | 66 | good_fit | 8.5 | high_protein, whole_food, low_salt | fiber_unknown |
 | apple | яблок / apple | 52 | good_fit | 8.5 | whole_food, fiber_source, intrinsic_sugar | — |
 | chips | чипсы / chips | 536 | poor_fit | 3.0 | ultra_processed, high_salt | — |
-| cola | кола / cola | 42 | very_poor_fit | 1.5 | high_sugar (70% лимита), ultra_processed | — |
+| cola | кола / cola | 42 | very_poor_fit | 1.5 | high_sugar (70% of the limit), ultra_processed | — |
 | protein_bar | протеиновый батончик / protein bar | 350 | mixed_fit | 5.5 | sweeteners, ultra_processed, high_protein | sweeteners |
 
-У каждого ответа есть dimensions, согласованные с band, пути фактов к листьям (`facts.perServing.proteinG`, `semantics.processing.value`, `product.ingredients` и т.п.), summary из одного предложения и confidence high. Тест прогоняет каждую запись через настоящий validator: все проходят без удалённых факторов (`adjusted=false`). Тексты чипсов не упоминают белок, поэтому тот же ответ валиден и для демо-чипсов с непрочитанным белком (AI_PROVIDER=mock). Для тестовых сценариев (галлюцинация, retry) в MockProvider передаются свои записи через `goalMatchRecordings`. Несколько ответов возвращаются по очереди, последний повторяется.
+Every answer has dimensions consistent with the band, fact paths to leaves (`facts.perServing.proteinG`, `semantics.processing.value`, `product.ingredients` and so on), a one-sentence summary and high confidence. A test runs every record through the real validator: all pass with no removed factors (`adjusted=false`). The chips texts do not mention protein, so the same answer is valid for the demo chips with unread protein (AI_PROVIDER=mock). Test scenarios (hallucination, retry) pass their own records to MockProvider through `goalMatchRecordings`. Several answers are returned in turn, and the last one repeats.
 
 ## 4. Config off|mock
 
-| GOAL_MATCH_AI | Что происходит |
+| GOAL_MATCH_AI | What happens |
 |---|---|
-| не задан / `off` | провайдера нет, `GoalMatchService.enabled=false`, ScanService вызывает прежний `matchGoal`. Ответ побайтно совпадает с v3 (тест L) |
-| `mock` | eat_healthier → v4 с записанными ответами; остальные продукты → fallback |
-| `meta` | зарезервировано: MetaProvider, но запрос не отправляется, всегда fallback |
-| другое | ошибка конфигурации при запуске |
+| unset / `off` | no provider, `GoalMatchService.enabled=false`, ScanService calls the existing `matchGoal`. The response is byte-for-byte the same as v3 (test L) |
+| `mock` | eat_healthier → v4 with recorded answers; other products → fallback |
+| `meta` | reserved: MetaProvider, but no request is sent, always fallback |
+| anything else | configuration error at startup |
 
-Настройка не зависит от `AI_PROVIDER`. В твоём `.env` её нет, значит сейчас действует off и поведение не изменилось. Проверено запуском Nest DI для всех четырёх вариантов.
+The setting does not depend on `AI_PROVIDER`. Your `.env` does not have it, so off applies now and behavior did not change. Checked by starting Nest DI for all four values.
 
 ## 5. Pipeline
 
-`ScanService.analyze` → `analyzeProduct` → `scoreProduct` (без изменений) → план → если `plan.goal === 'eat_healthier'` и AI включён, то `GoalMatchService.evaluate`, иначе прежний `matchGoal`.
+`ScanService.analyze` → `analyzeProduct` → `scoreProduct` (unchanged) → plan → if `plan.goal === 'eat_healthier'` and AI is enabled, `GoalMatchService.evaluate`, otherwise the existing `matchGoal`.
 
-`GoalMatchService.evaluate`: `prepareGoalMatchV4` (v3 и guards) → terminal? вернуть v4 `source=deterministic` без вызова AI → ключ кэша → кэш или `provider.evaluateGoalMatch` (таймаут) → `validateGoalMatchAiOutput` → при невалидном ответе один повтор → `reconcileGoalMatch` → `GoalMatchV4`.
+`GoalMatchService.evaluate`: `prepareGoalMatchV4` (v3 and guards) → terminal? return v4 with `source=deterministic` without calling AI → cache key → cache or `provider.evaluateGoalMatch` (with timeout) → `validateGoalMatchAiOutput` → one retry on an invalid answer → `reconcileGoalMatch` → `GoalMatchV4`.
 
-Terminal: unavailable, conflict (аллерген или диета), insufficient_data (включая invalid_nutrition и missing_nutrients), not_applicable. Нет профиля и profile_unavailable идут прежним путём, потому что цель неизвестна. Любая неожиданная ошибка v4 логируется, и возвращается прежний v3: скан не падает.
+Terminal: unavailable, conflict (allergen or diet), insufficient_data (including invalid_nutrition and missing_nutrients), not_applicable. No profile and profile_unavailable take the existing path, because the goal is unknown. Any unexpected v4 error is logged and the existing v3 is returned: the scan never fails.
 
 ## 6. Timeout, retry, cache
 
-- **Timeout** 8000 мс на каждый вызов (`GOAL_MATCH_AI_TIMEOUT_MS`). После таймаута fallback, повтора нет.
-- **Retry** максимум 2 вызова, только при невалидном ответе. Ошибка или таймаут провайдера — сразу fallback. Два невалидных ответа — fallback, confidence не выше medium.
-- **Cache** in-memory LRU на Map, 1000 записей, вытесняется давно не использованная запись. Ключ — sha256 канонического JSON (ключи отсортированы) из: AI input, inputVersion, promptVersion `eat-healthier-rubric-v1`, имя провайдера и модель (`mock-goal-match-recordings-v1` или MODEL_NAME у Meta). Кэшируются только ответы, прошедшие validator. Ошибки, таймауты и невалидные ответы не кэшируются. При попадании `ai.cacheHit=true`, вызовов 0.
-- Причина fallback (`ai_unavailable`, `ai_timeout`, `ai_invalid`, `ai_disagreement`, `terminal`) пишется в лог вместе с кодом ошибки. Тексты ошибок провайдера не попадают ни в лог, ни в ответ. Отдельного поля fallbackReason в контракте v4 нет, его я не добавлял.
+- **Timeout** 8000 ms per call (`GOAL_MATCH_AI_TIMEOUT_MS`). After a timeout, fallback with no retry.
+- **Retry** at most 2 calls, only on an invalid answer. A provider error or timeout goes straight to fallback. Two invalid answers mean fallback with confidence at most medium.
+- **Cache** an in-memory LRU on a Map, 1000 entries, evicting the least recently used. The key is a sha256 of canonical JSON (sorted keys) of: the AI input, inputVersion, promptVersion `eat-healthier-rubric-v1`, the provider name and the model (`mock-goal-match-recordings-v1` or MODEL_NAME for Meta). Only answers that passed the validator are cached. Errors, timeouts and invalid answers are never cached. On a hit `ai.cacheHit=true` and there are 0 calls.
+- The fallback reason (`ai_unavailable`, `ai_timeout`, `ai_invalid`, `ai_disagreement`, `terminal`) is logged together with the error code. Provider error texts reach neither the log nor the response. The v4 contract has no separate fallbackReason field, and I did not add one.
 
-## 7. Реальные ответы API
+## 7. Real API responses
 
-План 2000 ккал, белок 139 г. Ниже ответ ScanService. Снимок v3 `deterministic` сокращён до основных полей, полные ответы лежат в scan-responses.json (там же чипсы 6.5 → 5.7 и груша без mock-записи).
+Plan: 2000 kcal, protein 139 g. Below is the ScanService response. The v3 `deterministic` snapshot is cut down to the main fields; the full responses are in scan-responses.json (which also has chips 6.5 → 5.7 and a pear with no mock record). The `text` and `summary` fields are the Russian user-facing strings produced by the recorded AI answers.
 
-### Греческий йогурт
+### Greek yogurt
 ```json
 {
   "score": {
@@ -169,7 +169,7 @@ Terminal: unavailable, conflict (аллерген или диета), insufficie
 }
 ```
 
-### Чипсы
+### Chips
 ```json
 {
   "score": {
@@ -252,7 +252,7 @@ Terminal: unavailable, conflict (аллерген или диета), insufficie
 }
 ```
 
-### Протеиновый батончик
+### Protein bar
 ```json
 {
   "score": {
@@ -346,7 +346,7 @@ Terminal: unavailable, conflict (аллерген или диета), insufficie
 }
 ```
 
-### Кола, галлюцинация AI 9.0
+### Cola, AI hallucination 9.0
 ```json
 {
   "score": {
@@ -463,42 +463,42 @@ Terminal: unavailable, conflict (аллерген или диета), insufficie
 }
 ```
 
-Когда источник `ai`, поле `factors` содержит только ограничения профиля (так устроен reconcile из этапа 5), а причины лежат в `ai.factors`. `range` у AI-оценки равен null.
+When the source is `ai`, the `factors` field holds only profile restrictions (that is how the stage 5 reconcile works), and the reasons are in `ai.factors`. `range` is null for an AI score.
 
 ## 8. Fallback
 
-| Сценарий | Итог |
+| Scenario | Result |
 |---|---|
-| Груша, mock-записи нет | source deterministic, 8.5 = v3, ai null |
-| Провайдер бросил AIProviderError или TypeError | скан 200, v3 4.2, текста ошибки в ответе нет |
-| Таймаут (тест 30 мс) | скан 200, v3 4.2, outcome ai_timeout, 1 вызов |
-| Два невалидных ответа | 2 вызова, v3 4.2, confidence medium |
-| Невалидный, затем валидный | 2 вызова, AI 3.0 |
-| Кола 9.0 | deterministic 2.5, ai_disagreement=true |
-| Чипсы 6.5 | AI, прижато к 5.7, adjusted=true, medium |
-| Нет калорий (insufficient_data) | AI не вызван |
-| Аллерген молоко (conflict) | AI не вызван, 0, conflict |
-| Белок не прочитан | AI вызван, `missing` содержит proteinG; ответ с «много белка» отклонён, после 2 попыток fallback |
+| Pear, no mock record | source deterministic, 8.5 = v3, ai null |
+| Provider threw AIProviderError or TypeError | scan 200, v3 4.2, no error text in the response |
+| Timeout (30 ms in the test) | scan 200, v3 4.2, outcome ai_timeout, 1 call |
+| Two invalid answers | 2 calls, v3 4.2, confidence medium |
+| Invalid, then valid | 2 calls, AI 3.0 |
+| Cola 9.0 | deterministic 2.5, ai_disagreement=true |
+| Chips 6.5 | AI, clamped to 5.7, adjusted=true, medium |
+| No calories (insufficient_data) | AI not called |
+| Milk allergen (conflict) | AI not called, 0, conflict |
+| Protein not read | AI called, `missing` contains proteinG; an answer saying “high in protein” is rejected, fallback after 2 attempts |
 
-## 9. Тесты
+## 9. Tests
 
-Запуск в чистой копии репозитория (тот же исходный код, `pnpm install`, `pnpm typecheck`, `pnpm test`):
+Run in a clean copy of the repository (the same source, `pnpm install`, `pnpm typecheck`, `pnpm test`):
 
-| Пакет | Было | Стало |
+| Package | Before | After |
 |---|---|---|
 | core (type-contract, tsc) | ok | ok |
 | nutrition | 17/17 | 17/17 |
 | ai | 42/42 | 45/45 |
 | scoring (v3 golden, Product Score, v4 core) | 170/170 | 170/170 |
 | api | 20/20 | 43/43 |
-| mobile (на ПК, node --test) | 12/12 | 12/12 |
+| mobile (on the PC, node --test) | 12/12 | 12/12 |
 
-Итого 264 → 287, все зелёные, typecheck всех пакетов проходит. Новые API-тесты: A–L, выбор режима, проверка всех mock-ответов настоящим validator, кэш (попадание, отсутствие кэша для ошибок, ключ, LRU). Тесты v3 и Product Score в scoring не менялись и проходят. На ПК под Windows `pnpm typecheck` и `pnpm test` я не запускал (там нужен pnpm, а в Linux-VM ссылки pnpm не читаются), но mobile-тесты прогнал, а sha256 всех 19 файлов на ПК совпали с проверенными.
+Total 264 → 287, all green, typecheck passes for every package. New API tests: A–L, mode selection, a check of every mock answer by the real validator, the cache (hit, no caching of errors, the key, LRU). The v3 and Product Score tests in scoring did not change and pass. I did not run `pnpm typecheck` and `pnpm test` on the Windows PC (that needs pnpm, and pnpm links are unreadable in the Linux VM), but I ran the mobile tests, and the sha256 of all 19 files on the PC matched the verified ones.
 
 ## 10. Mobile
 
-Mobile не менялся: diff с резервной копией до этапа показывает только 19 файлов из таблицы. Важно: текущая карточка знает только v1 и v3 и прочитает `goal-match-v4` как v1 (value/10). Поэтому `GOAL_MATCH_AI=mock` с iPhone включать только после этапа Mobile. При off в ответе по-прежнему v3.
+Mobile did not change: a diff against the backup taken before this stage shows only the 19 files from the table. Important: the current card knows only v1 and v3 and will read `goal-match-v4` as v1 (value/10). So turn on `GOAL_MATCH_AI=mock` from the iPhone only after the Mobile stage. With off the response is still v3.
 
 ## 11. Git
 
-Commit и push не делались. До этапа на ПК сделана резервная копия исходников (вне репозитория).
+No commit or push was made. A backup of the sources (outside the repository) was taken on the PC before this stage.

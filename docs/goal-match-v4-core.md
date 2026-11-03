@@ -1,6 +1,6 @@
 # Goal Match v4: core stages 1–5
 
-Implemented locally on dev, 29 October 2026. Source: “AI-first Goal Match для eat_healthier”,
+Implemented locally on dev, 29 October 2026. Source: “AI-first Goal Match for eat_healthier”,
 with the user's higher-priority corrections. No commit/push, provider call, API/mobile wiring,
 .env edit, Product Score, Nutrition Engine, additive penalty, or other-goal change.
 
@@ -192,7 +192,7 @@ and the displayed label/ingredients. The test compares the complete object.
 - Preconditions and direction for all 18 factor codes. Ingredient-based codes require
   observed ingredients; word lists live in code. No product-name scoring rules.
 - Unsupported warnings, forbidden medical language and unsupported absence claims rejected.
-  “Без сахара” additionally requires known zero sugar; “без добавок” requires an observed,
+  “Без сахара” (“sugar-free”) additionally requires known zero sugar; “без добавок” (“no additives”) requires an observed,
   known empty additive list as well as whole_food.
 - A single invalid non-high factor can be removed, with a medium confidence cap at reconciliation.
   A removed high factor, >1 removed factor, or no surviving factors invalidates the output.

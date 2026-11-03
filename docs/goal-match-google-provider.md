@@ -39,7 +39,7 @@ Nutrition Engine, v3/v4 core, corridor, ceilings, restrictions, Mock recordings 
 were not modified.
 
 Request:
-POST https://aiplatform.googleapis.com/v1/projects/foodlens-513112/locations/global/publishers/google/models/{model}:generateContent
+POST https://aiplatform.googleapis.com/v1/projects/test-project/locations/global/publishers/google/models/{model}:generateContent
 
 Authentication is only the x-goog-api-key header, never a URL query.
 responseMimeType is application/json; responseSchema uses the existing AI output fields.
@@ -55,7 +55,7 @@ existing deterministic fallback. Invalid semantic responses retain the existing 
 
 ## Model change and temperature limitation
 
-The first real smoke used the requested gemini-2.5-flash, project foodlens-513112,
+The first real smoke used the requested gemini-2.5-flash, project test-project,
 location global. It reached Google and received HTTP 404 / NOT_FOUND in 437 ms.
 No model JSON was produced.
 
@@ -80,7 +80,7 @@ The prompt file hash was frozen before live tests and is unchanged afterward.
 ## Real smoke — not a Mock AI evaluation
 
 Model: gemini-3.5-flash-lite.
-Project: foodlens-513112.
+Project: test-project.
 Location: global.
 Secret: redacted.
 HTTP: 200.
@@ -91,7 +91,7 @@ Greek yogurt raw output:
 score 9.0, band excellent_fit, confidence high.
 Factors: high_protein, low_sugar, low_salt, fits_portion.
 Summary:
-“Отличный продукт с высоким содержанием белка, минимальной обработкой и низким уровнем сахара.”
+“Отличный продукт с высоким содержанием белка, минимальной обработкой и низким уровнем сахара.” (“An excellent product: high in protein, minimally processed and low in sugar.”)
 Warnings: fiber_unknown.
 v3: 8.7. Reconciled final: 9.0, source ai, final confidence medium.
 
@@ -111,12 +111,12 @@ The service starts with an empty in-memory cache:
 - Cache key already includes canonical input, promptVersion, provider google and model.
 
 Integration-call summary:
-“Продукт отличается высоким содержанием белка и низким уровнем сахара при минимальной степени обработки.”
+“Продукт отличается высоким содержанием белка и низким уровнем сахара при минимальной степени обработки.” (“High in protein and low in sugar, with minimal processing.”)
 Factors:
-high_protein “Высокое содержание белка”;
-low_sugar “Низкое количество сахара”;
-low_salt “Низкое содержание соли”;
-fits_portion “Умеренная калорийность порции”.
+high_protein “Высокое содержание белка” (high protein);
+low_sugar “Низкое количество сахара” (low sugar);
+low_salt “Низкое содержание соли” (low salt);
+fits_portion “Умеренная калорийность порции” (moderate calories per portion).
 
 The two separate uncached smoke/service calls had the same score (9.0), but some
 dimension/text details differed. The cached repeat returned the accepted service answer.
@@ -145,9 +145,9 @@ fatQuality negative; sodium negative; portion positive.
 
 Both recognized ultra_processed and high_salt, with fits_portion as a smaller positive.
 Attempt 1 summary:
-“Ультрапереработанный продукт с высоким содержанием жиров и соли.”
+“Ультрапереработанный продукт с высоким содержанием жиров и соли.” (“Ultra-processed, high in fat and salt.”)
 Attempt 2 summary:
-“Продукт является ультрапереработанным с высоким содержанием жиров и умеренным количеством соли.”
+“Продукт является ультрапереработанным с высоким содержанием жиров и умеренным количеством соли.” (“Ultra-processed, high in fat, with moderate salt.”)
 
 Final:
 - outcome ai_invalid;

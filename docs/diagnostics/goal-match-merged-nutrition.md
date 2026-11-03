@@ -1,22 +1,22 @@
-# FoodLens: Goal Match на итоговом nutrition snapshot
+# FoodLens: Goal Match on the final nutrition snapshot
 
-3 ноября 2026. Ветка dev, HEAD 033556fbc2ae35ae10878d9030591d936ac8eb6d; изменения локальные, push не выполнялся.
+November 3, 2026. Branch dev, HEAD 033556fbc2ae35ae10878d9030591d936ac8eb6d; the changes were local and not pushed at the time.
 
-## Точная причина и исправление
+## Exact cause and fix
 
-В `apps/api/src/modules/scan/scan.service.ts::analyze` после estimation было два разных входа:
+In `apps/api/src/modules/scan/scan.service.ts::analyze` there were two different inputs after estimation:
 
 ```ts
 const completed = estimateMissingNutrition(flow.product);
 const scoring = withIngredientFacts(forScoring(completed));
 const score = scoreProduct(scoring);
-// прежний код:
+// previous code:
 const rawGoalMatch = await this.matchGoal(withIngredientFacts(forScoring(flow.product)), await plan, requestId);
 ```
 
-`flow.product` — результат источников до estimation. Goal Match вызывался после estimation по времени, но получал старый объект с null. Он не читал устаревший response/status из кэша, и nutrition_presence не управлял его gating: v3 проверял null непосредственно в переданном product.nutrition.
+`flow.product` is the result of the sources before estimation. Goal Match was called after estimation in time, but it received the old object with nulls. It did not read a stale response or status from a cache, and nutrition_presence did not control its gating: v3 checked for null directly in the product.nutrition it was given.
 
-Теперь обе оценки получают один и тот же const `scoring`:
+Now both scores receive the same `scoring` constant:
 
 ```ts
 const score = scoreProduct(scoring);
@@ -24,34 +24,34 @@ const rawGoalMatch = await this.matchGoal(scoring, await plan, requestId);
 const goalMatch = limitByProductScore(rawGoalMatch, score);
 ```
 
-Никаких веток по названию/бренду/barcode нет. Scoring weights, v3/v1 числовые формулы, пороги и estimation algorithm не менялись.
+There are no branches by name, brand or barcode. Scoring weights, the v3/v1 numeric formulas, thresholds and the estimation algorithm did not change.
 
-Добавлены GOAL_MATCH_INPUT (nutrition + nutritionMetadata, без пользовательского плана) и GOAL_MATCH_RESULT под существующим debug flag. Проверки сравнивают SCORING_INPUT, GOAL_MATCH_INPUT и product.nutrition ответа: объекты сериализуются одинаково, provenance сохранён.
+GOAL_MATCH_INPUT (nutrition + nutritionMetadata, without the user's plan) and GOAL_MATCH_RESULT logs were added under the existing debug flag. The checks compare SCORING_INPUT, GOAL_MATCH_INPUT and the response's product.nutrition: the objects serialize identically and provenance is kept.
 
-В v3 числовые inferred уже принимались: проверка missing работает по конечному числу/finite/nonnegative, а не по provenance observed. Есть небольшое уточнение metadata: если nutritionMetadata содержит estimated/ai_estimated поля или estimated basis, этот ввод не считается полностью прочитанной этикеткой. Используется существующая ветка confidence/uncertainty, включая uncertainty=nutrition. Это не меняет числовую формулу, но не позволяет одной оценённой клетчатке ошибочно повысить confidence до high.
+v3 already accepted numeric inferred values: the missing check looks at a finite, non-negative number, not at observed provenance. There is one small metadata refinement: if nutritionMetadata contains estimated/ai_estimated fields or an estimated basis, the input is not treated as a fully read label. The existing confidence/uncertainty branch is used, including uncertainty=nutrition. This does not change the numeric formula, but it stops a single estimated fiber value from wrongly raising confidence to high.
 
-## Путь данных
+## Data path
 
-`POST /scan/analyze` → controller → normalize/lookup/enrichment → estimateMissingNutrition → completed → forScoring/withIngredientFacts → один `scoring` для scoreProduct и matchGoal → прежний limitByProductScore → response → useProductScan → GoalMatchCard.
+`POST /scan/analyze` → controller → normalize/lookup/enrichment → estimateMissingNutrition → completed → forScoring/withIngredientFacts → one `scoring` for scoreProduct and matchGoal → the existing limitByProductScore → response → useProductScan → GoalMatchCard.
 
-v3 для eat_healthier теперь проверяет missing_nutrients на заполненных значениях. Настоящий отсутствующий сахар при ненулевых carbs на самой границе Goal Match по-прежнему даёт insufficient_data/missing_nutrients — это проверяется отдельно от estimator. Отсутствие профиля, неизвестная основа, недостающий semantic context и ограничения профиля сохраняют прежние политики.
+v3 for eat_healthier now checks missing_nutrients on the filled values. A truly missing sugar value with non-zero carbs at the Goal Match boundary still gives insufficient_data/missing_nutrients; this is tested separately from the estimator. A missing profile, an unknown basis, missing semantic context and profile restrictions keep their existing policies.
 
-Для других целей v1 тоже получает completed snapshot; его API-единицы остаются 0–100, mobile по-прежнему показывает 0–10. Опциональный v4 получает тот же completed product. Тестовые AI-ответы со stale предупреждением fiber_unknown больше не соответствуют заполненному входу и по-прежнему отклоняются валидатором; формулу и валидатор ради них не ослабляли.
+For other goals v1 also receives the completed snapshot; its API units stay 0–100, and mobile still shows 0–10. The optional v4 receives the same completed product. Test AI answers with a stale fiber_unknown warning no longer match the filled input and are still rejected by the validator; neither the formula nor the validator was relaxed for them.
 
-## Реальная проверка endpoint
+## Real endpoint check
 
-До перезапуска снова вызван настоящий HTTP endpoint для Rollton: Product Score=3.2, missingFactors=[], но Goal Match value=null, state=insufficient_data, unavailableReason=missing_nutrients. Сырой ответ сохранён как `goal-merged-rollton-before.json` в артефактах чата.
+Before the restart the real HTTP endpoint was called again for Rollton: Product Score=3.2, missingFactors=[], but Goal Match value=null, state=insufficient_data, unavailableReason=missing_nutrients. The raw response was saved in the chat artifacts as `goal-merged-rollton-before.json`.
 
-После успешных тестов и build прежний API остановлен, подтверждён свободный порт 3000. Новый API:
+After the tests and the build passed, the old API was stopped and port 3000 was confirmed free. The new API:
 
-- PID **25316**, запуск 3 ноября в **08:42:01 Asia/Tbilisi**;
+- PID **25316**, started November 3 at **08:42:01 Asia/Tbilisi**;
 - workingDirectory `C:\Users\sarak\Documents\FoodLens\apps\api`;
-- команда `E:\nodejs\node.exe dist/main.js`, свежая сборка текущего рабочего дерева dev;
+- command `E:\nodejs\node.exe dist/main.js`, a fresh build of the current dev working tree;
 - `/health`: HTTP 200, `{"status":"ok"}`;
-- адрес телефона: `http://192.168.31.187:3000`;
-- .env не менялся, SHA256 совпадает с предыдущим запуском.
+- phone address: `http://192.168.1.100:3000`;
+- .env did not change; its SHA256 matches the previous run.
 
-Вызваны настоящие `POST http://192.168.31.187:3000/scan/analyze`, multipart/form-data с одним полем barcode, без фото. Это тот же endpoint и формат, что mobile analyzeBarcode. Fixtures, прямой вызов scoring engine или service-helper в этих HTTP-проверках не использовались.
+Real `POST http://192.168.1.100:3000/scan/analyze` calls were made, multipart/form-data with a single barcode field and no photo. That is the same endpoint and format as mobile analyzeBarcode. No fixtures, direct scoring engine calls or service helpers were used in these HTTP checks.
 
 | | Rollton 4605496000815 | Choco Pie 4607084351385 |
 |---|---|---|
@@ -59,8 +59,8 @@ v3 для eat_healthier теперь проверяет missing_nutrients на �
 | Request ID | 392ba591-9580-4024-89ac-7291e1bcc8e1 | 005deb46-f289-44ef-b127-51f3b51aacc0 |
 | cacheHit | **false** | **false** |
 | Product Score | **3.2/10** | **1.8/10** |
-| Goal Match v3, до limitByProductScore | 4.0 | 2.3 |
-| Goal Match в JSON | **3.2/10** | **1.8/10** |
+| Goal Match v3, before limitByProductScore | 4.0 | 2.3 |
+| Goal Match in JSON | **3.2/10** | **1.8/10** |
 | state | goal_match | goal_match |
 | unavailableReason | null | null |
 | confidence | medium | medium |
@@ -68,17 +68,17 @@ v3 для eat_healthier теперь проверяет missing_nutrients на �
 | Product Score missingFactors | [] | [] |
 | missing_nutrients | false: unavailableReason=null | false: unavailableReason=null |
 
-Последнее ограничение Goal Match величиной Product Score — существующая политика для eat_healthier. Совпадение двух оценок не означает новой одинаковой формулы.
+The final cap of Goal Match by the Product Score is the existing policy for eat_healthier. The two scores being equal does not mean a new shared formula.
 
-Для каждого barcode это первый scan нового процесса. Кэши lookup providers и web search memory свежие; реальные enrichment_summary содержат cacheHit:false и 8 поисковых запросов. Никакие постоянные записи/планы пользователя не удалялись. Goal Match AI отключён текущей конфигурацией, используется v3.
+For each barcode this was the first scan of the new process. The lookup provider caches and the web search memory were fresh; the real enrichment_summary contains cacheHit:false and 8 search queries. No persistent records or user plans were deleted. Goal Match AI is off in the current configuration, so v3 is used.
 
-### Merged nutrition и Goal Match input
+### Merged nutrition and Goal Match input
 
-Все значения на 100 г; значения из пяти последних строк — estimated/low, provenance=inferred. Известные БЖУ — прежние verified/source данные, confidence=medium. NutritionMetadata не удаляется перед Goal Match.
+All values are per 100 g; the values in the last five rows are estimated/low with provenance=inferred. The known macros are the existing verified/source data with confidence=medium. NutritionMetadata is not removed before Goal Match.
 
-| Поле | Rollton | Choco Pie |
+| Field | Rollton | Choco Pie |
 |---|---:|---:|
-| caloriesKcal | 350 | 433, уточнено enrichment |
+| caloriesKcal | 350 | 433, refined by enrichment |
 | proteinG | 6 | 4.5 |
 | carbsG | 65 | 63 |
 | fatG | 7.5 | 18 |
@@ -89,21 +89,21 @@ v3 для eat_healthier теперь проверяет missing_nutrients на �
 | sodiumMg | 600 | 200 |
 | servingSize | 40 g | 30 g |
 
-Проверено равенство logged SCORING_INPUT.nutrition и GOAL_MATCH_INPUT.nutrition, а также равенство GOAL_MATCH_INPUT.nutritionMetadata метаданным в реальном response.
+The logged SCORING_INPUT.nutrition and GOAL_MATCH_INPUT.nutrition were checked to be equal, as were GOAL_MATCH_INPUT.nutritionMetadata and the metadata in the real response.
 
-У Rollton v3 учитывает соль (0.6 г в порции, 12% дневного лимита) и ultra_processed; сахар поступает как 3.9 г/100, но его штраф зависит от прежнего sugarSource=intrinsic, поэтому фактор свободного сахара равен 0. Это поведение формулы не менялось. У Choco Pie учитываются свободный сахар, насыщенные жиры и обработка. Отдельные тесты с добавленным сахаром доказывают вклад inferred sugar при ненулевом штрафе.
+For Rollton, v3 counts salt (0.6 g per serving, 12% of the daily limit) and ultra_processed; sugar arrives as 3.9 g/100 g, but its penalty depends on the existing sugarSource=intrinsic, so the free sugar factor is 0. That formula behavior did not change. For Choco Pie free sugar, saturated fat and processing are counted. Separate tests with added sugar prove the contribution of inferred sugar when the penalty is non-zero.
 
-Rollton: Gemini не вызывался. Choco Pie: существующее извлечение nutrition из текста страницы, model=gemini-3.5-flash-lite, usage prompt=1926, output=93, total=2019; thoughts/cached=null. Для Goal Match в этих HTTP-запросах Gemini не вызывался.
+Rollton: Gemini was not called. Choco Pie: the existing nutrition extraction from page text, model=gemini-3.5-flash-lite, usage prompt=1926, output=93, total=2019; thoughts/cached=null. Gemini was not called for Goal Match in these HTTP requests.
 
-### Фактический JSON
+### Actual JSON
 
-Полные тела без ручных изменений:
+The full bodies without manual edits were saved next to this report locally and are not included in the repository:
 
-- `goal-match-rollton-http.json` — полный ответ Rollton.
-- `goal-match-choco-http.json` — полный ответ Choco Pie.
-- `goal-match-merged-evidence.json` — этапы, входы/выходы, cacheHit, validation и результат проверки UI.
+- `goal-match-rollton-http.json` — the full Rollton response.
+- `goal-match-choco-http.json` — the full Choco Pie response.
+- `goal-match-merged-evidence.json` — stages, inputs/outputs, cacheHit, validation and the UI check result.
 
-Ключевые фактические поля Goal Match Rollton:
+Key actual Goal Match fields for Rollton:
 
 ```json
 {
@@ -118,38 +118,38 @@ Rollton: Gemini не вызывался. Choco Pie: существующее и�
 }
 ```
 
-`missing_nutrients` не отдельное поле API: это код unavailableReason; он теперь null. `needsPhoto` и верхнеуровневый status отсутствуют в сыром успешном JSON, как и прежде; mobile трактует отсутствие needsPhoto как false. Дополнительные поля с искусственным false в тело ответа не добавлялись.
+`missing_nutrients` is not a separate API field: it is an unavailableReason code, and it is now null. `needsPhoto` and the top-level status are absent from the raw successful JSON, as before; mobile treats a missing needsPhoto as false. No artificial false fields were added to the response body.
 
-## Mobile UI на реальном ответе
+## Mobile UI on the real response
 
-Исполнены реальные GoalMatchCard и goalMatchLabels с JSON обоих HTTP-ответов, с подставными native primitives как в существующих mobile tests. Проверено:
+The real GoalMatchCard and goalMatchLabels were run with the JSON of both HTTP responses, with stubbed native primitives as in the existing mobile tests. Checked:
 
-- numeric value, state=goal_match, unavailableReason=null;
-- строка «Для персональной оценки не хватает данных о пищевой ценности» отсутствует;
-- для Rollton отображаются 3,2/10, «Плохо подходит», причины про соль и ультраобработанный продукт;
-- для Choco Pie — 1,8/10, причины про свободный сахар, обработку и насыщенные жиры;
-- существующее примечание про непроверенную халяль-сертификацию относится к сохранённому профилю и не является недостатком nutrition.
+- a numeric value, state=goal_match, unavailableReason=null;
+- the line «Для персональной оценки не хватает данных о пищевой ценности» (“not enough nutrition data for a personal score”) is absent;
+- Rollton shows 3,2/10, «Плохо подходит» (“poor fit”) and reasons about salt and an ultra-processed product;
+- Choco Pie shows 1,8/10 and reasons about free sugar, processing and saturated fat;
+- the existing note about unverified halal certification comes from the saved profile and is not a nutrition gap.
 
-Код UI не менялся. Это проверка actual components, не наблюдение физического экрана телефона. Новый скан с телефона получит обновлённые значения от оставленного работающим API.
+The UI code did not change. This is a check of the actual components, not an observation of the physical phone screen. A new scan from the phone will get the updated values from the API that was left running.
 
-## Тесты и изменённые файлы
+## Tests and changed files
 
-**1175 tests, 0 failures**: API 683, scoring 240, AI 117, nutrition 38, mobile 97; core contract type tests прошли. Typecheck и API build успешны. Реальные HTTP-проверки обоих barcode и UI-проверки обоих JSON прошли.
+**1175 tests, 0 failures**: API 683, scoring 240, AI 117, nutrition 38, mobile 97; the core contract type tests passed. Typecheck and the API build succeeded. The real HTTP checks of both barcodes and the UI checks of both JSON responses passed.
 
 Production:
 
-1. `apps/api/src/modules/scan/scan.service.ts` — передача того же scoring snapshot в Goal Match и диагностические логи.
-2. `packages/scoring/src/goal-match-v3.ts` — использование estimated metadata только для confidence/uncertainty, без изменения числовой формулы.
+1. `apps/api/src/modules/scan/scan.service.ts` — passing the same scoring snapshot to Goal Match, plus diagnostic logs.
+2. `packages/scoring/src/goal-match-v3.ts` — using estimated metadata only for confidence/uncertainty, without changing the numeric formula.
 
 Tests:
 
-3. `apps/api/src/modules/scan/test/goal-match-merged.test.ts` — 11 новых проверок: verified/inferred nutrition, вклад сахара/насыщенных жиров/соли, estimated fiber, equality snapshot, настоящее missing, v1, Rollton и Choco Pie.
-4. `apps/api/src/modules/goal-match/test/goal-match-v4.test.ts` — completed API input и сохранение raw boundary validation, включая stale AI warning.
-5. `apps/api/src/modules/scan/test/google-scan.test.ts` — completed nutrition для Goal Match; тестовый AI-ответ соответствует заполненному входу.
-6. `apps/api/src/modules/scan/test/scan-multi-photo.test.ts` — Goal Match после заполнения missing по нескольким фото.
-7. `apps/api/src/modules/scan/test/scan-open-food-facts.test.ts` — числовой результат после completion без OFF.
-8. `apps/api/src/modules/scan/test/scan.test.ts` — логи unavailableReason после completion и вклад оценённого белка.
+3. `apps/api/src/modules/scan/test/goal-match-merged.test.ts` — 11 new checks: verified/inferred nutrition, the contribution of sugar/saturated fat/salt, estimated fiber, snapshot equality, truly missing data, v1, Rollton and Choco Pie.
+4. `apps/api/src/modules/goal-match/test/goal-match-v4.test.ts` — completed API input and preserved raw boundary validation, including a stale AI warning.
+5. `apps/api/src/modules/scan/test/google-scan.test.ts` — completed nutrition for Goal Match; the test AI answer matches the filled input.
+6. `apps/api/src/modules/scan/test/scan-multi-photo.test.ts` — Goal Match after missing values are filled from several photos.
+7. `apps/api/src/modules/scan/test/scan-open-food-facts.test.ts` — a numeric result after completion without OFF.
+8. `apps/api/src/modules/scan/test/scan.test.ts` — unavailableReason logs after completion and the contribution of estimated protein.
 
-Документация: этот отчёт, evidence, два фактических HTTP JSON и пометка об обновлении wiring в предыдущем отчёте mvp-nutrition-estimation.md.
+Documentation: this report, the evidence, the two actual HTTP JSON files and a note about the updated wiring in the earlier report mvp-nutrition-estimation.md.
 
-Формулы, estimator, значения под примеры, .env и UI source files не менялись. API оставлен работающим, push/commit не выполнялись.
+Formulas, the estimator, values tuned to examples, .env and UI source files did not change. The API was left running; no push or commit was made at the time.

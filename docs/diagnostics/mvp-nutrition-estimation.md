@@ -1,46 +1,46 @@
-> Последующее исправление: Goal Match теперь получает тот же completed snapshot после estimation, что и Product Score. См. [goal-match-merged-nutrition.md](goal-match-merged-nutrition.md).
+> **Updated note:** Goal Match now receives the same completed snapshot after estimation as the Product Score. See [goal-match-merged-nutrition.md](goal-match-merged-nutrition.md).
 
-# FoodLens MVP: полный Product Score с estimation fallback
+# FoodLens MVP: a complete Product Score with an estimation fallback
 
-3 ноября 2026. Репозиторий `C:\Users\sarak\Documents\FoodLens`, ветка `dev`. Ничего не отправлялось в remote. Предыдущая диагностика `universal-pipeline.md` описывает прежние требования; текущий запрос разрешает оценку недостающих нутриентов.
+November 3, 2026. Repository `C:\Users\sarak\Documents\FoodLens`, branch `dev`. Nothing was sent to the remote at the time. The earlier diagnostics in `universal-pipeline.md` describe the previous requirements; the current request allows estimating missing nutrients.
 
-## Результат
+## Result
 
-Успешно распознанный продукт проходит `scan → exact data → enrichment → estimation → normalized nutrition → existing Product Score`.
+A successfully recognized product goes through `scan → exact data → enrichment → estimation → normalized nutrition → existing Product Score`.
 
-Новый этап выполняется в ScanService после базы, веб-поиска и доступного анализа фото, до единственного существующего scoreProduct. Он возвращает числовые значения всех девяти нутриентов, необходимых существующим формулам. Для продукта с названием, составом или прочитанной таблицей Score становится числом 0–10. Неизвестный barcode без названия/состава/таблицы не объявляется распознанным продуктом: для него остаётся запрос фото.
+The new stage runs in ScanService after the database, web search and any available photo analysis, before the single existing scoreProduct. It returns numeric values for all nine nutrients the existing formulas need. For a product with a name, ingredients or a read table the Score becomes a number from 0 to 10. An unknown barcode with no name, ingredients or table is not declared a recognized product: a photo request remains for it.
 
-Формула, веса, пороги, калибровка и коэффициенты Product Score не менялись. Отдельной формулы для estimated продуктов нет. Низкая confidence estimates не блокирует вычисление и обычное отображение результата.
+The Product Score formula, weights, thresholds, calibration and coefficients did not change. There is no separate formula for estimated products. The low confidence of estimates does not block the calculation or the regular display of the result.
 
-## Как устроены estimates
+## How estimates work
 
-`nutrition-estimator.ts::estimateMissingNutrition` — чистая детерминированная функция `context-rules-v1`, без сети, запросов к модели, идентификаторов отдельных продуктов и брендов. Она использует:
+`nutrition-estimator.ts::estimateMissingNutrition` is a pure deterministic function, `context-rules-v1`, with no network, no model requests, and no identifiers of specific products or brands. It uses:
 
-- известную категорию; если категория отсутствует — общие слова типов еды в названии;
-- известные калории и БЖУ; сахара и насыщенные жиры как нижние границы недостающих carbs/fat;
-- состав и положение сахара/соли в порядке ингредиентов;
-- указания на пальмовый/кокосовый/сливочный либо подсолнечный/оливковый жир;
-- цельнозерновые ингредиенты, отруби и бобовые для клетчатки;
-- product form, sugarSource и доступный размер порции.
+- the known category; when the category is missing, generic food-type words in the name;
+- the known calories and macros; sugars and saturated fat as lower bounds for missing carbs/fat;
+- the ingredients and the position of sugar and salt in the ingredient order;
+- signs of palm/coconut/butter fat or sunflower/olive fat;
+- whole-grain ingredients, bran and legumes for fiber;
+- product form, sugarSource and the available serving size.
 
-Категорийные профили — явно оценочные MVP priors, а не проверенные анализы состава. Их числа находятся отдельно от scoring. Они заполняют только null. Бренд участвует в уже существующей идентификации/enrichment, но не определяет коэффициенты оценки. Processing продолжает учитываться прежним scoring по исходным semantics/ingredients; отдельного ослабляющего коэффициента обработки в estimator нет.
+Category profiles are explicitly estimated MVP priors, not verified composition analyses. Their numbers live separately from scoring. They only fill nulls. The brand takes part in the existing identification and enrichment but does not set the estimation coefficients. Processing is still counted by the existing scoring from the original semantics/ingredients; the estimator has no separate coefficient that softens processing.
 
-Gemini остаётся в существующем enrichment для извлечения текста найденных страниц. Estimation не требует Gemini и не зависит от доступности дополнительных токенов, сайтов или двух подтверждений.
+Gemini stays in the existing enrichment step for extracting text from found pages. Estimation does not need Gemini and does not depend on extra tokens, sites or two confirmations being available.
 
-При отсутствии самих БЖУ используются категорийные priors с ограничениями. Если калории известны, остаточная энергия распределяется между отсутствующими макросами с учётом уже известных сахаров/насыщенных жиров. Если калорий нет, они рассчитываются по 4/4/9. При наличии всех точных значений estimator сохраняет их объекты без изменения и не создаёт оценочных полей.
+When the macros themselves are missing, category priors with constraints are used. If calories are known, the remaining energy is distributed among the missing macros, taking into account the known sugars and saturated fat. If calories are missing, they are calculated by 4/4/9. When all exact values are present, the estimator keeps their objects unchanged and creates no estimated fields.
 
-## Ограничения и provenance
+## Constraints and provenance
 
-- Сахара ограничены carbs; насыщенные жиры — fat, в том числе после округления.
-- Оценённые макросы ограничены доступной массой на 100 г/мл; учитываются нижние границы из известных сахаров/насыщенных жиров.
-- Клетчатка ограничена остатком массы, 30 г/100 и энергетическим пределом.
-- Соль оценивается по профилю и позиции в составе, с верхней границей 5 г/100. Для специальных продуктов вроде чистой соли это ограничение не применяется к точным значениям: они сохраняются.
-- Известная соль/натрий сначала пересчитываются друг в друга: `saltG = sodiumMg × 2.5 / 1000`, обратное `sodiumMg = saltG × 1000 / 2.5`. Отдельной независимой оценки натрия нет.
-- Estimates масштабируются к исходной порции; точные значения не пересчитываются и не перезаписываются.
-- Неизвестная основа либо недостающий размер порции получают явную оценочную basis metadata с low confidence. Это предположение MVP, а не найденный факт.
-- Противоречия уже известных source values не «исправляются» подстановкой. Они отмечаются в `nutritionMetadata.constraints`; Score от этого не блокируется.
+- Sugars are capped by carbs; saturated fat by fat, including after rounding.
+- Estimated macros are capped by the available mass per 100 g/ml; lower bounds from known sugars and saturated fat are respected.
+- Fiber is capped by the remaining mass, 30 g/100 g and an energy limit.
+- Salt is estimated from the profile and its position in the ingredients, with an upper bound of 5 g/100 g. For special products such as pure salt this limit does not apply to exact values: they are kept.
+- Known salt and sodium are first converted into each other: `saltG = sodiumMg × 2.5 / 1000`, and back `sodiumMg = saltG × 1000 / 2.5`. There is no separate independent sodium estimate.
+- Estimates are scaled to the original serving; exact values are never recalculated or overwritten.
+- An unknown basis or a missing serving size gets explicit estimated basis metadata with low confidence. This is an MVP assumption, not a found fact.
+- Contradictions between known source values are not “fixed” by substitution. They are recorded in `nutritionMetadata.constraints`, and the Score is not blocked by them.
 
-API сохраняет прежние value/provenance. Новые вычисленные значения имеют provenance=inferred и дополнительную отдельную маркировку:
+The API keeps the existing value/provenance. New calculated values have provenance=inferred and a separate additional marker:
 
 ```json
 {
@@ -60,95 +60,95 @@ API сохраняет прежние value/provenance. Новые вычисл�
 }
 ```
 
-Metadata создаётся для всех девяти полей: verified/estimated/ai_estimated, confidence, method и reason. `ai_estimated` предусмотрен контрактом; текущий оценщик использует estimated. Verified здесь обозначает принятые данные источника или арифметический пересчёт, а не лабораторное подтверждение: у записи OFF confidence=medium, у observed обычно high. У оценочных полей confidence=low, за исключением расчётной энергии по известным БЖУ с medium. Источники и URL точных полей остаются в fieldEvidence.
+Metadata is created for all nine fields: verified/estimated/ai_estimated, confidence, method and reason. `ai_estimated` is part of the contract; the current estimator uses estimated. Verified here means accepted source data or an arithmetic conversion, not laboratory confirmation: an OFF record has confidence=medium, an observed value usually high. Estimated fields have confidence=low, except energy calculated from known macros, which is medium. The sources and URLs of exact fields stay in fieldEvidence.
 
-## API и UI
+## API and UI
 
-В scan.service.ts добавлены `ESTIMATION_INPUT`, `ESTIMATION_RESULT`, затем существующие `SCORING_INPUT`/`SCORING_RESULT`. Они идут под существующей настройкой scan debug, без фото, API keys или пользовательского профиля.
+`ESTIMATION_INPUT` and `ESTIMATION_RESULT` were added to scan.service.ts, followed by the existing `SCORING_INPUT`/`SCORING_RESULT`. They are logged under the existing scan debug setting, with no photos, API keys or user profile.
 
-Если estimates дали полный Product Score, API больше не возвращает `needsPhoto`/`needs_nutrition_photo` для распознанного продукта. В UI используется обычная карточка с числом и вердиктом. Estimated нутриенты помечаются `≈`; небольшое пояснение: «Часть пищевых данных оценена автоматически.»
+If estimates gave a complete Product Score, the API no longer returns `needsPhoto`/`needs_nutrition_photo` for a recognized product. The UI uses the regular card with a number and a verdict. Estimated nutrients are marked `≈`, with a short note: «Часть пищевых данных оценена автоматически.» (“Some nutrition data was estimated automatically.”)
 
-Логика preliminary для старых неполных результатов сохранена, но новый completed pipeline заполняет все три критичных фактора, поэтому успешно оценённые продукты в эту ветку не попадают. Частично неизвестные additives/processing не являются блокирующими нутриентами формулы и не заменяются вымышленными фактами.
+The preliminary logic for old incomplete results remains, but the new completed pipeline fills all three critical factors, so successfully estimated products never reach that branch. Partially unknown additives/processing are not blocking nutrients of the formula and are not replaced with invented facts.
 
-Изменение касается Product Score. Персональный Goal Match по-прежнему получает точные/enriched данные с прежними проверками; estimates не выдаются его AI-валидатору за прочитанную этикетку. Его итог по-прежнему ограничивается Product Score существующим limitByProductScore.
+The change concerns the Product Score. The personal Goal Match still receives exact/enriched data with the existing checks; estimates are never presented to its AI validator as a read label. Its result is still capped by the Product Score through the existing limitByProductScore.
 
-## Реальная диагностика: Rollton и Choco Pie
+## Real diagnostics: Rollton and Choco Pie
 
-Новые вызовы выполнены через собранный ScanService и настроенные OFF/Tavily/Gemini. Профиля пользователя и фото в этих диагностических вызовах нет. Полные этапы, исходные данные, metadata, причины отказов, scoring input и результат находятся в `mvp-nutrition-estimation-evidence.json`. Поисковая выдача может меняться; ниже результаты именно этого прогона.
+The new calls went through the built ScanService and the configured OFF/Tavily/Gemini. There is no user profile and no photo in these diagnostic calls. The full stages, source data, metadata, rejection reasons, scoring input and result are in `mvp-nutrition-estimation-evidence.json` (kept locally, not in the repository). Search results can change; below are the results of this particular run.
 
-| Этап | Rollton 4605496000815 | Choco Pie 4607084351385 |
+| Stage | Rollton 4605496000815 | Choco Pie 4607084351385 |
 |---|---|---|
-| Primary OFF | 350 kcal, P=6 г, C=65 г, F=7,5 г; порция 40 г | около 506,67 kcal, округлено 507; P=4,5 г, C=63 г, F=18 г; порция 30 г |
-| Первичные пропуски | sugars, saturatedFat, fiber, salt, sodium | те же; kcal дополнительно проверяется как аномалия относительно БЖУ |
-| Enrichment | 8 поисков, 35 кандидатов, 9 прочитанных страниц; 10 credits | 8 поисков, 24 кандидата, 10 прочитанных страниц; 10 credits |
-| Принятые дополнения | состав, новых нутриентов нет | calories=433, подтверждённые источниками; другие пропуски остались |
-| После enrichment неизвестны | sugars, saturatedFat, fiber, salt, sodium | sugars, saturatedFat, fiber, salt, sodium |
-| Estimation context | ready_meal, известные БЖУ, состав, соль на позиции 1 (индекс с нуля) | bakery, БЖУ, сахар на позиции 1, palm oil, соль на позиции 13 |
-| Финальный Product Score | **3,2 / 10** | **1,8 / 10** |
-| Confidence Score | low | low |
+| Primary OFF | 350 kcal, P=6 g, C=65 g, F=7.5 g; serving 40 g | about 506.67 kcal, rounded to 507; P=4.5 g, C=63 g, F=18 g; serving 30 g |
+| Initial gaps | sugars, saturatedFat, fiber, salt, sodium | the same; kcal is also checked as an anomaly against the macros |
+| Enrichment | 8 searches, 35 candidates, 9 pages read; 10 credits | 8 searches, 24 candidates, 10 pages read; 10 credits |
+| Accepted additions | ingredients, no new nutrients | calories=433, confirmed by sources; the other gaps remained |
+| Unknown after enrichment | sugars, saturatedFat, fiber, salt, sodium | sugars, saturatedFat, fiber, salt, sodium |
+| Estimation context | ready_meal, known macros, ingredients, salt at position 1 (zero-based) | bakery, macros, sugar at position 1, palm oil, salt at position 13 |
+| Final Product Score | **3.2 / 10** | **1.8 / 10** |
+| Score confidence | low | low |
 | missingFactors | [] | [] |
 | needsPhoto | false | false |
 
-Все значения ниже относятся к 100 г и являются фактическим финальным scoring input:
+All values below are per 100 g and are the actual final scoring input:
 
-| Поле | Rollton | Статус/confidence | Choco Pie | Статус/confidence |
+| Field | Rollton | Status/confidence | Choco Pie | Status/confidence |
 |---|---:|---|---:|---|
 | Calories kcal | 350 | verified / medium | 433 | verified / medium, web correction |
-| Protein g | 6 | verified / medium | 4,5 | verified / medium |
+| Protein g | 6 | verified / medium | 4.5 | verified / medium |
 | Carbs g | 65 | verified / medium | 63 | verified / medium |
-| Fat g | 7,5 | verified / medium | 18 | verified / medium |
-| Sugars g | 3,9 | estimated / low | 28,35 | estimated / low |
-| Saturated fat g | 2,25 | estimated / low | 9 | estimated / low |
+| Fat g | 7.5 | verified / medium | 18 | verified / medium |
+| Sugars g | 3.9 | estimated / low | 28.35 | estimated / low |
+| Saturated fat g | 2.25 | estimated / low | 9 | estimated / low |
 | Fiber g | 3 | estimated / low | 2 | estimated / low |
-| Salt g | 1,5 | estimated / low | 0,5 | estimated / low |
+| Salt g | 1.5 | estimated / low | 0.5 | estimated / low |
 | Sodium mg | 600 | estimated / low, derived from salt | 200 | estimated / low, derived from salt |
 
-В обеих строках constraints=[]: расчётные значения проходят ограничения. Эти estimates не заявляются как реальные данные конкретной упаковки.
+Both rows have constraints=[]: the calculated values pass the constraints. These estimates are not claimed to be real data from a specific package.
 
-Rollton: часть страниц без пригодной таблицы, `barista-ltd.ru` конфликтует с исходной рецептурой, `ru.nutrola.app` содержит подозрительные нули. Эти данные не становятся verified. Пробелы после поиска теперь закрываются общим estimator.
+Rollton: some pages had no usable table, `barista-ltd.ru` conflicts with the original recipe, and `ru.nutrola.app` contains suspicious zeros. That data never becomes verified. The gaps left after the search are now closed by the general estimator.
 
-Choco Pie: подтверждённая калорийность 433 принята ДО estimation; исходные P/C/F сохранены. Неподтверждённые значения одного слабого сайта не переводятся в verified. Estimator независимо строит допустимые значения по контексту.
+Choco Pie: the confirmed 433 kcal was accepted BEFORE estimation; the original P/C/F were kept. Unconfirmed values from a single weak site are not turned into verified ones. The estimator builds valid values from the context independently.
 
-Gemini nutrition_extraction: model=gemini-3.5-flash-lite, prompt=1926, output=93, total=2019; thoughts/cached=null. Дополнительного Gemini-вызова для estimation нет.
+Gemini nutrition_extraction: model=gemini-3.5-flash-lite, prompt=1926, output=93, total=2019; thoughts/cached=null. There is no extra Gemini call for estimation.
 
-## Тесты и проверки
+## Tests and checks
 
-- `pnpm test`: **1164 tests, 0 failures**: API 672, scoring 240, AI 117, nutrition 38, mobile 97. Core contract type tests также прошли.
-- Новый `nutrition-estimator.test.ts`: 15 tests, включая полный source-only продукт, enrichment-before-estimation, сохранение точных значений, unknown name + ingredients + partial macros, категории, name-only, неизвестный barcode, salt/sodium, энергетические ограничения, ingredient order, порции, неизвестную основу, округление, 250 макро-контекстов, оба примера и отсутствие product-specific веток в production estimator.
-- Старые source acceptance тесты продолжают проверять приём/отказ источников. `source-evidence-view.ts` скрывает из их проверяемого nutrition только estimated поля; score и metadata остаются фактическим финальным API-ответом. Новый estimator suite проверяет completed API без этой проекции.
-- `pnpm typecheck`: успешно для всех packages/API/mobile.
-- `pnpm --filter @foodlens/api build`: успешно.
-- Реальный CLI для двух barcode: exit 0, оба числовых результата выше.
-- Lint трёх изменённых UI-файлов: успешно.
-- Полный `pnpm --filter @foodlens/mobile lint`: 12 ошибок в неизменённых этой работой `_layout.tsx`, `ProfileProvider.tsx`, `FocusIndicator.tsx`, `useNutritionTargets.ts` (display-name, refs during render, set-state-in-effect). Исправления этих компонентов в задачу не включались.
+- `pnpm test`: **1164 tests, 0 failures**: API 672, scoring 240, AI 117, nutrition 38, mobile 97. The core contract type tests also passed.
+- The new `nutrition-estimator.test.ts`: 15 tests, including a complete source-only product, enrichment before estimation, preservation of exact values, an unknown name + ingredients + partial macros, categories, name-only, an unknown barcode, salt/sodium, energy constraints, ingredient order, servings, an unknown basis, rounding, 250 macro contexts, both examples, and no product-specific branches in the production estimator.
+- The old source acceptance tests still check acceptance and rejection of sources. `source-evidence-view.ts` hides only the estimated fields from the nutrition they check; the score and metadata remain the actual final API response. The new estimator suite checks the completed API without this projection.
+- `pnpm typecheck`: passed for all packages, the API and mobile.
+- `pnpm --filter @foodlens/api build`: passed.
+- The real CLI for both barcodes: exit 0, both numeric results above.
+- Lint of the three changed UI files: passed.
+- The full `pnpm --filter @foodlens/mobile lint`: 12 errors in `_layout.tsx`, `ProfileProvider.tsx`, `FocusIndicator.tsx` and `useNutritionTargets.ts`, which this work did not change (display-name, refs during render, set-state-in-effect). Fixing those components was not part of the task.
 
-## Изменённые файлы этой итерации
+## Files changed in this iteration
 
 Production:
 
-1. `apps/api/src/modules/scan/nutrition-estimator.ts` — новый оценщик и ограничения.
-2. `apps/api/src/modules/scan/scan.service.ts` — финальный estimation stage, логирование и завершённый статус.
-3. `packages/core/src/product/product.ts` — optional nutritionMetadata и контракт происхождения каждого значения.
-4. `apps/api/scripts/diagnose-product-pipeline.cjs` — вывод nutritionMetadata для любого barcode из аргументов CLI.
-5. `apps/mobile/src/features/product-score/components/ProductScoreCard.tsx` — пояснение estimates у обычного результата.
-6. `apps/mobile/src/features/scan/screens/ProductResultScreen.tsx` — передача estimated полей в карточку и таблицу.
-7. `apps/mobile/src/features/scan/components/NutritionTable.tsx` — корректное общее пояснение автооценки.
+1. `apps/api/src/modules/scan/nutrition-estimator.ts` — the new estimator and constraints.
+2. `apps/api/src/modules/scan/scan.service.ts` — the final estimation stage, logging and the completed status.
+3. `packages/core/src/product/product.ts` — optional nutritionMetadata and the provenance contract for each value.
+4. `apps/api/scripts/diagnose-product-pipeline.cjs` — prints nutritionMetadata for any barcode passed as a CLI argument.
+5. `apps/mobile/src/features/product-score/components/ProductScoreCard.tsx` — the estimates note on a regular result.
+6. `apps/mobile/src/features/scan/screens/ProductResultScreen.tsx` — passes the estimated fields to the card and the table.
+7. `apps/mobile/src/features/scan/components/NutritionTable.tsx` — the correct shared note about automatic estimation.
 
 Tests:
 
-8. `apps/api/src/modules/scan/test/nutrition-estimator.test.ts` — новые тесты (описаны выше).
-9. `apps/api/src/modules/scan/test/source-evidence-view.ts` — отдельная проекция принятых source values для тестов источников.
-10. `apps/api/src/modules/scan/test/google-scan.test.ts` — завершённый Product Score при отсутствии таблицы, прежний Goal Match.
-11. `apps/api/src/modules/scan/test/scan-barcode-first.test.ts` — новый контракт estimates/needsPhoto, сохранение неизвестного barcode и отказа чужим рецептурам.
-12. `apps/api/src/modules/scan/test/scan-multi-photo.test.ts` — числовой Score после фото; прежние ограничения AI/Goal Match.
-13. `apps/api/src/modules/scan/test/scan-multi-source.test.ts` — source evidence и итоговый numeric Score.
-14. `apps/api/src/modules/scan/test/scan-open-food-facts.test.ts` — то же для OFF.
-15. `apps/api/src/modules/scan/test/scan-single-source.test.ts` — source evidence, metadata и финальный Score.
-16. `apps/api/src/modules/scan/test/scan-web-fallback.test.ts` — сохранены проверки совпадений/отказов/лимитов, обновлён конечный API-контракт.
-17. `apps/api/src/modules/scan/test/scan.test.ts` — логи присутствия завершённых нутриентов и estimates в API.
-18. `apps/api/src/modules/goal-match/test/goal-match-v4.test.ts` — сравнение Product Score с completed входом, тот же Goal Match.
-19. `apps/mobile/test/estimated-nutrients.test.cjs` — обычный результат и пояснение автооценки.
+8. `apps/api/src/modules/scan/test/nutrition-estimator.test.ts` — the new tests (described above).
+9. `apps/api/src/modules/scan/test/source-evidence-view.ts` — a separate projection of accepted source values for the source tests.
+10. `apps/api/src/modules/scan/test/google-scan.test.ts` — a completed Product Score without a table, the same Goal Match.
+11. `apps/api/src/modules/scan/test/scan-barcode-first.test.ts` — the new estimates/needsPhoto contract, preservation of an unknown barcode and rejection of other recipes.
+12. `apps/api/src/modules/scan/test/scan-multi-photo.test.ts` — a numeric Score after photos; the existing AI/Goal Match constraints.
+13. `apps/api/src/modules/scan/test/scan-multi-source.test.ts` — source evidence and the final numeric Score.
+14. `apps/api/src/modules/scan/test/scan-open-food-facts.test.ts` — the same for OFF.
+15. `apps/api/src/modules/scan/test/scan-single-source.test.ts` — source evidence, metadata and the final Score.
+16. `apps/api/src/modules/scan/test/scan-web-fallback.test.ts` — the match/rejection/limit checks were kept, and the final API contract was updated.
+17. `apps/api/src/modules/scan/test/scan.test.ts` — presence logs for completed nutrients and estimates in the API.
+18. `apps/api/src/modules/goal-match/test/goal-match-v4.test.ts` — the Product Score compared with the completed input, the same Goal Match.
+19. `apps/mobile/test/estimated-nutrients.test.cjs` — the regular result and the automatic estimation note.
 
-Documentation: этот отчёт, JSON evidence, историческая пометка в `universal-pipeline.md`.
+Documentation: this report, the JSON evidence and the historical note in `universal-pipeline.md`.
 
-Работающий сервер API не перезапускался. Код собран и проверен отдельными процессами. Изменения и предыдущие незакоммиченные файлы оставлены локально на dev; push/commit не выполнялись.
+The running API server was not restarted. The code was built and checked in separate processes. The changes and earlier uncommitted files were left locally on dev; no push or commit was made at the time.

@@ -1,83 +1,85 @@
-# Product Score v3: C(−8) и напитки
+# Product Score v3: C(−8) and drinks
 
-Дата: 1 ноября 2026. Запросов к Gemini, Tavily и OFF не было. Commit и push не делались, `.env` не менялся.
+Date: November 1, 2026. No requests were made to Gemini, Tavily or OFF. No commit or push was made, and `.env` was not changed.
 
-## Что изменено
+> **Updated note (November 3, 2026).** This report is historical. The current formula is `product-score-v6`: the lower part of the scale is now compressed down to a floor of −16, the sum of all maximum penalties, instead of −8.
 
-**C(−8).** `PRODUCT_SCORE_VERSION` теперь `product-score-v3`. В `packages/scoring/src/score-product.ts` добавлена `calibrateLowScale`: сумма ниже 4 сжимается линейно, −8 становится 0, а 4 остаётся 4. Сумма 4 и выше не меняется. Потолок 4 работает как раньше. Веса, пороги и пределы штрафов не менялись.
+## What changed
 
-**Напитки.** Определение обновлено перед реальным сканом. В `open-food-facts.mapper.ts`:
+**C(−8).** `PRODUCT_SCORE_VERSION` is now `product-score-v3`. `calibrateLowScale` was added to `packages/scoring/src/score-product.ts`: a sum below 4 is compressed linearly, so −8 becomes 0 and 4 stays 4. A sum of 4 and above does not change. The ceiling of 4 works as before. Weights, thresholds and penalty limits did not change.
 
-1. В запросе OFF есть `categories_tags` и `categories_hierarchy`.
-2. Напиток определяется только по категориям: `en:beverages`, `en:waters`, `en:sodas`, `en:juices`, `en:fruit-juices`, `en:milks`, `en:dairy-drinks`.
-3. Исключения важнее: масла, соусы, заправки, приправы, уксусы, сиропы и кулинарные сливки.
-4. Единица `ml` ничего не доказывает. Без категорий статус `unknown`, основа остаётся как в OFF.
-5. Значения на `100g` для напитка читаются как на 100 мл: принята плотность 1.
-6. В dev-логе `product_lookup` видны `basis` и `beverage_classification`.
+**Drinks.** Detection was updated before the real scan. In `open-food-facts.mapper.ts`:
 
-**Подтверждённые нули** не отбрасываются из-за оценки OFF, как вы решили.
+1. The OFF request includes `categories_tags` and `categories_hierarchy`.
+2. A drink is detected only by category: `en:beverages`, `en:waters`, `en:sodas`, `en:juices`, `en:fruit-juices`, `en:milks`, `en:dairy-drinks`.
+3. Exclusions take priority: oils, sauces, dressings, condiments, vinegars, syrups and cooking cream.
+4. The `ml` unit proves nothing. Without categories the status is `unknown` and the basis stays as in OFF.
+5. Values per `100g` for a drink are read as per 100 ml: a density of 1 is assumed.
+6. The dev log `product_lookup` shows `basis` and `beverage_classification`.
 
-Product Score и Goal Match остаются независимыми. Goal Match cola теперь считается как напиток, потому что основа стала `per_100ml`.
+**Confirmed zeros** are not discarded because of the OFF estimate, as you decided.
+
+Product Score and Goal Match stay independent. The cola Goal Match is now calculated as a drink, because the basis became `per_100ml`.
 
 ## Coca-Cola
 
-Настоящий маппер и настоящий `scoreProduct()` на сохранённых ответах v3.6.
+The real mapper and the real `scoreProduct()` on saved v3.6 responses.
 
-| Продукт | Основа до | Score до | Основа после | Порция | Score после | raw | Штрафы |
+| Product | Basis before | Score before | Basis after | Serving | Score after | raw | Penalties |
 |---|---|---|---|---|---|---|---|
-| Coca-Cola Original | `per_100g` | 5.8 | `per_100ml` | 250 мл | 3.4 | 2.17 | sugars −4.63, additives −1.2 |
-| Coca-Cola Zero | `per_100g` | 6.0 | `per_100ml` | 330 мл | 6.0 | 6.0 | additives −2 |
+| Coca-Cola Original | `per_100g` | 5.8 | `per_100ml` | 250 ml | 3.4 | 2.17 | sugars −4.63, additives −1.2 |
+| Coca-Cola Zero | `per_100g` | 6.0 | `per_100ml` | 330 ml | 6.0 | 6.0 | additives −2 |
 
-Только исправление основы дало бы 2.2, а C(−8) поднимает это значение до 3.4.
+The basis fix alone would give 2.2, and C(−8) raises that to 3.4.
 
-## Продукты после C(−8)
+## Products after C(−8)
 
-| Продукт | raw | v2 | v3 |
+| Product | raw | v2 | v3 |
 |---|---|---|---|
-| Овсянка | 8.64 | 8.6 | 8.6 |
-| Творог 5% | 8.02 | 8.0 | 8.0 |
-| Вода | 8 | 8.0 | 8.0 |
-| Брокколи | 8 | 8.0 | 8.0 |
-| Яйца | 7.68 | 7.7 | 7.7 |
-| Лосось | 7.53 | 7.5 | 7.5 |
-| Йогурт натуральный | 7.49 | 7.5 | 7.5 |
-| Яблоко | 7.07 | 7.1 | 7.1 |
-| Творожный продукт, ваш кейс | 6.71 | 6.7 | 6.7 |
-| Миндаль | 5.69 | 5.7 | 5.7 |
-| Чипсы, ваш кейс | 2.44 | 2.4 | 3.5 |
-| Чипсы, типичные | 0.73 | 0.7 | 2.9 |
+| Oatmeal | 8.64 | 8.6 | 8.6 |
+| Cottage cheese 5% | 8.02 | 8.0 | 8.0 |
+| Water | 8 | 8.0 | 8.0 |
+| Broccoli | 8 | 8.0 | 8.0 |
+| Eggs | 7.68 | 7.7 | 7.7 |
+| Salmon | 7.53 | 7.5 | 7.5 |
+| Natural yogurt | 7.49 | 7.5 | 7.5 |
+| Apple | 7.07 | 7.1 | 7.1 |
+| Curd product, your case | 6.71 | 6.7 | 6.7 |
+| Almonds | 5.69 | 5.7 | 5.7 |
+| Chips, your case | 2.44 | 2.4 | 3.5 |
+| Chips, typical | 0.73 | 0.7 | 2.9 |
 | Roshen | −5.16 | 0.0 | 0.9 |
-| Snickers лесной орех | −5.65 | 0.0 | 0.8 |
+| Snickers hazelnut | −5.65 | 0.0 | 0.8 |
 | Snickers | −5.66 | 0.0 | 0.8 |
 
-Значения продуктов, кроме Roshen и ваших двух случаев, типичные.
+Except for Roshen and your two cases, the product values are typical.
 
-## Проверка шкалы
+## Scale check
 
-| Показатель | v2 | v3 |
+| Metric | v2 | v3 |
 |---|---|---|
 | =0 | 17 | 0 |
 | ≤1 | 25 | 5 |
 | ≤2 | 27 | 14 |
 | ≥9 | 1 | 1 |
 | =10 | 0 | 0 |
-| Среднее | 4.01 | 4.77 |
-| Нарушено пар из 34 | 2 | 0 |
+| Mean | 4.01 | 4.77 |
+| Broken pairs out of 34 | 2 | 0 |
 
-**Верх шкалы не изменился.** У всех 37 продуктов с raw ≥ 4 оценки v2 и v3 совпадают, включая все 11 с raw ≥ 8. Ordering не сломан: сжатие монотонное, что закреплено тестом.
+**The top of the scale did not change.** For all 37 products with raw ≥ 4 the v2 and v3 scores match, including all 11 with raw ≥ 8. Ordering is intact: the compression is monotonic, and a test pins that.
 
-В мобильном приложении нет строк версии и порогов шкалы, которые нужно менять.
+The mobile app has no version strings or scale thresholds that need changing.
 
-## Что осталось
+## What remains
 
-- **Поля категорий в ответе v3.6 ещё не видели вживую.** Если OFF их не вернёт, cola останется на `per_100g` и получит 5.8. Первый реальный скан покажет это в `beverage_classification`.
-- Низ шкалы плотный: чипсы 3.5 и Coca-Cola 3.4 почти рядом. Это ожидаемая плата за отсутствие нулей.
-- Сумма баллов факторов ниже raw 4 больше не равна итоговой оценке: итог проходит через сжатие. Приложение отдельные баллы не показывает.
-- В Coca-Cola Zero шесть добавок стоят −2, поэтому она остаётся высоко.
-- Подозрительные нули вроде `Le nature` с сахарами 0 остаются, как вы решили.
+- **The category fields of the v3.6 response have not been seen live yet.** If OFF does not return them, cola stays on `per_100g` and gets 5.8. The first real scan will show this in `beverage_classification`.
+- The bottom of the scale is dense: chips at 3.5 and Coca-Cola at 3.4 are almost side by side. That is the expected price of having no zeros.
+- Below raw 4 the sum of factor points no longer equals the final score: the result goes through compression. The app does not show individual points.
+- In Coca-Cola Zero six additives cost −2, so it stays high.
+- Suspicious zeros such as `Le nature` with 0 sugars remain, as you decided.
 
 ## Tests
 
-`pnpm typecheck` прошёл, все 7 проектов. `pnpm test`: 762 из 762 (api 341, scoring 213, ai 109, mobile 82, nutrition 17).
+`pnpm typecheck` passed for all 7 projects. `pnpm test`: 762 of 762 (api 341, scoring 213, ai 109, mobile 82, nutrition 17).
 
-API пересобран и перезапущен: процесс проверен перед остановкой, настройки только для процесса, слушает `0.0.0.0:3000`, `/health` отвечает. Metro, Docker и Postgres не менялись.
+The API was rebuilt and restarted: the process was checked before stopping, the settings apply only to that process, it listens on `0.0.0.0:3000`, and `/health` responds. Metro, Docker and Postgres did not change.

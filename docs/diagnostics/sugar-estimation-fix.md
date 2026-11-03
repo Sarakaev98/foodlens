@@ -1,50 +1,50 @@
-# FoodLens: исправление ingredient matching и sugar estimates
+# FoodLens: fixing ingredient matching and sugar estimates
 
-3 ноября 2026. Ветка dev. Версия estimator: context-rules-v2. Формулы Product Score и Goal Match не менялись. Push/commit не выполнялись.
+November 3, 2026. Branch dev. Estimator version: context-rules-v2. The Product Score and Goal Match formulas did not change. No push or commit was made at the time.
 
-## Исправление
+## The fix
 
-Ingredient keywords теперь сопоставляются с целыми Unicode-токенами после NFKC normalization, lower-case и ё→е. Используется `[\p{L}\p{M}]+` и полностью ограниченные keyword patterns. «мед», «мёд», допустимые формы меда/меду/медом распознаются. Камедь, медовый и honeycomb не становятся ингредиентом honey. ASCII `\b` для кириллицы не используется.
+Ingredient keywords are now matched against whole Unicode tokens after NFKC normalization, lower-casing and ё→е. The matcher uses `[\p{L}\p{M}]+` and fully bounded keyword patterns. «мед», «мёд» (honey) and the valid inflected forms меда/меду/медом are recognized. Камедь (gum, as in guar gum), медовый (“honey-flavored”) and honeycomb no longer become the honey ingredient. ASCII `\b` is not used for Cyrillic.
 
-Разбор состава сохраняет иерархию круглых и квадратных скобок. Top-level sugar signals отделены от nested. Сахар внутри приправы/соуса не наследует позицию компонента в целом. Поддерживаются несколько уровней вложенности, грубые OCR-строки с несколькими компонентами и незакрытая скобка: её содержимое остаётся nested.
+Ingredient parsing keeps the hierarchy of round and square brackets. Top-level sugar signals are separated from nested ones. Sugar inside a seasoning or sauce does not inherit the position of that component as a whole. Several levels of nesting, rough OCR lines with several components and an unclosed bracket are supported: its content stays nested.
 
-Высокие sugar estimates сохранены для chocolate/sweets/bakery/beverage/juice/dairy/yogurt/fruit. В остальных категориях позиционное повышение ограничено category-aware cap. Исключение — явно самостоятельный первичный сахарный ингредиент: сахар, натуральный мёд, тростниковый сахар, corn syrup и т.п. «Соус с сахаром» или «приправа (сахар, ...)» сами не дают это исключение.
+High sugar estimates remain for chocolate/sweets/bakery/beverage/juice/dairy/yogurt/fruit. In other categories the positional increase is limited by a category-aware cap. The exception is an explicit stand-alone primary sugar ingredient: sugar, natural honey, cane sugar, corn syrup and so on. «Соус с сахаром» (“sauce with sugar”) or «приправа (сахар, ...)» (“seasoning (sugar, ...)”) do not trigger this exception on their own.
 
 ```text
-positional = 0.65 (позиция 0), 0.45 (позиции 1–2), 0.20 (позже), 0 (нет top-level сигнала)
-proposed = max(category prior, positional, применимый сладкой категории semantic floor)
-categoryCap = 1 для сладкой категории или сильного primary sugar
-              иначе max(prior, min(0.20, 2 × prior))
+positional = 0.65 (position 0), 0.45 (positions 1–2), 0.20 (later), 0 (no top-level signal)
+proposed = max(category prior, positional, the semantic floor of a sweet category where it applies)
+categoryCap = 1 for a sweet category or a strong primary sugar
+              otherwise max(prior, min(0.20, 2 × prior))
 share = min(proposed, categoryCap)
 sugars = clamp(carbs × share, 0, carbs)
 ```
 
-Для ready_meal prior=0.06, обычный cap=0.12. При отсутствии top-level сахара сохраняется 0.06, даже если сахар упомянут внутри вторичного компонента. Явный самостоятельный сахар первым ингредиентом может дать 0.65 как сильное подтверждение. Это общие категорийные правила, без barcode/brand/name exceptions.
+For ready_meal the prior is 0.06 and the usual cap is 0.12. Without a top-level sugar 0.06 is kept, even if sugar is mentioned inside a secondary component. An explicit stand-alone sugar as the first ingredient can give 0.65 as strong confirmation. These are general category rules with no barcode, brand or name exceptions.
 
-Metadata reason сохраняет top-level position, nested count, share/cap/capped. Существующие точные значения сохраняются; set заполняет только null. Estimates остаются inferred/estimated с low confidence.
+The metadata reason keeps the top-level position, the nested count, and share/cap/capped. Existing exact values are kept; the setter fills only null. Estimates stay inferred/estimated with low confidence.
 
-## Аудит matchers
+## Matcher audit
 
-| Группа | Результат |
+| Group | Result |
 |---|---|
-| sugar/honey/syrup/glucose/fructose/maltose | Полные токены, контролируемые формы/plurals; нет камедь/медовый/honeycomb/glucosamine/fructooligosaccharides false positives |
-| starch/flour/maltodextrin | Крахмал, мука, мальтодекстрин, carbohydrates и flavoring не создают сахарный сигнал |
-| сахарный колер | Прилагательное сахарный не выдаётся за самостоятельный сахар |
-| fiber | whole grain/bran/oat/oatmeal, цельнозерновые, отруби, овсяные и бобовые сохранены; brandy/goat не совпадают с bran/oat |
-| salt | Целые salt/соль/соли/солью; солист/saltwater не совпадают; позиция считается на top level |
-| saturated fat | palm/coconut/butter и точные русские формы; нет butternut/butterfly/palmaria false positives |
-| unsaturated fat | sunflower/olive и русские формы; olivewood не совпадает |
-| sweetener | Целые sucralose/stevia/подсластитель и т.п.; более длинный произвольный токен не совпадает |
+| sugar/honey/syrup/glucose/fructose/maltose | Whole tokens, controlled forms and plurals; no false positives for камедь/медовый/honeycomb/glucosamine/fructooligosaccharides |
+| starch/flour/maltodextrin | Starch, flour, maltodextrin, carbohydrates and flavoring do not create a sugar signal |
+| caramel color (сахарный колер) | The adjective сахарный (“sugar-based”) is not treated as a stand-alone sugar |
+| fiber | whole grain/bran/oat/oatmeal and their Russian forms (whole-grain, bran, oat, legumes) are kept; brandy/goat do not match bran/oat |
+| salt | Whole salt/соль/соли/солью; солист/saltwater do not match; the position is counted at the top level |
+| saturated fat | palm/coconut/butter and exact Russian forms; no false positives for butternut/butterfly/palmaria |
+| unsaturated fat | sunflower/olive and Russian forms; olivewood does not match |
+| sweetener | Whole sucralose/stevia/подсластитель (sweetener) and so on; a longer arbitrary token does not match |
 
-FOOD_TYPES используются для названия категории, а не ингредиентов. Их классификационная политика в этой работе не менялась.
+FOOD_TYPES are used for the category name, not for ingredients. Their classification policy did not change in this work.
 
-## Реальный HTTP: лапша 4605496016700
+## Real HTTP: noodles 4605496016700
 
-Основной API перезапущен после успешных test/typecheck/build: PID 13068, порт 3000, адрес телефона http://192.168.31.187:3000. .env не менялся. Первый запрос этого barcode в новом процессе: настоящий POST /scan/analyze с multipart barcode=4605496016700, без фото. HTTP 200, **cacheHit:false**; requestId 42a55c95-3b46-41b9-b218-c1776d061253.
+The main API was restarted after test/typecheck/build passed: PID 13068, port 3000, phone address http://192.168.1.100:3000. .env did not change. The first request for this barcode in the new process: a real POST /scan/analyze with multipart barcode=4605496016700 and no photo. HTTP 200, **cacheHit:false**; requestId 42a55c95-3b46-41b9-b218-c1776d061253.
 
-Source category.value=null; выбран ready_meal по общему слову «лапш» в названии. Primary/enrichment не дали sugars, поэтому использован обычный estimator.
+Source category.value=null; ready_meal was chosen by the generic word «лапш» (noodles) in the name. The primary sources and enrichment gave no sugars, so the regular estimator was used.
 
-Состав из фактического ответа, без редактирования:
+The ingredients from the actual response, unedited (Russian product data):
 
 ```json
 {
@@ -94,60 +94,60 @@ Detected signals:
 }
 ```
 
-Камедь больше не сигнал honey. Настоящий сахар распознан только во втором компоненте — бульоне-приправе; сахарный колер не становится отдельным sugar keyword.
+Guar gum (камедь) is no longer a honey signal. Real sugar is recognized only in the second component, the broth seasoning; caramel color does not become a separate sugar keyword.
 
-| Величина | До | После |
+| Value | Before | After |
 |---|---:|---:|
-| carbs, г/100 г (точные) | 56 | 56 |
-| sugar position | 0, ложный мед в камеди | -1 top level; 1 nested сигнал |
-| коэффициент | 0.65 | **0.06** |
-| sugars estimate, г/100 г | 36.4 | **3.36** |
-| salt estimate, г/100 г | 1.5 | **1.1** |
+| carbs, g/100 g (exact) | 56 | 56 |
+| sugar position | 0, a false honey match in камедь | -1 at the top level; 1 nested signal |
+| share | 0.65 | **0.06** |
+| sugars estimate, g/100 g | 36.4 | **3.36** |
+| salt estimate, g/100 g | 1.5 | **1.1** |
 | Product Score | 1.3 | **2.6** |
 | Goal Match | 1.3 | **2.6** |
 
-Результат общей логики: 56×0.06=3.36. Желаемое значение под товар не подставлялось.
+The result of the general logic: 56×0.06=3.36. No desired value was substituted for this product.
 
-Соль также уточнилась общей логикой вложенности: раньше соль внутри первого компонента считалась первым ингредиентом всего продукта. Теперь top-level saltPosition=-1 и применяется prior 1.1. Изменение оценок связано с уточнением обоих сигналов; scoring coefficients не менялись. Saturated fat=5.1, fiber=3, sodium=440 после пересчёта из соли. Точные kcal/P/C/F сохранены.
+Salt was also refined by the general nesting logic: salt inside the first component used to count as the first ingredient of the whole product. Now the top-level saltPosition is -1 and the 1.1 prior applies. The change in the estimates comes from refining both signals; the scoring coefficients did not change. Saturated fat=5.1, fiber=3, sodium=440 after conversion from salt. The exact kcal/P/C/F were kept.
 
-Metadata сахара: estimated/low; basis=per_100g; constraints=[]. Обе оценки numeric; Goal Match state=goal_match, unavailableReason=null. Точный JSON сохранён в sugar-fix-noodles-http.json.
+Sugar metadata: estimated/low; basis=per_100g; constraints=[]. Both scores are numeric; Goal Match state=goal_match, unavailableReason=null. The exact JSON was saved locally as sugar-fix-noodles-http.json.
 
-## Сравнение продуктов
+## Product comparison
 
-Сахар на 100 г или 100 мл. Первые четыре строки — реальные HTTP-вызовы основного API, каждый cacheHit:false. Apple/yogurt/cola — явно обозначенные существующие фикстуры проекта с тестовым eat_healthier профилем (2000 kcal, protein target 139 г). Они прогнаны через old/new estimator и неизменённые scoring functions; это не реальные сканы упаковок.
+Sugar per 100 g or 100 ml. The first four rows are real HTTP calls to the main API, each with cacheHit:false. Apple/yogurt/cola are existing project fixtures, clearly marked as such, with a test eat_healthier profile (2000 kcal, protein target 139 g). They were run through the old and new estimator and the unchanged scoring functions; these are not real package scans.
 
-| Product | Sugars | Product Score | Goal Match | Режим |
+| Product | Sugars | Product Score | Goal Match | Mode |
 |---|---:|---:|---:|---|
-| Лапша с говядиной | 3.36 (estimated) | 2.6 | 2.6 | HTTP, cacheHit=false |
+| Noodles with beef | 3.36 (estimated) | 2.6 | 2.6 | HTTP, cacheHit=false |
 | Choco Pie | 28.35 (estimated) | 1.8 | 1.8 | HTTP, cacheHit=false |
-| Alpen Gold арахис/хлопья | 48 (estimated) | 2.3 | — (ambiguous) | HTTP, cacheHit=false |
-| Alpen Gold арахис/крекер | 52 (verified) | 2.3 | 1.5 | HTTP, cacheHit=false |
-| apple | 10.4 (verified в фикстуре) | 7.1 | 7.1 | Фикстура, без изменений |
-| yogurt | 3.6 (verified в фикстуре) | 9.4 | 8.7 | Фикстура, без изменений |
-| cola | 10.6 (verified в фикстуре) | 3 | 2.5 | Фикстура, без изменений |
+| Alpen Gold peanut/cornflakes | 48 (estimated) | 2.3 | — (ambiguous) | HTTP, cacheHit=false |
+| Alpen Gold peanut/cracker | 52 (verified) | 2.3 | 1.5 | HTTP, cacheHit=false |
+| apple | 10.4 (verified in the fixture) | 7.1 | 7.1 | Fixture, unchanged |
+| yogurt | 3.6 (verified in the fixture) | 9.4 | 8.7 | Fixture, unchanged |
+| cola | 10.6 (verified in the fixture) | 3 | 2.5 | Fixture, unchanged |
 
-Choco Pie и оба Alpen Gold дополнительно вызваны реальным HTTP ДО перезапуска. Sugar value/quality, Product Score и Goal Match совпали с ответами ПОСЛЕ исправления. Замороженные контрольные входы apple/yogurt/cola также дали одинаковый результат до/после.
+Choco Pie and both Alpen Gold bars were also called over real HTTP BEFORE the restart. The sugar value and quality, Product Score and Goal Match matched the responses AFTER the fix. The frozen apple/yogurt/cola control inputs also gave the same result before and after.
 
-По уточнению пользователя проверены два арахисных варианта: арахис/кукурузные хлопья 7622201696078 ([карточка товара](https://gastronom-rnd.ru/katalog/konditerskiy-otdel/shokolad-i-plitki/shokoladalpengold-molochnyyarahiskukuruznyehlopya80g)) и солёный арахис/крекер 7622201696313 ([идентификация варианта](https://sostavista.ru/tovar/alpen-gold-shokolad-molochnyi-alpen-gold-s-solenym-arahisom-i-krekerom-8)). Числа таблицы взяты из FoodLens HTTP response, не из этих страниц. Barcode упаковки пользователя не сообщён; точное совпадение с одним из вариантов не утверждается.
+At the user's request two peanut variants were checked: peanut/cornflakes 7622201696078 ([product page](https://gastronom-rnd.ru/katalog/konditerskiy-otdel/shokolad-i-plitki/shokoladalpengold-molochnyyarahiskukuruznyehlopya80g)) and salted peanut/cracker 7622201696313 ([variant identification](https://sostavista.ru/tovar/alpen-gold-shokolad-molochnyi-alpen-gold-s-solenym-arahisom-i-krekerom-8)). The table numbers come from the FoodLens HTTP response, not from these pages. The barcode of the user's package was not provided, so an exact match with either variant is not claimed.
 
-У версии с хлопьями Goal Match был и остался ambiguous: источники не дали состава и надёжного semantic context. Это прежняя неопределённость sugarSource/processing, не результат исправления. Формула не ослаблялась, semantic facts не выдумывались. У варианта с крекером sugars=52 — verified OFF value, сохранён без изменений.
+For the cornflakes version Goal Match was and stays ambiguous: the sources gave no ingredients and no reliable semantic context. That is the existing sugarSource/processing uncertainty, not a result of the fix. The formula was not relaxed and no semantic facts were invented. For the cracker variant sugars=52 is a verified OFF value, kept unchanged.
 
-## Проверки
+## Checks
 
-- pnpm test: **1213 tests, 0 failures**; API 721, scoring 240, AI 117, nutrition 38, mobile 97; core contract checks также прошли.
-- 38 новых регрессионных случаев: мед/мёд, substring collisions, nested sugar/honey, вложенные/незакрытые скобки, грубая OCR-строка, strong primary sugar, savory caps, сладкие категории, жиры/клетчатка/соль/подсластители, sugar<=carbs, защита существующих exact/inferred values, отсутствие конкретных barcode/brand в production.
-- Typecheck и API build: успешно.
-- Реальные HTTP 200/cacheHit:false для лапши, Choco Pie и обоих Alpen Gold.
-- Реальные GoalMatchCard/labels проверены на JSON лапши, Choco Pie и Alpen Gold с крекером (stub native primitives, не физический экран телефона): числа и причины отображаются.
-- API оставлен работающим для нового скана с телефона.
+- pnpm test: **1213 tests, 0 failures**; API 721, scoring 240, AI 117, nutrition 38, mobile 97; the core contract checks also passed.
+- 38 new regression cases: мед/мёд (honey), substring collisions, nested sugar/honey, nested and unclosed brackets, a rough OCR line, a strong primary sugar, savory caps, sweet categories, fats/fiber/salt/sweeteners, sugar<=carbs, protection of existing exact/inferred values, no specific barcode or brand in production code.
+- Typecheck and API build: passed.
+- Real HTTP 200/cacheHit:false for the noodles, Choco Pie and both Alpen Gold bars.
+- The real GoalMatchCard/labels were checked on the JSON for the noodles, Choco Pie and Alpen Gold with cracker (stubbed native primitives, not a physical phone screen): the numbers and reasons are displayed.
+- The API was left running for a new scan from the phone.
 
-## Изменённые файлы
+## Changed files
 
-- apps/api/src/modules/scan/nutrition-ingredient-signals.ts — новый разбор tokens/components, signals и category cap.
-- apps/api/src/modules/scan/nutrition-estimator.ts — подключение signals/caps вместо substring regex; context-rules-v2 и диагностические reasons.
-- apps/api/src/modules/scan/test/nutrition-ingredient-signals.test.ts — регрессии.
-- docs/diagnostics/sugar-estimation-fix.md — этот отчёт.
-- docs/diagnostics/sugar-estimation-fix-evidence.json — до/после, signals, события HTTP и controls.
-- docs/diagnostics/sugar-fix-noodles-http.json — фактическое тело ответа лапши.
+- apps/api/src/modules/scan/nutrition-ingredient-signals.ts — new token/component parsing, signals and the category cap.
+- apps/api/src/modules/scan/nutrition-estimator.ts — uses the signals and caps instead of substring regexes; context-rules-v2 and diagnostic reasons.
+- apps/api/src/modules/scan/test/nutrition-ingredient-signals.test.ts — regressions.
+- docs/diagnostics/sugar-estimation-fix.md — this report.
+- docs/diagnostics/sugar-estimation-fix-evidence.json — before/after, signals, HTTP events and controls (kept locally, not in the repository).
+- docs/diagnostics/sugar-fix-noodles-http.json — the actual noodles response body (kept locally, not in the repository).
 
-Другие production source files, scoring formulas, зависимости, .env и mobile source code не менялись. Ничего не push.
+Other production source files, scoring formulas, dependencies, .env and mobile source code did not change. Nothing was pushed at the time.

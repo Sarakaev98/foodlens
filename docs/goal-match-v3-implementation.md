@@ -1,6 +1,6 @@
 # Goal Match v3: implementation report
 
-Source of truth: the attached “Goal Match eat_healthier: гибридная AI-архитектура” and the user's explicit follow-up clarifications. No Claude artifact URL was accessed for this implementation.
+Source of truth: the attached “Goal Match eat_healthier: hybrid AI architecture” and the user's explicit follow-up clarifications. No Claude artifact URL was accessed for this implementation.
 
 ## Scope and units
 
@@ -121,7 +121,7 @@ Range uses the extreme scores, rounded to one decimal. Width checks use unrounde
 - ≤0.5 plus all critical values from the label and no medium override => high;
 - otherwise medium.
 
-AI-estimated portion, missing fiber, mixed sugar source (when relevant), or non-label critical values prevent high confidence. An uncertain field that has zero scoring effect does not itself reduce confidence. Mobile marks low confidence “примерно”; range remains available in API but is not added to the card, per MVP scope.
+AI-estimated portion, missing fiber, mixed sugar source (when relevant), or non-label critical values prevent high confidence. An uncertain field that has zero scoring effect does not itself reduce confidence. Mobile marks low confidence “примерно” (“approximately”); range remains available in API but is not added to the card, per MVP scope.
 
 ## Validation
 
@@ -217,7 +217,7 @@ Pre-existing uncommitted changes outside this list were preserved.
 2. Verify v1 goals still display value/10, and both versions have one decimal and correct VoiceOver scale.
 3. Verify top three short reasons match actual contributions; a negative v3 saturated-fat contribution is not shown as neutral.
 4. Verify insufficient_data and not_applicable show text without a numeric badge.
-5. Verify low confidence visibly/accessibly says “примерно”.
+5. Verify low confidence visibly/accessibly says “примерно” (“approximately”).
 6. Verify labels fit on a narrow screen and missing fiber note is readable.
 7. Recheck onboarding/profile edits and scan retry/navigation. No physical iPhone was controlled in this task.
 

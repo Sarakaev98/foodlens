@@ -1,156 +1,158 @@
-# Реальный Snickers Scan с Tavily: диагностика
+# A real Snickers scan with Tavily: diagnostics
 
-Скан: 1 ноября 2026, 02:48 по времени компьютера, requestId `11459032-6696-453d-b91a-804e0b89b26f`.
+Scan: November 1, 2026, 02:48 computer time, requestId `11459032-6696-453d-b91a-804e0b89b26f`.
 
-Источник: лог API за этот скан и код. Новых внешних запросов не было, код не менялся, commit и push не делались. API продолжает работать.
+Sources: the API log for this scan and the code. No new external requests were made, the code did not change, and no commit or push was made. The API kept running.
 
-## Вывод
+> **Updated note (November 3, 2026).** This report is historical. Since then the camera barcode is sent with the photo, more retailer domains are listed, the debug logs record page values and decisions, and the search limits were raised.
 
-Скан прошёл без ошибок, но ни одно значение не принято. Score и Goal Match остались null.
+## Conclusion
 
-Главная причина: штрихкод не дошёл до API. Поэтому OFF не запускался, а самый сильный способ подтвердить продукт, совпадение штрихкода, был недоступен. Без него оставалось подтверждение с сайта производителя или с двух независимых источников. Сайта производителя в результатах нет, а из источников уровня 1–3 прочиталась только одна страница.
+The scan finished without errors, but no value was accepted. Score and Goal Match stayed null.
 
-Отдельная проблема: лог не хранит сами значения. На многие пункты можно ответить только косвенно, это отмечено в каждом разделе. Здесь «не залогировано» значит, что данных нет и восстановить их без нового запроса нельзя.
+Main cause: the barcode never reached the API. So OFF did not run, and the strongest way to confirm the product, a barcode match, was unavailable. Without it the remaining options were confirmation from the manufacturer's site or from two independent sources. The results had no manufacturer site, and only one page from tier 1–3 sources was read.
+
+A separate problem: the log does not store the values themselves. Many items can be answered only indirectly, which is noted in each section. Here “not logged” means the data is missing and cannot be recovered without a new request.
 
 ## 1. Barcode
 
-Не распознан: `barcode: null`, `barcodePresent: false`, `hasBarcode: false`, `images: 1`.
+Not recognized: `barcode: null`, `barcodePresent: false`, `hasBarcode: false`, `images: 1`.
 
-Лог не показывает, отправил ли телефон штрихкод. `parseScanBarcode` (`apps/api/src/modules/scan/scan-barcode.ts:7`) молча заменяет некорректное значение на null, а `CameraCapture` передаёт только то, что детектор поймал до снимка. Причина «камера не увидела» или «значение отброшено» по логу неразличима.
+The log does not show whether the phone sent a barcode. `parseScanBarcode` (`apps/api/src/modules/scan/scan-barcode.ts:7`) silently replaces an invalid value with null, and `CameraCapture` passes only what the detector caught before the photo was taken. “The camera did not see it” and “the value was discarded” cannot be told apart from the log.
 
-## 2. Что пришло от Gemini
+## 2. What came from Gemini
 
-| Что | Значение |
+| What | Value |
 |---|---|
-| `nutrition_status` | sugars, saturated_fat, salt: все `not_listed` |
-| Присутствуют | calories, protein, carbs, fat |
-| Отсутствуют | sugars, saturatedFat, fiber, salt, sodium |
-| Числа kcal, protein, carbs, fat | не залогировано |
-| Название, бренд, вариант | не залогировано |
-| Основа и порция | не залогировано |
+| `nutrition_status` | sugars, saturated_fat, salt: all `not_listed` |
+| Present | calories, protein, carbs, fat |
+| Absent | sugars, saturatedFat, fiber, salt, sodium |
+| kcal, protein, carbs, fat numbers | not logged |
+| Name, brand, variant | not logged |
+| Basis and serving | not logged |
 
-Косвенно: бренд и название были, а основа не была `unknown`, иначе поиск без штрихкода не запустился бы (`gemini-search-lookup.provider.ts`, начало `lookup`).
+Indirectly: the brand and name were present, and the basis was not `unknown`, otherwise the search without a barcode would not have started (`gemini-search-lookup.provider.ts`, the start of `lookup`).
 
-## 3. Что добавил Open Food Facts
+## 3. What Open Food Facts added
 
-Ничего: OFF не вызывался. В логе нет строки `product_lookup` с этим провайдером. Источники, которым нужен штрихкод, отфильтровываются при `barcode === null` (`multi-source-product-lookup.ts:65`). `barcodeLookup: null`.
+Nothing: OFF was not called. The log has no `product_lookup` line for this provider. Sources that need a barcode are filtered out when `barcode === null` (`multi-source-product-lookup.ts:65`). `barcodeLookup: null`.
 
-## 4. Missing перед Tavily
+## 4. Missing before Tavily
 
 `missingFields`: `sugars`, `saturatedFat`, `salt`.
 
-Из кода к запросу также добавляются `sodiumMg` и `fiber`, потому что их не было (`multi-source-product-lookup.ts:42`). Сам список полей с добавками не залогирован.
+From the code, `sodiumMg` and `fiber` are also added to the request because they were absent (`multi-source-product-lookup.ts:42`). The field list with these additions is not logged.
 
-## 5. Был ли вызван Tavily
+## 5. Was Tavily called
 
-Да, один раз `/search` и один раз `/extract`. `triggered: true`, итог шага `miss`, 9006 мс. Ошибок и повторов нет.
+Yes, `/search` once and `/extract` once. `triggered: true`, step result `miss`, 9006 ms. No errors and no retries.
 
-## 6. Поисковый запрос
+## 6. Search query
 
-Текст запроса намеренно не логируется. Шаблон из `tavilyQuery` без штрихкода: `{бренд и название} {порция, если есть} пищевая ценность`. Точный текст восстановить нельзя, потому что название и порция тоже не залогированы.
+The query text is deliberately not logged. The `tavilyQuery` template without a barcode: `{brand and name} {serving, if any} пищевая ценность` (nutrition facts). The exact text cannot be recovered, because the name and serving were not logged either.
 
-## 7. Что нашёл Tavily
+## 7. What Tavily found
 
-5 результатов. URL не логируются, только домены.
+5 results. URLs are not logged, only domains.
 
-| Домен | Уровень | Чтение |
+| Domain | Tier | Reading |
 |---|---|---|
-| ozon.ru | 2 | выбран, не открылся |
-| calorizator.ru | 3 | выбран, прочитан |
-| beregifiguru.ru | 4 | выбран, прочитан |
-| megamarket.ru | 4 (нет в списке) | не выбран |
-| instagram.com | 4 | не выбран |
+| ozon.ru | 2 | chosen, did not open |
+| calorizator.ru | 3 | chosen, read |
+| beregifiguru.ru | 4 | chosen, read |
+| megamarket.ru | 4 (not in the list) | not chosen |
+| instagram.com | 4 | not chosen |
 
-Уровни двух невыбранных доменов выведены из кода (`web/source-tier.ts:6`, `:26`), в логе их нет. Читается максимум 3 страницы (`gemini-search-lookup.provider.ts:87`). Сайта производителя среди результатов нет. `megamarket.ru` это крупный магазин, но в моём списке его нет, поэтому он получил уровень 4 и уступил место.
+The tiers of the two unchosen domains are inferred from the code (`web/source-tier.ts:6`, `:26`); they are not in the log. At most 3 pages are read (`gemini-search-lookup.provider.ts:87`). There is no manufacturer site among the results. `megamarket.ru` is a major retailer, but it was not in my list, so it got tier 4 and lost its place.
 
-## 8. Какие страницы удалось прочитать
+## 8. Which pages could be read
 
-| Домен | Напрямую | Запасное чтение | Способ извлечения |
+| Domain | Directly | Fallback reading | Extraction method |
 |---|---|---|---|
-| ozon.ru | ошибка `too_many_redirects`, больше 5 редиректов (`web/page-fetcher.ts:6`, `:122`) | `/extract` вернул 0 результатов | нет |
-| calorizator.ru | да | не нужно | `ai`: разметки и таблицы не нашлось |
-| beregifiguru.ru | да | не нужно | `html`, таблица |
+| ozon.ru | error `too_many_redirects`, more than 5 redirects (`web/page-fetcher.ts:6`, `:122`) | `/extract` returned 0 results | none |
+| calorizator.ru | yes | not needed | `ai`: no markup and no table were found |
+| beregifiguru.ru | yes | not needed | `html`, table |
 
-Похоже, что ozon защищается от роботов, но это предположение: лог показывает только число редиректов. Причина отказа `/extract` не залогирована, `failed_results` не записывается.
+It looks like ozon protects itself from robots, but that is an assumption: the log shows only the number of redirects. The reason `/extract` failed is not logged; `failed_results` is not recorded.
 
-## 9. Найденные значения
+## 9. Values found
 
-Значения sugars, saturatedFat, salt и sodium со страниц не залогированы. Лог `web_lookup` хранит только итог и расходящиеся числа, а расхождений не было.
+The sugars, saturatedFat, salt and sodium values from the pages are not logged. The `web_lookup` log keeps only the result and mismatching numbers, and there were no mismatches.
 
-Можно сказать только следующее:
+All that can be said:
 
-- В финальном продукте все четыре поля пусты.
-- Лог не показывает, нашлись ли они на calorizator.ru и beregifiguru.ru.
-- С ozon.ru значений нет, страница не прочитана.
+- All four fields are empty in the final product.
+- The log does not show whether they were found on calorizator.ru and beregifiguru.ru.
+- There are no values from ozon.ru; the page was not read.
 
-## 10. Принято и отклонено
+## 10. Accepted and rejected
 
-Принято: ничего, `accepted: []`. `unresolved: []`, спора между источниками не было. Итоговый статус `insufficient_identity`.
+Accepted: nothing, `accepted: []`. `unresolved: []`, the sources did not disagree. The final status is `insufficient_identity`.
 
-## 11. Точные причины отклонения
+## 11. Exact rejection reasons
 
-**calorizator.ru:** статус `insufficient_identity`, причина `variant_mismatch` (`web/product-identity.ts:132`).
+**calorizator.ru:** status `insufficient_identity`, reason `variant_mismatch` (`web/product-identity.ts:132`).
 
-Сравнения с допусками: конфликтов нет, значит, все сравнённые макросы вошли в допуски (ккал ±max(5%, 15), белки, углеводы, жиры ±max(10%, 1 г)). Самих чисел в логе нет. В вариант не попала часть слов названия: каких именно, не залогировано.
+Comparison with the tolerances: no conflicts, so all compared macros were within tolerance (kcal ±max(5%, 15), protein, carbs, fat ±max(10%, 1 g)). The numbers themselves are not in the log. Some of the name words did not make it into the variant; which ones is not logged.
 
-Даже без этой ошибки страница не прошла бы одна: уровень 3 без штрихкода требует второго независимого источника (`web/product-identity.ts:134`).
+Even without this error the page would not have passed on its own: tier 3 without a barcode requires a second independent source (`web/product-identity.ts:134`).
 
-**beregifiguru.ru:** статус `insufficient_identity`, причина `too_few_macros_to_compare` (`web/product-identity.ts:128`).
+**beregifiguru.ru:** status `insufficient_identity`, reason `too_few_macros_to_compare` (`web/product-identity.ts:128`).
 
-Сравнить удалось меньше 3 макросов из 4, конфликтов нет. Следующая проверка тоже отклонила бы страницу: уровень 4 это `weak_source` (`:129`).
+Fewer than 3 of the 4 macros could be compared, with no conflicts. The next check would have rejected the page too: tier 4 is `weak_source` (`:129`).
 
-**ozon.ru:** в проверке не участвовал, страница не прочитана.
+**ozon.ru:** did not take part in the check; the page was not read.
 
-## 12. Совпал ли товар с нашим Snickers
+## 12. Did the product match our Snickers
 
-| Признак | calorizator.ru | beregifiguru.ru | ozon.ru |
+| Signal | calorizator.ru | beregifiguru.ru | ozon.ru |
 |---|---|---|---|
-| Штрихкод | проверить нельзя, нашего нет | проверить нельзя | нет данных |
-| Бренд | совпал (вывод из порядка проверок) | не дошло | нет данных |
-| Вариант | не совпал | не дошло | нет данных |
-| Макросы | в допуске, минимум 3 значения | конфликтов нет, но сравнено меньше 3 | нет данных |
+| Barcode | cannot be checked, ours is missing | cannot be checked | no data |
+| Brand | matched (inferred from the order of checks) | not reached | no data |
+| Variant | did not match | not reached | no data |
+| Macros | within tolerance, at least 3 values | no conflicts, but fewer than 3 compared | no data |
 
-Итог: совпадение не подтверждено. Близкие макросы при другом названии могут значить как похожий продукт, так и то же самое название с другими словами. Лог этого не различает. Правильно ли отклонён calorizator.ru, по логу сказать нельзя.
+Result: the match is not confirmed. Close macros with a different name can mean a similar product or the same product named with other words. The log cannot tell these apart. Whether calorizator.ru was rejected correctly cannot be said from the log.
 
 ## 13. Tavily credits
 
-| Вызов | Кредиты |
+| Call | Credits |
 |---|---|
-| `/search` | 1, по ответу Tavily |
-| `/extract` | 0, успешных страниц нет |
-| Итого | 1 |
+| `/search` | 1, according to the Tavily response |
+| `/extract` | 0, no successful pages |
+| Total | 1 |
 
-Значение 0 за `/extract` считает мой код: успешных страниц нет, а по документации за неудачи кредиты не списываются. Фактический расход стоит сверить на app.tavily.com.
+The 0 for `/extract` is counted by my code: there were no successful pages, and according to the documentation failures are not charged. The actual usage is worth checking on app.tavily.com.
 
-## 14. Usage Gemini
+## 14. Gemini usage
 
-| Вызов | prompt | output | total | Прочее |
+| Call | prompt | output | total | Other |
 |---|---|---|---|---|
-| `product_analysis` | 4900 | 1529 | 6429 | image 1116, text 3784, 1 фото, 0 повторов, 4709 мс |
-| `nutrition_extraction` | 1680 | 58 | 1738 | только calorizator.ru |
-| Итого | 6580 | 1587 | 8167 | 2 вызова |
+| `product_analysis` | 4900 | 1529 | 6429 | image 1116, text 3784, 1 photo, 0 retries, 4709 ms |
+| `nutrition_extraction` | 1680 | 58 | 1738 | calorizator.ru only |
+| Total | 6580 | 1587 | 8167 | 2 calls |
 
-Goal Match AI не вызывался: `aiCalls: 0`, `outcome: terminal`, `cacheHit: false`. Кэш поиска не сработал, это первый запрос. Общая длительность скана 13 721 мс.
+Goal Match AI was not called: `aiCalls: 0`, `outcome: terminal`, `cacheHit: false`. The search cache did not hit; this was the first request. The total scan duration was 13,721 ms.
 
-## 15. Почему Product Score null
+## 15. Why Product Score is null
 
-`score: null`, `unscoredReason: too_few_factors` (`packages/scoring/src/score-product.ts:67`). Для оценки нужны сахара, насыщенные жиры и соль, а все три пусты: на этикетке `not_listed`, OFF не вызывался, веб ничего не принял.
+`score: null`, `unscoredReason: too_few_factors` (`packages/scoring/src/score-product.ts:67`). The score needs sugars, saturated fat and salt, and all three are empty: `not_listed` on the label, OFF not called, nothing accepted from the web.
 
-Goal Match null по той же причине: `unavailableReason: missing_nutrients`, итог `terminal`, без вызова AI. Формула и правила сработали как задумано.
+Goal Match is null for the same reason: `unavailableReason: missing_nutrients`, result `terminal`, with no AI call. The formula and rules worked as designed.
 
-## Что помешало и самое маленькое исправление
+## What got in the way, and the smallest fix
 
-По степени влияния:
+By impact:
 
-1. **Нет штрихкода.** Это отключило и OFF, и случай A.
-2. **Мало сильных источников.** Сайта производителя нет, ozon закрыт, `megamarket.ru` не прочитан из-за списка доменов.
-3. **Строгая проверка варианта при одном источнике.** Даже верное совпадение на calorizator.ru требовало бы второго источника. Ослаблять это я не предлагаю без данных: это защита от чужого Snickers.
-4. **Логов мало.** Нельзя оценить, верно ли отклонена страница.
+1. **No barcode.** This disabled both OFF and case A.
+2. **Too few strong sources.** No manufacturer site, ozon was closed, and `megamarket.ru` was not read because of the domain list.
+3. **A strict variant check with a single source.** Even a correct match on calorizator.ru would have needed a second source. I do not suggest relaxing this without data: it protects against someone else's Snickers.
+4. **Too few logs.** It is impossible to judge whether a page was rejected correctly.
 
-Самый маленький шаг, ничего пока не применено:
+The smallest step, nothing applied yet:
 
-1. Добавить в логи только для dev: название, бренд, макросы и основу от Gemini, текст запроса, значения по каждой странице, слова варианта и причины отказа `/extract`.
-2. Добавить `megamarket.ru` в список магазинов.
-3. Сделать штрихкод заметнее при съёмке. Индикатор на камере уже есть (`CameraCapture.tsx:97`), но передаётся только свежий штрихкод, пойманный до снимка. Можно просить навести камеру на штрихкод и дождаться индикатора или читать штрихкод с фото.
+1. Add dev-only logs: the name, brand, macros and basis from Gemini, the query text, the values for each page, the variant words and the reasons `/extract` failed.
+2. Add `megamarket.ru` to the retailer list.
+3. Make the barcode more visible while taking the photo. The camera already has an indicator (`CameraCapture.tsx:97`), but only a fresh barcode caught before the photo is sent. The app could ask the user to point the camera at the barcode and wait for the indicator, or read the barcode from the photo.
 
-После этого один повторный скан покажет, что именно мешает. Я начал бы с пункта 1 и пункта 3: они бесплатны и дают больше всего. Повторять скан без пункта 1 смысла мало.
+After that one repeated scan will show what exactly is in the way. I would start with items 1 and 3: they are free and give the most. Repeating the scan without item 1 makes little sense.

@@ -1,25 +1,27 @@
-# Roshen: разбор Product Score 0.0 и Goal Match 3.5
+# Roshen: breaking down Product Score 0.0 and Goal Match 3.5
 
-Скан: 1 ноября 2026, 03:29:58 по времени компьютера, requestId `10695419-8b41-4df5-8273-4bd30f1ad53d`, штрихкод `4823077621154`.
+Scan: November 1, 2026, 03:29:58 computer time, requestId `10695419-8b41-4df5-8273-4bd30f1ad53d`, barcode `4823077621154`.
 
-Источники: лог API этого скана, лог Metro, код и локальный запуск настоящих `scoreProduct()` и `calculateEatHealthier()` из собранного `packages/scoring`. Новых запросов к Gemini, Tavily и OFF не было. Код не менялся, commit и push не делались.
+Sources: the API log of this scan, the Metro log, the code and a local run of the real `scoreProduct()` and `calculateEatHealthier()` from the built `packages/scoring`. No new requests were made to Gemini, Tavily or OFF. The code did not change, and no commit or push was made.
 
-## Вывод
+> **Updated note (November 3, 2026).** This report is historical. The current Product Score (`product-score-v6`) compresses the bottom of the scale down to −16, so this product now scores 2.1 instead of 0.0, and for `eat_healthier` the final Goal Match is never above the Product Score.
 
-- 0.0 это ожидаемый результат текущей формулы: сырая сумма равна −5.16, а нижняя граница 0 подняла её до 0.
-- Потолок 4 здесь не участвовал.
-- Главная причина: два максимальных штрафа, сахара −6 и насыщенные жиры −5, вместе больше базы 8. Калории и добавки на итог не повлияли.
-- Двойной счёт калорий есть, но не он дал 0.0.
-- Goal Match 3.5 пришёл от AI. Расчётная часть даёт 2.0, разница допустима правилами v4.
-- Скан прошёл полностью по штрихкоду: фото нет, `analyzeProduct` не вызывался, Tavily не понадобился.
+## Conclusion
 
-Числа в логе не записываются. Значения nutrition ниже взяты с экрана из вашего сообщения, а источник полей подтверждён логом.
+- 0.0 is the expected result of the current formula: the raw sum is −5.16, and the lower bound of 0 raised it to 0.
+- The ceiling of 4 played no role here.
+- Main cause: two maximum penalties, sugars −6 and saturated fat −5, add up to more than the base of 8. Calories and additives did not affect the result.
+- Calories are double-counted, but that is not what produced 0.0.
+- Goal Match 3.5 came from the AI. The calculated part gives 2.0, and the difference is allowed by the v4 rules.
+- The scan went entirely through the barcode: no photo, `analyzeProduct` was not called, and Tavily was not needed.
+
+The numbers are not written to the log. The nutrition values below come from the screen in your message, and the source of each field is confirmed by the log.
 
 ## 1. Provenance
 
-`scan_flow`: `images: 0`, `offHit: true`, `tavilyUsed: false`, `geminiCalled: false`, `geminiReason: "not_needed"`. Строка `product_lookup` для OFF: `match: "exact_barcode"`, `filled` содержит все поля ниже, кроме serving.
+`scan_flow`: `images: 0`, `offHit: true`, `tavilyUsed: false`, `geminiCalled: false`, `geminiReason: "not_needed"`. The `product_lookup` line for OFF: `match: "exact_barcode"`, and `filled` contains every field below except serving.
 
-| Поле | Значение | Источник |
+| Field | Value | Source |
 |---|---|---|
 | kcal | 456 | `open_food_facts`* |
 | protein | 3.3 | `open_food_facts` |
@@ -28,145 +30,145 @@
 | fat | 19.3 | `open_food_facts` |
 | saturatedFat | 11.2 | `open_food_facts` |
 | salt | 0.01 | `open_food_facts` |
-| sodium | 4 мг | `open_food_facts`** |
-| fiber | нет | `not_detected` |
-| serving | 43 г | `open_food_facts`*** |
+| sodium | 4 mg | `open_food_facts`** |
+| fiber | none | `not_detected` |
+| serving | 43 g | `open_food_facts`*** |
 | additives | E476 | `open_food_facts` |
-| ingredients | есть | `open_food_facts` |
+| ingredients | present | `open_food_facts` |
 
-\* Если в OFF нет `energy-kcal`, значение пересчитывается из кДж и получает `inferred` (`open-food-facts.mapper.ts:56-57`). Какой случай здесь, не залогировано.
+\* If OFF has no `energy-kcal`, the value is converted from kJ and marked `inferred` (`open-food-facts.mapper.ts:56-57`). Which case applies here is not logged.
 
-\** В `filled` и `fields.sodium: true` это значение из записи OFF. 4 мг точно равно 0.01 г соли ÷ 2.5, поэтому OFF мог вывести его сам. Этого по логу не отличить.
+\** In `filled` and with `fields.sodium: true`, this value comes from the OFF record. 4 mg is exactly 0.01 g of salt ÷ 2.5, so OFF may have derived it itself. The log cannot tell.
 
-\*** `fields.serving: true`, но в `filled` порция не попадает: это особенность `tableFromLookup` (`product-merge.ts:79`). Значение 43 г видно на экране и в расчёте.
+\*** `fields.serving: true`, but the serving does not appear in `filled`: this is a quirk of `tableFromLookup` (`product-merge.ts:79`). The 43 g is visible on the screen and in the calculation.
 
-**Откуда sugars 58.6, saturatedFat 11.2, salt 0.01:** из записи OFF `nutrition.aggregated_set` по точному штрихкоду, через маппер (`open-food-facts.mapper.ts:60-75`). С этикетки ничего не читалось. Значения с пометкой оценки маппер отбрасывает, поэтому эти три в OFF не помечены как оценка. Кто внёс их в OFF и совпадают ли они с упаковкой, не проверено.
+**Where sugars 58.6, saturatedFat 11.2 and salt 0.01 came from:** from the OFF record `nutrition.aggregated_set` for the exact barcode, through the mapper (`open-food-facts.mapper.ts:60-75`). Nothing was read from the label. The mapper drops values marked as estimates, so these three were not marked as estimates in OFF. Who entered them in OFF and whether they match the package is unverified.
 
-## 2. Участвовал ли Tavily
+## 2. Did Tavily take part
 
-Нет, он не понадобился. Строка `web_search`: `status: "not_needed"`, `triggered: false`, `missingFields: []`. Кредитов 0, URL нет, полей нет, ничего не принято и не отклонено.
+No, it was not needed. The `web_search` line: `status: "not_needed"`, `triggered: false`, `missingFields: []`. 0 credits, no URLs, no fields, nothing accepted or rejected.
 
-Запрос Gemini в этом скане один, для Goal Match: prompt 3726, output 255, total 3981. Длительность скана 2259 мс.
+This scan had a single Gemini request, for Goal Match: prompt 3726, output 255, total 3981. The scan took 2259 ms.
 
-## 3. Расчёт Product Score
+## 3. Product Score calculation
 
-Пороги из `product-score-rules.ts`: `BASE_SCORE` :16, `MAX_BONUS` :19, `HIGH_LEVEL_CEILING` :22, `SUGARS_RULE` :57, `SATURATED_FAT_RULE` :68, `SALT_RULE` :76, `ENERGY_RULE` :87, `PROTEIN_RULE` :95, `FIBER_RULE` :98, `ADDITIVES_RULE` :104. Формула штрафа: `min(maxPenalty, weight × max(0, значение − low) / (high − low))`.
+Thresholds from `product-score-rules.ts`: `BASE_SCORE` :16, `MAX_BONUS` :19, `HIGH_LEVEL_CEILING` :22, `SUGARS_RULE` :57, `SATURATED_FAT_RULE` :68, `SALT_RULE` :76, `ENERGY_RULE` :87, `PROTEIN_RULE` :95, `FIBER_RULE` :98, `ADDITIVES_RULE` :104. Penalty formula: `min(maxPenalty, weight × max(0, value − low) / (high − low))`.
 
-| Шаг | Вычисление | Без предела | Итог |
+| Step | Calculation | Without the limit | Result |
 |---|---|---|---|
-| Base | константа | | +8 |
-| fiber | значения нет, фактор не считается | | 0 |
+| Base | constant | | +8 |
+| fiber | no value, the factor is not counted | | 0 |
 | protein | 3.3 < 5 | | 0 |
-| sugars | 3 × (58.6 − 5) / (22.5 − 5) | −9.1886 | −6 (предел) |
-| saturatedFat | 3 × (11.2 − 1.5) / (5 − 1.5) | −8.3143 | −5 (предел) |
+| sugars | 3 × (58.6 − 5) / (22.5 − 5) | −9.1886 | −6 (limit) |
+| saturatedFat | 3 × (11.2 − 1.5) / (5 − 1.5) | −8.3143 | −5 (limit) |
 | salt | 0.01 ≤ 0.3 | | 0 |
 | energy | 1.5 × (456 − 80) / (400 − 80) = −1.7625 | | −1.76 |
-| additives | 1 × 0.4, предел 2 | | −0.4 |
-| Сумма | 8 − 6 − 5 − 1.76 − 0.4 | | −5.16 |
-| Потолок 4 | применяется, только если raw > 4 (`score-product.ts:77`) | | не сработал |
-| Нижняя граница | `roundScore`: max(0, −5.16) | | 0.0 |
+| additives | 1 × 0.4, limit 2 | | −0.4 |
+| Sum | 8 − 6 − 5 − 1.76 − 0.4 | | −5.16 |
+| Ceiling of 4 | applies only if raw > 4 (`score-product.ts:77`) | | did not fire |
+| Lower bound | `roundScore`: max(0, −5.16) | | 0.0 |
 
-Настоящий `scoreProduct()` дал то же: `value: 0`, `raw: -5.16`, `ceiling: null`. Разница −1.7625 и −1.76 в том, что код округляет баллы фактора до 0.01.
+The real `scoreProduct()` gave the same: `value: 0`, `raw: -5.16`, `ceiling: null`. The difference between −1.7625 and −1.76 is because the code rounds factor points to 0.01.
 
-## 4. Почему именно 0.0
+## 4. Why exactly 0.0
 
-Сработала сумма штрафов и нижняя граница 0, а не потолок. Сильнее всего тянут вниз сахара, −6, затем насыщенные жиры, −5.
+The sum of penalties and the lower bound of 0 fired, not the ceiling. Sugars pull down the most, −6, followed by saturated fat, −5.
 
-Варианты посчитаны настоящей функцией, формула не менялась:
+Variants calculated with the real function, the formula unchanged:
 
-| Вариант | raw | Score |
+| Variant | raw | Score |
 |---|---|---|
-| Как есть | −5.16 | 0.0 |
-| Без additives | −4.76 | 0.0 |
-| Без штрафа за калории | −3.40 | 0.0 |
-| Без калорий и additives, только sugar + satFat + salt | −3.00 | 0.0 |
-| Без штрафа за насыщенные жиры | −0.16 | 0.0 |
-| Без штрафа за сахар | 0.84 | 0.8 |
-| Без штрафов за сахар и насыщенные жиры | 5.84 | 5.8 |
-| Клетчатка 6 г, максимальный бонус | −3.66 | 0.0 |
-| Белок 10 г, максимальный бонус | −3.66 | 0.0 |
+| As is | −5.16 | 0.0 |
+| Without additives | −4.76 | 0.0 |
+| Without the calorie penalty | −3.40 | 0.0 |
+| Without calories and additives, only sugar + satFat + salt | −3.00 | 0.0 |
+| Without the saturated fat penalty | −0.16 | 0.0 |
+| Without the sugar penalty | 0.84 | 0.8 |
+| Without the sugar and saturated fat penalties | 5.84 | 5.8 |
+| Fiber 6 g, maximum bonus | −3.66 | 0.0 |
+| Protein 10 g, maximum bonus | −3.66 | 0.0 |
 
-Удаление любого одного фактора, кроме сахара, итог не меняет.
+Removing any single factor except sugar does not change the result.
 
-## 5. Адекватность формулы
+## 5. Is the formula reasonable
 
-**Соответствие правилам:** полное. Каждый шаг идёт по `product-score-rules.ts`.
+**Rule compliance:** complete. Each step follows `product-score-rules.ts`.
 
-**Предельные штрафы:** сумма двух пределов 11 больше базы 8. Любой продукт с высокими сахарами и насыщенными жирами получает 0 независимо от остального. Проверочный пример с условными значениями тёмного шоколада (сахара 30, насыщенные жиры 20, белок 7, клетчатка 9) тоже дал 0. Значит, внутри этой группы оценка не различает продукты, а бонусы до неё не дотягиваются.
+**Penalty limits:** the two limits add up to 11, more than the base of 8. Any product with high sugars and high saturated fat gets 0 regardless of everything else. A check with notional dark chocolate values (sugars 30, saturated fat 20, protein 7, fiber 9) also gave 0. So within this group the score does not distinguish products, and the bonuses cannot reach it.
 
-**Потолок 4:** при таких значениях он не работает, потому что сумма штрафов уже ниже него.
+**The ceiling of 4:** with such values it does not work, because the sum of penalties is already below it.
 
-**Двойной счёт:**
+**Double counting:**
 
-| Пара | Есть ли | Влияние здесь |
+| Pair | Present? | Effect here |
 |---|---|---|
-| Сахар и калории | да: 58.6 г ≈ 234 ккал из 456 | −1.76 общие с сахаром и жирами, на итог не влияет |
-| Насыщенные жиры и калории | да: 11.2 г ≈ 101 ккал | то же |
-| Жиры всего и насыщенные | нет: штрафуются только насыщенные | нет |
-| Additives и ultra-processing | не внутри Product Score: там нет фактора обработки | нет |
-| Штраф и потолок по одному уровню high | заложено в правилах | не сработал |
+| Sugar and calories | yes: 58.6 g ≈ 234 kcal of 456 | −1.76 shared with sugar and fat, no effect on the result |
+| Saturated fat and calories | yes: 11.2 g ≈ 101 kcal | the same |
+| Total fat and saturated fat | no: only saturated fat is penalized | none |
+| Additives and ultra-processing | not inside the Product Score: there is no processing factor there | none |
+| A penalty and a ceiling for the same high level | built into the rules | did not fire |
 
-Сахар и насыщенные жиры дают около 73% калорий этого продукта. Сама формула признаёт такой эффект: для напитков штраф за калории обнулён с пояснением, что «их калории — это сахар, который уже учтён» (`product-score-rules.ts`, `ENERGY_RULE`). Для еды такого исключения нет. Это несогласованность модели, но на результат Roshen она не влияет.
+Sugar and saturated fat provide about 73% of this product's calories. The formula itself acknowledges this effect: for drinks the calorie penalty is zero, with the explanation that “their calories are sugar that is already counted” (`product-score-rules.ts`, `ENERGY_RULE`). Food has no such exception. This is an inconsistency in the model, but it does not affect the Roshen result.
 
-Тройного счёта одного риска нет. Основная проблема не в двойном счёте, а в том, что пределы штрафов не дают различать продукты внизу шкалы.
+There is no triple counting of one risk. The main problem is not double counting, but that the penalty limits make products at the bottom of the scale indistinguishable.
 
-## 6. Product Score и Goal Match
+## 6. Product Score and Goal Match
 
-Расхождение нормально по архитектуре: это разные модели, и Goal Match не получает Product Score как вход.
+The divergence is normal by design: these are different models, and Goal Match does not receive the Product Score as input.
 
 | | Product Score | Goal Match |
 |---|---|---|
-| База | 8 | 6 |
-| Основа | на 100 г | порция 43 г, если она есть |
-| Человек | нет | цель и ограничения |
-| Калории | штраф | нет |
-| Несколько рисков | сумма | по убыванию с весами 1, 0.5, 0.25 |
-| Сахар | все сахара | свободный сахар с учётом источника |
-| Обработка | нет | да |
-| Additives | да | нет |
-| AI | нет | v4 может скорректировать в пределах правил |
+| Base | 8 | 6 |
+| Basis | per 100 g | the 43 g serving, when present |
+| The person | no | goal and restrictions |
+| Calories | penalty | no |
+| Several risks | sum | descending, with weights 1, 0.5, 0.25 |
+| Sugar | all sugars | free sugar, taking the source into account |
+| Processing | no | yes |
+| Additives | yes | no |
+| AI | no | v4 can adjust within the rules |
 
-Расчётная часть v3 на порцию 43 г, настоящая функция:
+The calculated v3 part for a 43 g serving, with the real function:
 
 ```
 Base                     6
-Сахара: 50.4% лимита     −3      (риск 3 × 1)
-Насыщенные: 24.08%       −0.528  (риск 1.056 × 0.5)
-Соль                      0
+Sugars: 50.4% of limit   −3      (risk 3 × 1)
+Saturated: 24.08%        −0.528  (risk 1.056 × 0.5)
+Salt                      0
 Ultra-processed          −0.5
-Белок и клетчатка         0
-Итог                     1.972 ≈ 2.0
+Protein and fiber         0
+Result                   1.972 ≈ 2.0
 ```
 
-Здесь я принял `sugarSource: added` и `processing: ultra_processed` по объяснениям на экране. Сами значения в лог не пишутся.
+Here I assumed `sugarSource: added` and `processing: ultra_processed` from the explanations on the screen. The values themselves are not logged.
 
-Почему на экране 3.5:
+Why the screen shows 3.5:
 
-- Лог: `outcome: "ai_accepted"`, `aiCalls: 1`.
-- Коридор v4 (`goal-match-reconcile.ts`): от `min − 3.5` до `max + 1.5`, то есть 0–3.5. Потолок по рискам 4.5 не мешает.
-- `ai_accepted` значит, что AI не пришлось поправлять. Поэтому AI вернул 3.5, верхнюю границу коридора. Сам ответ AI не залогирован, это вывод из правил.
+- Log: `outcome: "ai_accepted"`, `aiCalls: 1`.
+- The v4 corridor (`goal-match-reconcile.ts`): from `min − 3.5` to `max + 1.5`, that is 0–3.5. The risk ceiling of 4.5 does not interfere.
+- `ai_accepted` means the AI answer did not need adjusting. So the AI returned 3.5, the top of the corridor. The AI answer itself is not logged; this is an inference from the rules.
 
-То есть число на экране выше расчётного на 1.5 благодаря AI. Правилам v4 это не противоречит, но продукт с сахаром 58.6 г оказался на самом верху разрешённого диапазона.
+So the number on the screen is 1.5 above the calculation because of the AI. That does not contradict the v4 rules, but a product with 58.6 g of sugar ended up at the very top of the allowed range.
 
 ## 7. UI
 
-**Откуда entity в названии.** Маппер берёт `product_name` как есть, только сжимает пробелы (`open-food-facts.mapper.ts:26`, `:146`). HTML-сущности он не декодирует, а React Native показывает текст буквально. Скорее всего, сущность уже лежит в данных OFF. Само название не залогировано, поэтому точный вид строки, `&quot;` или двойной `&amp;quot;`, подтвердить нельзя.
+**Where the entity in the name came from.** The mapper takes `product_name` as is and only collapses whitespace (`open-food-facts.mapper.ts:26`, `:146`). It does not decode HTML entities, and React Native shows the text literally. Most likely the entity is already in the OFF data. The name itself is not logged, so the exact form of the string, `&quot;` or a double `&amp;quot;`, cannot be confirmed.
 
-Декодировать локально безопасно: результат показывается как обычный текст, а не HTML. AI не нужен.
+Decoding locally is safe: the result is shown as plain text, not HTML. No AI is needed.
 
-**Минимальный фикс, не применён.** В `text()` маппера применить общий декодер из `decodeEntities` (`web/page-nutrition.ts:45`), дополнив `&#x..;`. Запускать до двух раз, чтобы покрыть `&amp;quot;`. Текст станет `"`.
+**Minimal fix, not applied.** In the mapper's `text()`, apply the shared decoder from `decodeEntities` (`web/page-nutrition.ts:45`), extended with `&#x..;`. Run it up to twice to cover `&amp;quot;`. The text becomes `"`.
 
-**Почему категория не определена.** В скане по штрихкоду категорию задаёт только `analyzeProduct`, а он не вызывался. `FIELDS` запроса OFF не содержит категорий (`open-food-facts.provider.ts:7`), маппер их не читает, а `emptyBarcodeProduct` ставит `NOT_DETECTED`. На Product Score и Goal Match категория не влияет, но её использует проверка диеты (`match-goal.ts:246`).
+**Why the category was not detected.** In a barcode scan only `analyzeProduct` sets the category, and it was not called. The `FIELDS` of the OFF request contain no categories (`open-food-facts.provider.ts:7`), the mapper does not read them, and `emptyBarcodeProduct` sets `NOT_DETECTED`. The category does not affect the Product Score or Goal Match, but the diet check uses it (`match-goal.ts:246`).
 
-**Минимальный фикс, не применён.** Добавить `categories_tags` в существующий запрос OFF, это не новый запрос. В маппере сделать таблицу тегов к `ProductCategory`, например `en:chocolates` к `chocolate`, а неизвестный тег оставлять `not_detected`. Новый AI-вызов не нужен.
+**Minimal fix, not applied.** Add `categories_tags` to the existing OFF request; it is not a new request. In the mapper, add a table from tags to `ProductCategory`, for example `en:chocolates` to `chocolate`, and leave an unknown tag as `not_detected`. No new AI call is needed.
 
-## 8. Что проверить дальше
+## 8. What to check next
 
-1. **Значения Roshen на упаковке.** Сверить sugars 58.6, saturatedFat 11.2 и salt 0.01 с этикеткой: сейчас это данные одной записи OFF без проверки.
-2. **Набор продуктов для Product Score.** Прогнуть локально 15–20 разных продуктов и решить, должна ли оценка различать продукты внизу шкалы. Менять формулу по одному шоколаду не стоит.
-3. **Штраф за калории для еды.** Посмотреть, нужен ли он в текущем виде, учитывая логику для напитков.
-4. **Логи.** Записывать значения nutrition, источник энергии, семантику и ответ AI для Goal Match.
-5. **AI в Goal Match.** Посмотреть на нескольких продуктах, как часто AI уходит к верхней границе коридора.
-6. **Snickers.** В этом же запуске предыдущий скан без штрихкода отклонил vkusvill.ru и calorizator.ru с `variant_mismatch`: Gemini написал «лесного», а в списке синонимов этой формы нет. Макросы при этом совпали. Это не связано с Roshen, но влияет на следующий тест Snickers.
+1. **Roshen values on the package.** Compare sugars 58.6, saturatedFat 11.2 and salt 0.01 with the label: right now this is data from a single unverified OFF record.
+2. **A product set for the Product Score.** Run 15–20 different products locally and decide whether the score should distinguish products at the bottom of the scale. Changing the formula because of one chocolate is not worth it.
+3. **The calorie penalty for food.** See whether it is needed in its current form, given the logic for drinks.
+4. **Logs.** Record the nutrition values, the energy source, the semantics and the AI answer for Goal Match.
+5. **AI in Goal Match.** Check on several products how often the AI goes to the top of the corridor.
+6. **Snickers.** In the same run, the previous scan without a barcode rejected vkusvill.ru and calorizator.ru with `variant_mismatch`: Gemini wrote «лесного» (an inflected form of “hazelnut”), and the synonym list did not have that form. The macros matched. This is unrelated to Roshen but affects the next Snickers test.
 
-Логи телефона также показали, что код Roshen был пойман (`camera_barcode_detected`) и отправлен с `images: 0`, то есть barcode-first сработал как задумано.
+The phone logs also showed that the Roshen code was caught (`camera_barcode_detected`) and sent with `images: 0`, so barcode-first worked as designed.

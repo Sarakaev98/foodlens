@@ -27,7 +27,7 @@ GOAL_MATCH_AI=google independently selects the existing GoogleGoalMatchProvider.
 The flags can also be combined with off/mock/meta independently.
 
 Both use the existing backend Google settings:
-- project foodlens-513112;
+- project test-project;
 - location global;
 - model gemini-3.5-flash-lite;
 - key read only on backend.
@@ -200,12 +200,12 @@ The first real visual test remains to be performed with an actual product from i
   volume reset or recreation; existing eat_healthier profile remains present.
 - API started: node dist/main.js from apps/api.
 - GET http://127.0.0.1:3000/health -> 200.
-- GET http://192.168.100.2:3000/health -> 200 from this computer.
+- GET http://192.168.1.100:3000/health -> 200 from this computer.
 - DB-backed profile and nutrition-target endpoints -> 200; profile goal eat_healthier.
 - Metro running on 8081. Existing iOS bundle returns 200 and includes current API URL.
-- Expo runtime env only: EXPO_PUBLIC_API_URL=http://192.168.100.2:3000 and
-  REACT_NATIVE_PACKAGER_HOSTNAME=192.168.100.2. Mobile .env/source files were not changed.
-- Expo Go URL: exp://192.168.100.2:8081.
+- Expo runtime env only: EXPO_PUBLIC_API_URL=http://192.168.1.100:3000 and
+  REACT_NATIVE_PACKAGER_HOSTNAME=192.168.1.100. Mobile .env/source files were not changed.
+- Expo Go URL: exp://192.168.1.100:8081.
 
 Docker recovery operations only backed up runtime socket directories (Docker/run and
 docker-secrets-engine containing zero-byte IPC entries). No WSL data disk, database,
@@ -229,7 +229,7 @@ API is running and ready locally. External-device accessibility is not claimed b
 that firewall step and a phone-side health check.
 
 After LAN access is allowed, connect iPhone to the same LAN, open
-http://192.168.100.2:3000/health in Safari, then exp://192.168.100.2:8081 in Expo Go.
+http://192.168.1.100:3000/health in Safari, then exp://192.168.1.100:8081 in Expo Go.
 Take a photo of a real package with a readable nutrition table and ingredients.
 Mobile v4 presentation remains a separate task.
 

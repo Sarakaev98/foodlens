@@ -90,12 +90,12 @@ Both still have SN=1 and processing=strong_negative.
 The explicit prompt clarification did not produce a valid dimension/band combination.
 
 Attempt 1 factors:
-- ultra_processed (negative/high): “Ультрапереработанный продукт с добавками”.
-- high_salt (negative/medium): “Содержание соли составляет 1.4 г на 100 г”.
+- ultra_processed (negative/high): “Ультрапереработанный продукт с добавками” (“ultra-processed, with additives”).
+- high_salt (negative/medium): “Содержание соли составляет 1.4 г на 100 г” (“salt is 1.4 g per 100 g”).
 
 Attempt 2 factors:
-- ultra_processed (negative/high): “Продукт ультрапереработан”.
-- high_salt (negative/medium): “Содержание соли умеренное: 1.4 г на 100 г”.
+- ultra_processed (negative/high): “Продукт ультрапереработан” (“the product is ultra-processed”).
+- high_salt (negative/medium): “Содержание соли умеренное: 1.4 г на 100 г” (“salt is moderate: 1.4 g per 100 g”).
 
 The first failing band check short-circuits validation; the outputs are not being asserted
 to pass later fact/number checks.

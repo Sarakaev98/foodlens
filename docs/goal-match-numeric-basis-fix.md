@@ -7,7 +7,7 @@
 Only supportedText numeric fact matching changed.
 
 - A valid numeric reference under product.per100.* authorizes standard RU basis syntax:
-  “на 100 г” or “на 100 мл”.
+  “на 100 г” or “на 100 мл” (“per 100 g” / “per 100 ml”).
 - The validator records the character offset of the 100 token inside each such construction.
 - Only that exact numeric token is exempt from matching a measured fact.
 - All other numbers, including the measured amount before the basis, must still match
@@ -20,10 +20,10 @@ Only supportedText numeric fact matching changed.
 - Sentence/medical/missing-field/code/band checks were not changed.
 
 Examples:
-- “Соль — 1.4 г на 100 г”, ref product.per100.saltG=1.4: valid.
-- “Сахара — 10.6 г на 100 мл”, matching product.per100.sugarsG: valid.
-- “Соль — 2.4 г на 100 г”, ref saltG=1.4: invalid.
-- “В продукте 100 г сахара”, no referenced 100: invalid.
+- “Соль — 1.4 г на 100 г” (salt 1.4 g per 100 g), ref product.per100.saltG=1.4: valid.
+- “Сахара — 10.6 г на 100 мл” (sugars 10.6 g per 100 ml), matching product.per100.sugarsG: valid.
+- “Соль — 2.4 г на 100 г” (salt 2.4 g per 100 g), ref saltG=1.4: invalid.
+- “В продукте 100 г сахара” (“the product has 100 g of sugar”), no referenced 100: invalid.
 - A matching perServing measurement plus “на 100 г”, without a per100 reference: invalid.
 - A second standalone 100 in the same sentence is not exempt merely because a valid basis
   construction appears elsewhere.
@@ -46,7 +46,7 @@ The source raw object was deep-compared with the before-fix snapshot.
 | surviving factors | ultra_processed, fits_portion | ultra_processed, high_salt, fits_portion |
 
 The full original high_salt factor now survives:
-“Содержание соли умеренное и составляет 1.4 г на 100 г”
+“Содержание соли умеренное и составляет 1.4 г на 100 г” (“salt is moderate at 1.4 g per 100 g”)
 with references product.per100.saltG and facts.levels.salt.
 The measured 1.4 matches the fact; the 100 is the contextual denominator.
 

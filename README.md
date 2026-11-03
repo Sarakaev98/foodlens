@@ -1,109 +1,115 @@
 # FoodLens
 
-Монорепозиторий (pnpm workspaces).
+A pnpm workspaces monorepo.
 
 ```
 apps/
   mobile/     React Native + Expo (Expo Router), TypeScript
   api/        NestJS
 packages/
-  core/       общие доменные типы (Product, NutritionFacts, MealPlan, ProductScore...) и feature flags
-  scoring/    Scoring Engine (контракт, без логики; зависит только от core)
-  nutrition/  Nutrition Engine: дневные цели по калориям и БЖУ из профиля (чистый TS)
-  ai/         интерфейс AIProvider и MetaProvider (анализ фото продукта через Meta Model API)
+  core/       shared domain types (Product, NutritionFacts, MealPlan, ProductScore...) and feature flags
+  scoring/    Scoring Engine: deterministic Product Score and Goal Match (depends only on core)
+  nutrition/  Nutrition Engine: daily calorie and macro targets from the profile, Meal Plan validation (plain TS)
+  ai/         AIProvider interface with Google (Gemini), Meta and mock providers
   database/   Prisma + PostgreSQL
 ```
 
-Граф зависимостей пакетов:
+Package dependency graph:
 
 ```
 core  <-  scoring
 core  <-  nutrition
 core  <-  ai
 core  <-  mobile
-core, ai, nutrition, database  <-  api
+core, ai, nutrition, scoring, database  <-  api
 ```
 
-## Требования
+## Requirements
 
 - Node.js 20+
 - pnpm 10 (`corepack enable`)
-- PostgreSQL 16 (или `docker compose up -d`)
+- PostgreSQL 16 (or `docker compose up -d`)
 
-## Запуск
+## Getting started
 
 ```bash
 pnpm install
 
-# База: PostgreSQL + миграции
+# Database: PostgreSQL + migrations
 docker compose up -d
 cp packages/database/.env.example packages/database/.env
 cp apps/api/.env.example apps/api/.env
 pnpm db:deploy
 
-# API: http://localhost:3000/health, /feature-flags, /profile, /nutrition-targets, POST /scan/analyze
+# API: http://localhost:3000/health, /feature-flags, /profile, /nutrition-targets, /meal-plan, POST /scan/analyze
 pnpm dev:api
 
-# Mobile: Expo Dev Server (QR для Expo Go, `w` — web, `a` — Android)
+# Mobile: Expo dev server (QR code for Expo Go, `w` for web, `a` for Android)
 pnpm dev:mobile
 ```
 
-Перед запуском приложений общие пакеты собираются в `dist` (`pnpm build:packages`),
-это делают скрипты `dev:*` автоматически.
+The shared packages are built into `dist` (`pnpm build:packages`) before the apps start;
+the `dev:*` scripts do this automatically.
 
-Прочее:
+Other commands:
 
 ```bash
-pnpm typecheck      # проверка типов во всём монорепо
-pnpm test           # unit tests (node:test: packages/nutrition, packages/ai, apps/api)
-pnpm build          # сборка пакетов и API
-pnpm db:generate    # сгенерировать Prisma Client
-pnpm db:migrate     # prisma migrate dev: создать миграцию после изменения schema.prisma
-pnpm db:deploy      # применить существующие миграции
+pnpm typecheck      # type-check the whole monorepo
+pnpm test           # unit tests (node:test) in every package and app that has them
+pnpm build          # build the packages and the API
+pnpm db:generate    # generate the Prisma Client
+pnpm db:migrate     # prisma migrate dev: create a migration after changing schema.prisma
+pnpm db:deploy      # apply existing migrations
 ```
 
 ## Feature flags
 
-Реестр флагов — `packages/core/src/feature-flags`. По умолчанию все включены.
-Выключение без удаления кода:
+The flag registry lives in `packages/core/src/feature-flags`. All flags are on by default.
+To turn a feature off without removing code:
 
-- mobile: `EXPO_PUBLIC_FEATURE_MEAL_PLAN=false` в `apps/mobile/.env`
-- api: `FEATURE_MEAL_PLAN=false` в `apps/api/.env`
+- mobile: `EXPO_PUBLIC_FEATURE_MEAL_PLAN=false` in `apps/mobile/.env`
+- api: `FEATURE_MEAL_PLAN=false` in `apps/api/.env`
 
-Новый флаг: добавить ключ в `DEFAULT_FEATURE_FLAGS` и env-переменную в
-`apps/mobile/src/shared/feature-flags/featureFlags.config.ts` (TypeScript подскажет).
+To add a flag, add the key to `DEFAULT_FEATURE_FLAGS` and the env variable to
+`apps/mobile/src/shared/feature-flags/featureFlags.config.ts` (TypeScript will point out what is missing).
 
-## Адрес API в mobile
+## API address in mobile
 
-По умолчанию mobile обращается к API на том же компьютере, где запущен Expo
-(хост dev server, порт 3000). Это работает в web, в эмуляторе и на телефоне в той же Wi-Fi сети.
-Иначе задайте `EXPO_PUBLIC_API_URL` в `apps/mobile/.env`.
+By default the mobile app calls the API on the same computer that runs Expo
+(the dev server host, port 3000). This works on web, in an emulator and on a phone on the same Wi-Fi network.
+Otherwise set `EXPO_PUBLIC_API_URL` in `apps/mobile/.env`.
 
-## Сканирование продукта (Meta)
+## Product scan
 
-Цепочка: камера или галерея → `POST /scan/analyze` (multipart, поле `image`) → `MetaProvider`
-→ Meta Model API (structured output по JSON Schema) → нормализатор → `Product` из `@foodlens/core`.
+Flow: camera barcode or photo → `POST /scan/analyze` (multipart: `image`/`images`, optional `barcode`)
+→ barcode sources (Open Food Facts, then optional web search for missing fields)
+→ photo analysis by the AI provider when data is still missing → normalized `Product` from `@foodlens/core`
+→ Product Score and Goal Match from the same merged nutrition.
 
-Ключ задаётся **только** в `apps/api/.env`:
+The AI provider is chosen with `AI_PROVIDER` in `apps/api/.env`: `google` (Gemini through Vertex AI),
+`meta` (Meta Model API) or `mock`. Keys are set **only** in `apps/api/.env`, for example:
 
 ```
-MODEL_API_KEY=...
+AI_PROVIDER=google
+GOOGLE_API_KEY=...
+GOOGLE_CLOUD_PROJECT=...
 ```
 
-Ключ не попадает в mobile, `EXPO_PUBLIC_*` и git (`.env` в `.gitignore`). Без ключа API
-запускается, а сканирование отвечает `503 AI_NOT_CONFIGURED`. Фото обрабатывается в памяти
-и нигде не сохраняется.
+Keys never reach mobile, `EXPO_PUBLIC_*` or git (`.env` is in `.gitignore`). Without a key the API
+still starts, and scanning answers `503 AI_NOT_CONFIGURED`. Photos are processed in memory
+and never stored. See `apps/api/.env.example` for every option, including `PRODUCT_LOOKUP`,
+`WEB_SEARCH_LOOKUP` and `GOAL_MATCH_AI`.
 
-### Без ключа: mock-провайдер
+### Without a key: the mock provider
 
-Чтобы пройти весь сценарий Scan (камера → анализ → экран результата) без Meta, в `apps/api/.env`:
+To walk through the whole Scan flow (camera → analysis → result screen) without an AI key, set this in `apps/api/.env`:
 
 ```
 AI_PROVIDER=mock
 ```
 
-и перезапустите API. Любое фото тогда возвращает один и тот же демо-продукт (греческий йогурт):
-это фикстура в формате ответа Meta из `packages/ai/src/providers/mock/mock-product-analysis.ts`,
-которая проходит ту же проверку схемы и тот же нормализатор. Фото по-прежнему проверяется
-(тип и размер), но в Meta не отправляется. Mock включается только явно: при `AI_PROVIDER=meta`
-без ключа ответ остаётся `503 AI_NOT_CONFIGURED`. Для настоящего анализа верните `AI_PROVIDER=meta`.
+and restart the API. Every photo then returns the same demo product (Greek yogurt):
+a fixture in the Meta response format from `packages/ai/src/providers/mock/mock-product-analysis.ts`
+that goes through the same schema check and the same normalizer. The photo is still validated
+(type and size) but never sent anywhere. Mock is only used when set explicitly: a real provider
+without a key still answers `503 AI_NOT_CONFIGURED`.

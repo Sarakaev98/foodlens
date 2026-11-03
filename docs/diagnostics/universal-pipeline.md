@@ -1,120 +1,122 @@
-> Историческая диагностика прежних требований. Текущий MVP использует estimation fallback: см. [mvp-nutrition-estimation.md](mvp-nutrition-estimation.md).
+> Historical diagnostics of earlier requirements. The current MVP uses an estimation fallback: see [mvp-nutrition-estimation.md](mvp-nutrition-estimation.md).
 
-# FoodLens: универсальный nutrition enrichment
+# FoodLens: universal nutrition enrichment
 
-Дата: 3 ноября 2026. Репозиторий `C:\Users\sarak\Documents\FoodLens`, ветка `dev`. Изменения локальные; push и commit не выполнялись. До работы в репозитории уже было много изменённых и untracked файлов; они не откатывались.
+Date: November 3, 2026. Repository `C:\Users\sarak\Documents\FoodLens`, branch `dev`. The changes were local; no push or commit was made at the time. Before this work the repository already had many modified and untracked files; they were not reverted.
 
-## Причина различий
+## Cause of the differences
 
-Для Rollton enrichment не был пропущен. В контрольном запросе исходного кода OFF вернул только 350 ккал, 6 г белка, 65 г углеводов и 7,5 г жира на 100 г. Поиск Tavily выполнялся, но источники не дали достоверных дополнительных нутриентов. Состав удалось найти отдельно.
+For Rollton enrichment was not skipped. In a control request with the original code OFF returned only 350 kcal, 6 g protein, 65 g carbs and 7.5 g fat per 100 g. The Tavily search ran, but the sources gave no reliable additional nutrients. The ingredients were found separately.
 
-У Choco Pie исходный код принимал сахар 37,1 г, насыщенные жиры 11 г и соль 0,2 г с `forkin.io` как `estimated`, `confidence: low`, `consensusCount: 1`. Это был общий путь допуска слабого источника, а не специальная ветка Choco Pie. Он давал внешне заполненный профиль без независимого подтверждения этих трёх полей.
+For Choco Pie the original code accepted sugars 37.1 g, saturated fat 11 g and salt 0.2 g from `forkin.io` as `estimated`, `confidence: low`, `consensusCount: 1`. That was the general path for admitting a weak source, not a special branch for Choco Pie. It produced a profile that looked complete without independent confirmation of those three fields.
 
-Найдены общие логические проблемы:
+General logic problems found:
 
-1. Вызов следующего источника зависел от сахара, насыщенных жиров и соли; недостающие макронутриенты учитывались лишь со штрихкодом. Клетчатка передавалась в контекст попутно, но сама не запускала поиск, не имела поискового слова и не препятствовала ранней остановке.
-2. Состав отдельно запускал enrichment только со штрихкодом, хотя веб-провайдер умеет проверять продукт и без него.
-3. После поиска могли подставляться оценки OFF по составу, числа с одной слабой страницы и среднее между близкими, но неподтверждёнными значениями. Это противоречит требованию оставлять недостоверные значения неизвестными.
-4. Merge мог очистить старую рецептуру до отказа по `name_only`. Исправления `verified_attributes` применялись до проверки исходных макросов и могли сами обеспечить успешную проверку. Также на границе merge не было проверки другого явно возвращённого штрихкода.
+1. Calling the next source depended on sugars, saturated fat and salt; missing macros counted only with a barcode. Fiber was passed in the context along the way, but it did not trigger a search on its own, had no search word and did not prevent an early stop.
+2. Missing ingredients triggered enrichment on their own only with a barcode, although the web provider can verify a product without one.
+3. After the search, OFF estimates from the ingredients, numbers from a single weak page and averages of close but unconfirmed values could be substituted. That contradicts the requirement to leave unreliable values unknown.
+4. Merge could clear the old recipe before a `name_only` rejection. `verified_attributes` corrections were applied before the original macros were checked and could make that check pass by themselves. The merge boundary also had no check for a different barcode returned explicitly.
 
-Исправления не гарантируют нахождение всех нутриентов: они обеспечивают последовательный поиск и более строгий приём результатов.
+The fixes do not guarantee that every nutrient is found: they make the search consistent and the acceptance of results stricter.
 
-## Полный путь данных
+## Full data path
 
-| Этап | Код и поведение |
+| Stage | Code and behavior |
 |---|---|
-| Камера/галерея | `apps/mobile/src/features/scan/components/CameraCapture.tsx`, `hooks/useProductScan.ts`, `services/scanApi.ts`: отправляют barcode и/или фото с ролями в multipart `POST /scan/analyze` |
-| Вход API | `apps/api/src/modules/scan/scan.controller.ts`, `scan-barcode.ts`, `image-barcode.ts`: проверка входа; barcode камеры приоритетнее barcode с изображения |
-| Оркестрация | `scan.service.ts::resolveProduct`: barcode-first → источники; при недостатке данных анализ содержательных фото. Без barcode сначала анализ фото, затем тот же MultiSourceProductLookup |
-| Primary | `product-lookup.module.ts`: OFF, затем FatSecret при наличии credentials, затем настроенный web provider. В этой среде активны OFF и Tavily; FatSecret не подключён |
-| OFF | `open-food-facts.provider.ts` → `open-food-facts.mapper.ts`: API v3.6, `as_sold`, нормализация g/mg, kcal/kJ, основы, порции и состава; нет данных означает null |
-| Gemini фото | `packages/ai/src/providers/google/google-provider.ts`, `google-product-analysis.ts` → общий `providers/meta/meta-product-normalizer.ts`: проверка структуры, видимости таблицы, единиц и допустимых значений |
-| Nutrition status | `googleNutritionStatus`: диагностические observed/not_listed/unreadable. Эти статусы не запрещают веб-поиск; фактические пропуски определяются по нормализованным значениям null |
-| Missing | `multi-source-product-lookup.ts::missingNutritionFields`: kcal, protein, carbs, fat, sugars, saturatedFat, fiber, salt. Наличие salt или sodium покрывает пару; sodium запрашивается в контексте при отсутствии обоих |
-| Enrichment | `gemini-search-lookup.provider.ts` → `web/search-strategy.ts`: поиск страниц, чтение HTML/JSON-LD/embedded JSON, запасное чтение Tavily, при необходимости Gemini для извлечения из текста найденной страницы |
-| Проверки | `web/product-identity.ts`, `source-tier.ts`, `source-trust.ts`: barcode, бренд, название/вариант, основа, макросы, правдоподобие; разделение рецептур и независимых доменов |
-| Merge | `product-merge.ts`: после проверки личности; observed защищён, null не заполняет поле, несовместимые основы не смешиваются, конфликтующие рецептуры отклоняются |
-| Дополнительные факты | `scan/barcode-product.ts`, `ingredient-facts.ts`: признаки обработки, аллергены и добавки из подтверждённого состава. Состав только для отображения исключается через forScoring |
-| Scoring | `packages/scoring/src/score-product.ts`: одна детерминированная формула после merge; профиль пользователя не влияет на Product Score |
-| API response | `ScanService.analyze`: product, score, goalMatch, barcode; при недостатке barcode-данных без содержательных фото — needsPhoto и status=needs_nutrition_photo |
-| UI | `ProductResultScreen.tsx`, `NutritionTable.tsx`, `productScoreLabels.ts`, `ProductScoreCard.tsx`: отображение значений и missingFactors. Два и более неизвестных среди sugars/saturatedFat/salt дают «Предварительно» и «Данных недостаточно…» |
+| Camera/gallery | `apps/mobile/src/features/scan/components/CameraCapture.tsx`, `hooks/useProductScan.ts`, `services/scanApi.ts`: send the barcode and/or photos with roles in a multipart `POST /scan/analyze` |
+| API input | `apps/api/src/modules/scan/scan.controller.ts`, `scan-barcode.ts`, `image-barcode.ts`: input validation; the camera barcode takes priority over a barcode read from the image |
+| Orchestration | `scan.service.ts::resolveProduct`: barcode-first → sources; if data is missing, analysis of content photos. Without a barcode, photo analysis first, then the same MultiSourceProductLookup |
+| Primary | `product-lookup.module.ts`: OFF, then FatSecret when credentials exist, then the configured web provider. In this environment OFF and Tavily are active; FatSecret is not connected |
+| OFF | `open-food-facts.provider.ts` → `open-food-facts.mapper.ts`: API v3.6, `as_sold`, normalization of g/mg, kcal/kJ, basis, serving and ingredients; no data means null |
+| Gemini photo | `packages/ai/src/providers/google/google-provider.ts`, `google-product-analysis.ts` → the shared `providers/meta/meta-product-normalizer.ts`: checks of structure, table visibility, units and valid values |
+| Nutrition status | `googleNutritionStatus`: diagnostic observed/not_listed/unreadable. These statuses do not prevent web search; the actual gaps are determined from normalized null values |
+| Missing | `multi-source-product-lookup.ts::missingNutritionFields`: kcal, protein, carbs, fat, sugars, saturatedFat, fiber, salt. Salt or sodium covers the pair; sodium is requested in the context when both are missing |
+| Enrichment | `gemini-search-lookup.provider.ts` → `web/search-strategy.ts`: page search, reading HTML/JSON-LD/embedded JSON, Tavily fallback reading, and Gemini when needed to extract values from the text of a page that was found |
+| Checks | `web/product-identity.ts`, `source-tier.ts`, `source-trust.ts`: barcode, brand, name/variant, basis, macros, plausibility; separation of recipes and independent domains |
+| Merge | `product-merge.ts`: after the identity check; observed values are protected, null does not fill a field, incompatible bases are never mixed, conflicting recipes are rejected |
+| Additional facts | `scan/barcode-product.ts`, `ingredient-facts.ts`: processing traits, allergens and additives from confirmed ingredients. Display-only ingredients are excluded through forScoring |
+| Scoring | `packages/scoring/src/score-product.ts`: one deterministic formula after the merge; the user profile does not affect the Product Score |
+| API response | `ScanService.analyze`: product, score, goalMatch, barcode; when barcode data is insufficient and there are no content photos, needsPhoto and status=needs_nutrition_photo |
+| UI | `ProductResultScreen.tsx`, `NutritionTable.tsx`, `productScoreLabels.ts`, `ProductScoreCard.tsx`: show values and missingFactors. Two or more unknowns among sugars/saturatedFat/salt give «Предварительно» (“preliminary”) and «Данных недостаточно…» (“not enough data…”) |
 
-Режим `nutrition_label` намеренно отдельный: анализирует только таблицу с фото без barcode/баз. Это явный контракт отдельной операции, он сохранён.
+The `nutrition_label` mode is deliberately separate: it analyzes only the table in the photo, without the barcode or databases. That is the explicit contract of a separate operation, and it was kept.
 
-## Как принимаются значения теперь
+## How values are accepted now
 
-Поиск запускается при любом пропуске поддерживаемого нутриента, а не по списку продуктов или категории. Отсутствие состава также может запустить веб-провайдер без barcode, но сам провайдер требует достаточных данных для идентификации. При заполненных данных и отсутствии аномалий следующие источники пропускаются.
+Search runs for any missing supported nutrient, not by a list of products or categories. Missing ingredients can also trigger the web provider without a barcode, but the provider itself requires enough data for identification. When the data is complete and there are no anomalies, the next sources are skipped.
 
-Поиск продолжается до заполнения запрошенных полей либо исчерпания предусмотренных шагов/лимитов. Лимиты не увеличены: по умолчанию 8 запросов поиска, 10 прочитанных страниц, 14 попыток чтения, 2 запасных extract и 2 AI extraction на продукт. Кэши и память поиска сохраняются; повторный скан не обязан делать новые сетевые запросы.
+The search continues until the requested fields are filled or the planned steps and limits run out. The limits were not raised: by default 8 search queries, 10 read pages, 14 read attempts, 2 fallback extracts and 2 AI extractions per product. Caches and search memory are kept; a repeated scan does not have to make new network requests.
 
-Один сильный источник или согласованное подтверждение минимум двух независимых сайтов может дать значение. Одиночный слабый источник без подтверждения и равные конфликтующие группы не дают числовую подстановку. Оценки OFF по составу также больше не применяются. Категорийных средних нет.
+One strong source, or agreeing confirmation from at least two independent sites, can provide a value. A single weak source without confirmation, and equal conflicting groups, give no numeric substitution. OFF estimates from the ingredients are no longer applied either. There are no category averages.
 
-Надёжно найденные значения сохраняют fieldEvidence с URL, доменом, basis, trust, dataQuality, confidence и подтверждающими источниками. Исходные observed не заменяются. Более сильное подтверждение может исправлять внешние данные через существующий механизм corrections/replacesRecipe, но слабый результат теперь не может предварительно изменить объект для собственной проверки.
+Reliably found values keep fieldEvidence with the URL, domain, basis, trust, dataQuality, confidence and confirming sources. Original observed values are never replaced. Stronger confirmation can correct external data through the existing corrections/replacesRecipe mechanism, but a weak result can no longer change the object in advance to pass its own check.
 
-Соль/натрий: `saltG = sodiumMg × 2.5 / 1000`; обратное `sodiumMg = saltG × 1000 / 2.5`, производное значение помечается inferred. Это пересчёт найденного факта, а не оценка по категории. На порцию пересчёт возможен только при известном размере и совместимой единице; 100 г и 100 мл при merge автоматически не смешиваются. Существующая классификация напитков в OFF отдельно допускает принятую проектом плотность 1 — она не менялась.
+Salt/sodium: `saltG = sodiumMg × 2.5 / 1000`; the reverse is `sodiumMg = saltG × 1000 / 2.5`, and the derived value is marked inferred. This is a conversion of a found fact, not a category estimate. Per-serving conversion is possible only with a known size and a compatible unit; 100 g and 100 ml are never mixed automatically during the merge. The existing drink classification in OFF separately allows the project's assumed density of 1; it did not change.
 
-Порция берётся из достоверного primary/этикетки. Additives дополняются из базы или подтверждённого состава; отсутствие меток в OFF не означает «добавок нет». Отдельного платного поиска только ради serving size или additives не добавлено.
+The serving comes from a reliable primary source or the label. Additives are filled from the database or from confirmed ingredients; missing tags in OFF do not mean “no additives”. No separate paid search was added just for serving size or additives.
 
-## Диагностика примеров, реальные вызовы после исправлений
+## Diagnostics of the examples: real calls after the fixes
 
-Настройки: `WEB_SEARCH_LOOKUP=tavily`, источники `open_food_facts`, `web_search`. Запросы выполнены через ScanService без фото и без пользовательского плана; AI анализа упаковки не вызывался. Результаты и этапы сохранены в `universal-pipeline-evidence.json`. Это новые контрольные сканы, а не восстановленный исторический лог пользовательского скана.
+Settings: `WEB_SEARCH_LOOKUP=tavily`, sources `open_food_facts`, `web_search`. The requests went through ScanService without a photo and without a user plan; package AI analysis was not called. The results and stages were saved locally in `universal-pipeline-evidence.json`. These are new control scans, not a reconstructed historical log of a user scan.
 
 | | Rollton 4605496000815 | Choco Pie 4607084351385 |
 |---|---|---|
-| Идентификация OFF | Картофельное пюре с куриным вкусом, Роллтон, порция 40 г | Choco Pie, Orion, порция 30 г |
-| Primary на 100 г | 350 kcal; P 6; C 65; F 7,5 | около 506,67 kcal (после округления 507); P 4,5; C 63; F 18 |
-| Missing | sugars, saturatedFat, salt; sodiumMg, fiber в полном контексте | те же; дополнительно kcal как аномалия относительно БЖУ |
-| Enrichment | запущен; 8 запросов, 34 кандидата, 8 прочитанных страниц | запущен; 8 запросов, 22 кандидата, 10 прочитанных страниц |
-| Tavily credits | 10 с запасными чтениями | 10 с запасными чтениями |
-| Gemini извлечение | 0 | 1 |
-| Принято | состав; новые нутриенты не приняты | kcal 433, подтверждённые двумя сайтами; остальные пропуски не заполнены |
-| Итог | sugars/saturatedFat/fiber/salt/sodium=null | sugars/saturatedFat/fiber/salt/sodium=null |
-| Score полного ScanService | 3,9; confidence=low; needsPhoto=true | 3,7; confidence=low; needsPhoto=true |
+| OFF identification | Картофельное пюре с куриным вкусом (chicken-flavored mashed potatoes), Роллтон (Rollton), serving 40 g | Choco Pie, Orion, serving 30 g |
+| Primary per 100 g | 350 kcal; P 6; C 65; F 7.5 | about 506.67 kcal (507 after rounding); P 4.5; C 63; F 18 |
+| Missing | sugars, saturatedFat, salt; sodiumMg, fiber in the full context | the same; plus kcal as an anomaly against the macros |
+| Enrichment | ran; 8 queries, 34 candidates, 8 pages read | ran; 8 queries, 22 candidates, 10 pages read |
+| Tavily credits | 10 including fallback reads | 10 including fallback reads |
+| Gemini extraction | 0 | 1 |
+| Accepted | ingredients; no new nutrients accepted | kcal 433, confirmed by two sites; the other gaps were not filled |
+| Result | sugars/saturatedFat/fiber/salt/sodium=null | sugars/saturatedFat/fiber/salt/sodium=null |
+| Full ScanService score | 3.9; confidence=low; needsPhoto=true | 3.7; confidence=low; needsPhoto=true |
 
-Rollton: `barista-ltd.ru` даёт 377/10,5/75,3/3,8 вместо 350/6/65/7,5, поэтому `barcode_matches_macros_differ`. `ru.nutrola.app` содержит подозрительные нули, отклонён как `implausible_nutrition:zero_saturated_fat`. `possy.ru`, `globalservice.kr`, `ayanmarket.kz`, `dixy.ru`, `semeiniy.kz` не дали пригодную таблицу на 100 г. Часть остальных URL недоступна или имеет слишком много redirect. Статус web hit здесь означает найденный состав, а не найденные нутриенты.
+Rollton: `barista-ltd.ru` gives 377/10.5/75.3/3.8 instead of 350/6/65/7.5, hence `barcode_matches_macros_differ`. `ru.nutrola.app` contains suspicious zeros and was rejected as `implausible_nutrition:zero_saturated_fat`. `possy.ru`, `globalservice.kr`, `ayanmarket.kz`, `dixy.ru` and `semeiniy.kz` gave no usable per-100 g table. Some of the other URLs were unavailable or had too many redirects. A web hit here means found ingredients, not found nutrients.
 
-Choco Pie: `forkin.io` содержит 37,1 г сахара, 11 г насыщенных жиров, 0,2 г соли, но для каждого из них остаётся один слабый источник. Теперь эти числа не применяются. Калории 433 подтверждаются `forkin.io` и `barista-ltd.ru`, поэтому могут исправить аномальные 507 из OFF. `posylka.de` — другая рецептура: 443/4/70,5/16,1, отклонена. `en.orionworld.ru` и ряд магазинов не дали пригодную таблицу. Все подробные сравнения и принятые URL есть в evidence.
+Choco Pie: `forkin.io` lists 37.1 g sugars, 11 g saturated fat and 0.2 g salt, but each of them has only one weak source. These numbers are no longer applied. The 433 kcal is confirmed by `forkin.io` and `barista-ltd.ru`, so it can correct the anomalous 507 from OFF. `posylka.de` is a different recipe, 443/4/70.5/16.1, and was rejected. `en.orionworld.ru` and several shops gave no usable table. All detailed comparisons and accepted URLs are in the evidence.
 
-Gemini usageMetadata сохранена в существующем формате gemini_usage: nutrition_extraction, model=gemini-3.5-flash-lite, prompt=1926, output=93, total=2019, thoughts/cached=null. Ключи и тела сетевых ответов не сохранялись. Исходный диагностический прогон до исправления обходил ingredient-facts, поэтому его Score не используется как сравнение до/после; для итоговых оценок выше используется полный ScanService.
+> **Updated note (November 3, 2026):** one page with the exact barcode, or with the brand and full name, and a matching recipe now fills a missing field as `estimated`/low, so in the current code these `forkin.io` values are accepted as estimates.
 
-## Идентификация: проверенные границы
+Gemini usageMetadata was kept in the existing gemini_usage format: nutrition_extraction, model=gemini-3.5-flash-lite, prompt=1926, output=93, total=2019, thoughts/cached=null. Keys and network response bodies were not stored. The original diagnostic run before the fix bypassed ingredient-facts, so its Score is not used as a before/after comparison; the final scores above come from the full ScanService.
 
-Специальных условий scoring или enrichment для этих barcode не добавлено. В production уже были словари написаний брендов/названий, известные бренды и домены производителей/магазинов. Это существующие подсказки идентификации и доверия, не таблицы нутриентов и не коэффициенты оценки; они не расширялись под примеры. Неизвестные бренды/категории тоже проходят ту же цепочку, но могут требовать независимого подтверждения.
+## Identification: verified boundaries
 
-В текущей модели нет самостоятельных полей manufacturer и package/net weight. Serving size передаётся в поисковый контекст, но не является гарантией размера упаковки. Их независимое сопоставление невозможно, если источник не даёт этих атрибутов. Точный barcode, вариант и проверка рецептуры остаются основными защитами. Это ограничение исходной схемы; в рамках данного исправления не добавлялась новая модель упаковки. Нельзя обещать проверку производителя или массы, которых нет во входных данных.
+No special scoring or enrichment conditions were added for these barcodes. Production already had dictionaries of brand/name spellings, known brands and manufacturer/retailer domains. These are existing identification and trust hints, not nutrient tables or scoring coefficients; they were not extended for the examples. Unknown brands and categories go through the same chain but may need independent confirmation.
 
-Ни одна конечная стратегия с лимитами не гарантирует обнаружение всех существующих веб-страниц. При отсутствии подтверждения после предусмотренных источников null и запрос фото таблицы являются правильным результатом.
+The current model has no separate manufacturer or package/net weight fields. Serving size is passed into the search context but does not guarantee the package size. They cannot be matched independently if the source does not provide these attributes. The exact barcode, the variant and the recipe check remain the main protections. This is a limitation of the original schema; no new package model was added in this fix. Verification of a manufacturer or weight that is absent from the input cannot be promised.
 
-## Изменённые файлы именно этой работы
+No finite strategy with limits can guarantee finding every web page that exists. When nothing is confirmed after the planned sources, null and a request for a photo of the table are the correct result.
 
-Основной код:
+## Files changed in this work
 
-- `apps/api/src/modules/product-lookup/multi-source-product-lookup.ts`: единая полнота нутриентов для обоих входов, ingredients trigger без barcode, исключение OFF estimates, диагностические этапы.
-- `apps/api/src/modules/product-lookup/gemini-search-lookup.provider.ts`: остановка по всем запрошенным нутриентам; исключение неподтверждённых solo estimates и усреднения спорных значений.
-- `apps/api/src/modules/product-lookup/web/search-strategy.ts`: поисковые слова для fiber.
-- `apps/api/src/modules/product-lookup/product-merge.ts`: проверки до мутаций; защита от другого явно указанного barcode; GTIN с ведущими нулями сопоставляются.
-- `apps/api/src/modules/scan/scan.service.ts`: этапы поиска с requestId/barcode, SCORING_INPUT и SCORING_RESULT под существующим DEBUG_SCAN. Числа и provenance без фото, промптов, пользовательского плана и ключей.
-- `apps/api/scripts/diagnose-product-pipeline.cjs` (новый): повторяемая диагностика произвольных barcode из CLI через настроенные источники и ScanService.
+Main code:
 
-Тесты:
+- `apps/api/src/modules/product-lookup/multi-source-product-lookup.ts`: one nutrient completeness rule for both inputs, an ingredients trigger without a barcode, exclusion of OFF estimates, diagnostic stages.
+- `apps/api/src/modules/product-lookup/gemini-search-lookup.provider.ts`: stopping only when all requested nutrients are found; exclusion of unconfirmed solo estimates and of averaging disputed values.
+- `apps/api/src/modules/product-lookup/web/search-strategy.ts`: search words for fiber.
+- `apps/api/src/modules/product-lookup/product-merge.ts`: checks before mutations; protection against another explicitly stated barcode; GTINs with leading zeros match.
+- `apps/api/src/modules/scan/scan.service.ts`: search stages with requestId/barcode, SCORING_INPUT and SCORING_RESULT under the existing DEBUG_SCAN. Numbers and provenance only, with no photos, prompts, user plan or keys.
+- `apps/api/scripts/diagnose-product-pipeline.cjs` (new): repeatable diagnostics of arbitrary barcodes from the CLI through the configured sources and ScanService.
 
-- `apps/api/src/modules/product-lookup/test/universal-pipeline.test.ts` (новый): 8 проверок, включая перебор каждого нутриента со штрихкодом/без него, ingredients-only, null/estimates, защиту merge и итоговое scoring в четырёх категориях.
-- `apps/api/src/modules/product-lookup/test/multi-source.test.ts`: полные фикстуры содержат fiber.
-- `apps/api/src/modules/product-lookup/test/web-search.test.ts`: слабые и зависимые источники не заполняют пропуски; сохраняется тест отклонения придуманных AI значений.
-- `apps/api/src/modules/product-lookup/test/tavily-search.test.ts`: диагностика неподтверждённой страницы.
-- `apps/api/src/modules/scan/test/scan-barcode-first.test.ts`: фикстура источника галереи возвращает действительно отсканированный barcode, вместо другого.
-- `apps/api/src/modules/scan/test/scan-single-source.test.ts`: непроверенные поля остаются null; разные категории заполняются при двух независимых подтверждениях.
-- `apps/api/src/modules/scan/test/scan-web-fallback.test.ts`: полнота, продолжение поиска fiber, отказ от приблизительных подстановок, обновление ожиданий query/cache.
+Tests:
 
-Документация: этот отчёт и `docs/diagnostics/universal-pipeline-evidence.json`.
+- `apps/api/src/modules/product-lookup/test/universal-pipeline.test.ts` (new): 8 checks, including every nutrient with and without a barcode, ingredients-only, null/estimates, merge protection and final scoring in four categories.
+- `apps/api/src/modules/product-lookup/test/multi-source.test.ts`: complete fixtures include fiber.
+- `apps/api/src/modules/product-lookup/test/web-search.test.ts`: weak and dependent sources do not fill gaps; the test rejecting invented AI values remains.
+- `apps/api/src/modules/product-lookup/test/tavily-search.test.ts`: diagnostics of an unconfirmed page.
+- `apps/api/src/modules/scan/test/scan-barcode-first.test.ts`: the gallery source fixture returns the barcode that was actually scanned instead of another one.
+- `apps/api/src/modules/scan/test/scan-single-source.test.ts`: unverified fields stay null; different categories are filled with two independent confirmations.
+- `apps/api/src/modules/scan/test/scan-web-fallback.test.ts`: completeness, continuing the search for fiber, no approximate substitutions, updated query/cache expectations.
 
-## Проверка
+Documentation: this report and `docs/diagnostics/universal-pipeline-evidence.json` (kept locally, not in the repository).
 
-- `pnpm test`: 1149 tests, 0 failures — API 657, scoring 240, AI 117, nutrition 38, mobile 97. Контрактные проверки core также прошли.
-- `pnpm typecheck`: все workspace packages, API и mobile прошли.
-- `pnpm --filter @foodlens/api build`: успешно.
-- Реальный диагностический CLI для обоих barcode: exit code 0; результаты выше.
-- Тест production-кода на отсутствие конкретных barcode/product branches проходит. Новые production-условия не используют названия, бренды, barcode-литералы или категорийные значения нутриентов.
-- Изменения UI и формулы scoring не потребовались. Перезапуск работающего API не выполнялся; обновлённый код проверен отдельным процессом.
+## Verification
 
-Произвольный продукт с неполной пищевой ценностью теперь проходит ту же последовательность: primary → нормализация → полный список пропусков → настроенные источники в рамках лимитов → проверка идентичности/основы/доверия → merge → единый scoring. Если доказательств нет, значения остаются null, а UI честно показывает предварительную оценку.
+- `pnpm test`: 1149 tests, 0 failures — API 657, scoring 240, AI 117, nutrition 38, mobile 97. The core contract checks also passed.
+- `pnpm typecheck`: all workspace packages, the API and mobile passed.
+- `pnpm --filter @foodlens/api build`: passed.
+- The real diagnostic CLI for both barcodes: exit code 0; the results are above.
+- The test that production code has no branches for specific barcodes or products passes. The new production conditions use no names, brands, barcode literals or category nutrient values.
+- No UI or scoring formula changes were needed. The running API was not restarted; the updated code was checked in a separate process.
+
+Any product with incomplete nutrition now goes through the same sequence: primary → normalization → the full list of gaps → the configured sources within limits → identity/basis/trust checks → merge → a single scoring. Without evidence the values stay null, and the UI honestly shows a preliminary score.
