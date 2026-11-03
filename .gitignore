@@ -27,3 +27,16 @@ dist-test/
 
 # Дампы базы с данными профиля
 backups/
+
+# Local diagnostic evidence (raw API responses / replays)
+/docs/diagnostics/*-evidence.json
+/docs/diagnostics/*-http.json
+/docs/diagnostics/*-response.json
+/docs/diagnostics/final-audit-*.json
+/docs/diagnostics/goal-policy-*.json
+/docs/diagnostics/stable-subtype-*.json
+/docs/goal-match-*-live*.json
+/docs/goal-match-*-replay.json
+
+# One-off manual Gemini retest scripts
+/apps/api/scripts/retest-google-goal-match-*.cjs
