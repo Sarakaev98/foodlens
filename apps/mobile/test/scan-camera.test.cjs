@@ -449,9 +449,13 @@ describe('CameraCapture permission states and camera settings', () => {
     assert.ok(all(tree, n => n.props?.accessibilityLabel === 'Выбрать из галереи').length === 1);
   });
 
-  it('both modes are offered and the label mode does not scan barcodes', () => {
+  it('all modes are offered and the label mode does not scan barcodes', () => {
     const product = camera(granted);
-    assert.deepEqual(all(product, n => n.props?.accessibilityRole === 'tab').map(text), ['Сканировать продукт', 'Сканировать таблицу']);
+    assert.deepEqual(all(product, n => n.props?.accessibilityRole === 'tab').map(text), ['Продукт', 'Таблица', 'Еда']);
+    assert.deepEqual(all(camera(granted, {modes: ['product', 'label']}), n => n.props?.accessibilityRole === 'tab').map(text), ['Продукт', 'Таблица'], 'mealPhoto flag off');
+    const meal = camera(granted, {mode: 'meal'});
+    assert.equal(cameraView(meal).props.onBarcodeScanned, undefined, 'the meal mode does not scan barcodes');
+    assert.ok(text(meal).includes('Сфотографируйте тарелку'));
     const label = camera(granted, {mode: 'label'});
     assert.equal(cameraView(label).props.onBarcodeScanned, undefined);
     assert.ok(text(label).includes('Наведите на таблицу пищевой ценности'));

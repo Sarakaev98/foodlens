@@ -22,6 +22,13 @@ export interface ProductImageInput extends ImageInput {
   readonly role?: ProductImageRole;
 }
 
+/** Одно фото готового блюда. */
+export interface AnalyzeMealPhotoInput {
+  readonly image: ImageInput;
+  /** Идентификатор запроса FoodLens для сквозного логирования. */
+  readonly requestId?: string;
+}
+
 export type AnalyzeProductInput = (
   | { readonly kind: 'image'; readonly image: ImageInput }
   /** 1–3 фото одного продукта, один запрос к AI. Порядок сохраняется. */

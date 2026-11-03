@@ -2,12 +2,12 @@ import type { Ingredient, ProductCategory } from '@foodlens/core';
 
 /** Tokens are Unicode letters, not JS ASCII \b boundaries or arbitrary substrings. */
 const tokens = (text: string): string[] => text.normalize('NFKC').toLocaleLowerCase('ru').replace(/ё/g, 'е').match(/[\p{L}\p{M}]+/gu) ?? [];
-const SUGAR = /^(?:сахар(?:а|у|ом)?|сахароза|сироп(?:а|ы|ов)?|глюкоз(?:а|ы)|фруктоз(?:а|ы)|декстроз(?:а|ы)|мальтоз(?:а|ы)|паток(?:а|и)|мед(?:а|у|ом)?|sugars?|sucrose|syrups?|glucose|fructose|dextrose|maltose|molasses|honey)$/u;
-const SWEETENER = /^(?:подсластитель|подсластители|подсластителя|подсластителей|сукралоза|сукралозы|стевия|стевии|sweeteners?|sucralose|stevia)$/u;
+const SUGAR = /^(?:сахар(?:а|у|ом)?|сахароза|сироп(?:а|ы|ов)?|глюкоз(?:а|ы)|фруктоз(?:а|ы)|декстроз(?:а|ы)|мальтоз(?:а|ы)|паток(?:а|и)|мед(?:а|у|ом)?|sugars?|sucrose|syrups?|glucose|fructose|dextrose|maltose|molasses|honey|şeker|glukoz|fruktoz)$/u;
+const SWEETENER = /^(?:подсластитель|подсластители|подсластителя|подсластителей|сукралоза|сукралозы|стевия|стевии|сахарозаменитель|сахарозаменители|эритрит|эритритол|аспартам|ацесульфам|сахарин|цикламат|мальтит|сорбит|ксилит|sweeteners?|sucralose|stevia|steviol|erythritol|aspartame|acesulfame|saccharin|cyclamate|maltitol|sorbitol|xylitol)$/u;
 const SATURATED = /^(?:пальмов(?:ое|ая|ый|ые|ого|ых)|кокосов(?:ое|ая|ый|ые|ого|ых)|сливочн(?:ое|ая|ый|ые|ого|ых)|palm|coconut|butter)$/u;
-const UNSATURATED = /^(?:подсолнечн(?:ое|ая|ый|ые|ого|ых)|оливков(?:ое|ая|ый|ые|ого|ых)|sunflower|olive)$/u;
+const UNSATURATED = /^(?:подсолнечн(?:ое|ая|ый|ые|ого|ых)|оливков(?:ое|ая|ый|ые|ого|ых)|рапсов(?:ое|ая|ый|ые|ого|ых)|sunflower|olive|rapeseed|canola)$/u;
 const FIBER = /^(?:цельнозернов(?:ая|ое|ой|ые|ую|ого|ых)|отруби|отрубей|бобы|бобов|бобовые|бобовых|чечевица|чечевицы|овсян(?:ая|ые|ое|ой|ого|ых|ую)|овсянка|овес|wholegrain|wholewheat|bran|lentils?|beans?|oats?|oatmeal)$/u;
-const SALT = /^(?:соль|соли|солью|salt)$/u;
+const SALT = /^(?:соль|соли|солью|salt|tuz|salz)$/u;
 const SUGAR_MODIFIERS = new Set(['тростниковый','свекловичный','коричневый','белый','натуральный','цветочный','пчелиный','инвертный','глюкозный','фруктозный','мальтозный','рисовый','кукурузный','кленовый','cane','brown','white','natural','raw','organic','corn','rice','maple','agave']);
 
 interface Component { readonly root: string; readonly children: readonly Component[] }

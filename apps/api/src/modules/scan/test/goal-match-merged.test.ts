@@ -22,6 +22,18 @@ async function scan(product: Product, goal = plan) {
 }
 
 describe('Goal Match uses the completed nutrition snapshot', () => {
+  it('coherent completed nutrition and unknown semantics remain numeric through ScanService', async () => {
+    const p = demoProduct({id:'generic-condiment',name:'Обычный томатный соус',portion:100,
+      values:[102,1.2,0.1,23.2,22.67,0,1.77,1],sugarSource:'unknown',processing:'unknown',productForm:'food',ingredients:[]});
+    const input: Product = {...p, ingredients: NOT_DETECTED, nutrition: {...p.nutrition!,fiberG:NOT_DETECTED}};
+    const result = await scan(input);
+    assert.ok(result.goalMatch.version === 'goal-match-v3');
+    assert.equal(result.goalMatch.state,'goal_match'); assert.equal(typeof result.goalMatch.value,'number');
+    assert.equal(result.goalMatch.unavailableReason,null); assert.equal(result.goalMatch.confidence,'low');
+    assert.ok(result.goalMatch.range!.max-result.goalMatch.range!.min>3);
+    assert.ok(result.goalMatch.uncertainty.includes('nutrition'));
+    assert.equal(result.product.nutrition!.fiberG.provenance,'inferred');
+  });
   it('verified nutrition produces numeric v3', () => {
     const gm = matchGoal(base(), plan);
     assert.equal(gm.version, 'goal-match-v3'); assert.equal(gm.state, 'goal_match');

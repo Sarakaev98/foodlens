@@ -1,7 +1,7 @@
 import type { Product } from '@foodlens/core';
 
-/** product: штрихкод или фото упаковки; label: отдельный скан таблицы пищевой ценности. */
-export type ScanMode = 'product' | 'label';
+/** product: штрихкод или фото упаковки; label: отдельный скан таблицы пищевой ценности; meal: фото готового блюда. */
+export type ScanMode = 'product' | 'label' | 'meal';
 
 /** Scan всегда отдаёт наружу нормализованный Product, независимо от способа сканирования. */
 export interface ScanResult {

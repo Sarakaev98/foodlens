@@ -1,4 +1,4 @@
-import type { Product, ProductScore } from '@foodlens/core';
+import type { MealPhotoEstimate, Product, ProductScore } from '@foodlens/core';
 import type { AnyGoalMatch } from '@/features/goal-match';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -38,6 +38,8 @@ export type ProductScanState =
       readonly needsPhoto: boolean;
       readonly barcode: string | null;
     }
+  /** Фото блюда: приблизительные калории и БЖУ, без Product Score. */
+  | { readonly status: 'meal_result'; readonly photo: ScanPhoto; readonly estimate: MealPhotoEstimate }
   /** canEditPhotos: фото несколько, можно убрать неудачное и повторить, не начиная заново. */
   | { readonly status: 'error'; readonly code: ScanFailureCode; readonly photo: ScanPhoto | null; readonly canEditPhotos: boolean };
 
@@ -73,6 +75,10 @@ export function useProductScan() {
       const target = targetRef.current;
       if (!target) {
         if (modeRef.current === 'label') return showPhotos([{ photo, role: 'nutrition' }]);
+        if (modeRef.current === 'meal') {
+          barcodeRef.current = null;
+          return showPhotos([{ photo, role: 'product' }]);
+        }
         barcodeRef.current = barcode ?? keptBarcodeRef.current;
         const role = nextRoleRef.current;
         nextRoleRef.current = 'product';
@@ -128,6 +134,11 @@ export function useProductScan() {
       for (const slot of photos) {
         prepared.push({ ...slot, photo: await preparePhoto(slot.photo) });
         if (!isCurrent()) return;
+      }
+      if (modeRef.current === 'meal') {
+        const { estimate } = await scanApi.analyzeMeal(prepared[0]!.photo);
+        if (isCurrent()) setState({ status: 'meal_result', photo, estimate });
+        return;
       }
       const options = { barcode: barcodeRef.current };
       const { product, score, goalMatch, barcode, needsPhoto } = modeRef.current === 'label'

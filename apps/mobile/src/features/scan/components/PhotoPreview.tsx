@@ -11,6 +11,8 @@ interface PhotoPreviewProps {
   readonly notice?: string | null;
   /** false в режиме таблицы: там анализируется ровно одно фото. */
   readonly allowExtraPhotos?: boolean;
+  /** Подпись вместо роли фото: в режиме еды это «Фото блюда». */
+  readonly photoLabel?: string;
   readonly onAnalyze: () => void;
   readonly onAddPhoto: (role: ScanPhotoRole) => void;
   readonly onRetake: (index: number) => void;
@@ -21,7 +23,7 @@ interface PhotoPreviewProps {
  * Выбранный снимок на всю ширину (contain), чтобы проверить, читается ли этикетка.
  * Под ним миниатюры с подписями; лишнее фото можно убрать, не теряя остальные. Отправка только по кнопке.
  */
-export function PhotoPreview({ photos, barcode, notice, allowExtraPhotos = true, onAnalyze, onAddPhoto, onRetake, onRemove }: PhotoPreviewProps) {
+export function PhotoPreview({ photos, barcode, notice, allowExtraPhotos = true, photoLabel, onAnalyze, onAddPhoto, onRetake, onRemove }: PhotoPreviewProps) {
   const [selected, setSelected] = useState(0);
   const [choosing, setChoosing] = useState(false);
   const index = selected < photos.length ? selected : 0;
@@ -29,10 +31,10 @@ export function PhotoPreview({ photos, barcode, notice, allowExtraPhotos = true,
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <Image source={{ uri: current.photo.uri }} style={styles.image} resizeMode="contain" accessibilityLabel={`Снимок: ${SCAN_PHOTO_LABELS[current.role]}`} />
+      <Image source={{ uri: current.photo.uri }} style={styles.image} resizeMode="contain" accessibilityLabel={`Снимок: ${photoLabel ?? SCAN_PHOTO_LABELS[current.role]}`} />
       <View style={styles.strip}>
         {photos.map((slot, i) => {
-          const label = SCAN_PHOTO_LABELS[slot.role];
+          const label = photoLabel ?? SCAN_PHOTO_LABELS[slot.role];
           return (
             <View key={slot.photo.uri} style={styles.slot}>
               <Pressable

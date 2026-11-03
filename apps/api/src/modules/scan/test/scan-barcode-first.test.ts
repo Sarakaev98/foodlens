@@ -146,12 +146,17 @@ describe('Barcode-first scan: without a photo', () => {
     assert.equal(product.nutrition!.servingSize.value, null);
     assert.equal(goalMatch.portion!.basis, 'per_100'); assert.equal(goalMatch.portion!.amount, 100);
   });
-  it('missing ingredients do not block the score; Goal Match stays honestly unavailable', async () => {
+  it('missing ingredients retain a numeric Goal Match with semantic uncertainty', async () => {
     const off = { ...offComplete(), ingredients: null, allergens: null, additives: null };
     const { service, calls } = setup({ off });
     const result = await service.analyze(undefined, 'user', { barcode: BARCODE });
-    assert.notEqual(result.score.value, null); assert.equal(result.goalMatch.value, null);
-    assert.equal(result.goalMatch.unavailableReason, 'ambiguous'); assert.equal('needsPhoto' in result, false);
+      assert.notEqual(result.score.value, null); assert.equal(typeof result.goalMatch.value, 'number');
+      assert.equal(result.goalMatch.unavailableReason, null); assert.equal('needsPhoto' in result, false);
+      assert.ok(result.goalMatch.version === 'goal-match-v3');
+      assert.equal(result.goalMatch.confidence, 'low');
+      assert.ok(result.goalMatch.uncertainty.includes('sugarSource'));
+      assert.ok(result.goalMatch.uncertainty.includes('processing'));
+      assert.equal(result.product.semantics!.sugarSource.value, 'unknown');
     assert.equal(calls.ai, 0);
   });
   it('with a photo and no ingredients the label supplies what Goal Match needs', async () => {

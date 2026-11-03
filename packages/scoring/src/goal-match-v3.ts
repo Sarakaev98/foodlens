@@ -1,3 +1,4 @@
+import { checkNutritionSanity } from './nutrition-sanity';
 import {
   normalizeProductSemantics,
   type ConfidenceLevel, type GoalMatchFactor, type GoalMatchLevel, type GoalMatchPortion,
@@ -177,7 +178,10 @@ export function matchEatHealthier(product: Product, plan: GoalMatchUserPlan,
   const labelData = fromLabel(n) && !estimatedNutrition;
   if (!labelData) uncertainty.push('nutrition');
   const range = { min: round(min), max: round(max) };
-  if (width > UNCERTAINTY_WIDTH.ambiguous + 1e-10) {
+  // A wide range describes uncertainty; it does not make a coherent, complete nutrition input unscorable.
+  // Keep the existing central calculation, scenarios and confidence thresholds unchanged.
+  if (width > UNCERTAINTY_WIDTH.ambiguous + 1e-10 && checkNutritionSanity(n, serving.amount).length > 0) {
+    if (!uncertainty.includes('nutrition')) uncertainty.push('nutrition');
     return { ...unavailable('ambiguous'), portion, confidence: 'low', range, uncertainty };
   }
   if (notApplicable) {

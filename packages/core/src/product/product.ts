@@ -39,6 +39,11 @@ export interface Product {
     readonly fields: Readonly<Record<NutrientKey, NutritionFieldMetadata>>;
     /** Conflicting source facts cannot be repaired by overwriting exact values. Does not gate Product Score. */
     readonly constraints?: readonly string[];
+    /** Evidence for profile selection; independent of confidence in measured nutrient values. */
+    readonly selection?: {
+      readonly category: ProductCategory; readonly subtype: string; readonly confidence: ConfidenceLevel;
+      readonly evidence: readonly string[]; readonly uncertainty: readonly string[];
+    };
   };
   /** Optional for legacy scans; missing context must never be invented by scoring. */
   readonly semantics?: ProductSemantics | null;

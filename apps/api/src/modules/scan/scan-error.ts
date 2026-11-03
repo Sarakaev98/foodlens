@@ -16,6 +16,7 @@ export type ScanErrorCode =
   | 'AI_BAD_RESPONSE'
   | 'PRODUCT_NOT_RECOGNIZED'
   | 'NUTRITION_TABLE_NOT_FOUND'
+  | 'MEAL_NOT_RECOGNIZED'
   | 'SCAN_FAILED';
 
 /** Ошибка, безопасная для отправки клиенту: только код, статус и короткий текст без технических деталей. */

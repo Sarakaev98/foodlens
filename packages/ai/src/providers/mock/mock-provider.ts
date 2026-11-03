@@ -1,7 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import type { GoalMatchAiInput, GoalMatchAiOutput, MealPlan, Product } from '@foodlens/core';
 import type { AIProvider } from '../../ai-provider';
-import type { AnalyzeProductInput, GenerateMealPlanInput } from '../../ai-provider.types';
+import type { AnalyzeMealPhotoInput, AnalyzeProductInput, GenerateMealPlanInput } from '../../ai-provider.types';
+import type { MealPhotoAiOutput } from '../../meal-photo/meal-photo-output-schema';
+import { MOCK_MEAL_PHOTO_OUTPUT } from './mock-meal-photo';
 import { SILENT_AI_LOGGER, type AILogger } from '../../ai-logger';
 import { AIMethodNotImplementedError, AIProviderError, AIUnavailableError } from '../../errors';
 import { findSchemaViolation } from '../../json-schema/json-schema';
@@ -87,6 +89,12 @@ export class MockProvider implements AIProvider {
     this.goalMatchCalls.set(recording.id, call + 1);
     this.logger.log('mock goal match finished', { provider: this.name, recording: recording.id, call: call + 1, status: 'ok' });
     return recording.responses[Math.min(call, recording.responses.length - 1)]!;
+  }
+
+  /** Фото не анализируется: всегда одна и та же тарелка (курица, рис, овощи, соус). */
+  async analyzeMealPhoto(input: AnalyzeMealPhotoInput): Promise<MealPhotoAiOutput> {
+    this.logger.log('mock meal photo finished', { requestId: input.requestId ?? null, provider: this.name, status: 'ok' });
+    return MOCK_MEAL_PHOTO_OUTPUT;
   }
 
   async explainProduct(): Promise<never> {

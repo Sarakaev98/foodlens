@@ -1,14 +1,23 @@
+import { useFeatureFlag } from '@/shared/feature-flags';
 import { AnalyzingView } from '../components/AnalyzingView';
 import { CameraCapture } from '../components/CameraCapture';
 import { PhotoPreview } from '../components/PhotoPreview';
 import { ScanErrorView } from '../components/ScanErrorView';
 import { useProductScan } from '../hooks/useProductScan';
+import { MealResultScreen } from './MealResultScreen';
 import { ProductResultScreen } from './ProductResultScreen';
 
-/** Режим «продукт» или «таблица», камера или галерея → предпросмотр → анализ → результат. Состояние целиком в useProductScan. */
+const PRODUCT_MODES = ['product', 'label'] as const;
+const ALL_MODES = ['product', 'label', 'meal'] as const;
+
+/**
+ * Режим «продукт», «таблица» или «еда», камера или галерея → предпросмотр → анализ → результат. Состояние целиком в useProductScan.
+ * «Еда» (оценка блюда по фото) скрыта флагом mealPhoto.
+ */
 export function ScanScreen() {
   const scan = useProductScan();
   const { state } = scan;
+  const mealPhoto = useFeatureFlag('mealPhoto');
 
   switch (state.status) {
     case 'capturing':
@@ -16,6 +25,7 @@ export function ScanScreen() {
         <CameraCapture
           mode={scan.mode}
           onModeChange={state.target ? undefined : scan.setMode}
+          modes={mealPhoto ? ALL_MODES : PRODUCT_MODES}
           onCaptured={scan.onPhotoCaptured}
           onBarcodeDetected={scan.onBarcodeDetected}
           onAnalyzeBarcode={state.target || scan.mode === 'label' ? undefined : scan.analyzeBarcode}
@@ -31,6 +41,7 @@ export function ScanScreen() {
           barcode={state.barcode}
           notice={state.notice}
           allowExtraPhotos={scan.mode === 'product'}
+          photoLabel={scan.mode === 'meal' ? 'Фото блюда' : undefined}
           onAnalyze={scan.analyze}
           onAddPhoto={scan.addPhoto}
           onRetake={scan.retakePhoto}
@@ -51,6 +62,8 @@ export function ScanScreen() {
           onScanAnother={scan.reset}
         />
       );
+    case 'meal_result':
+      return <MealResultScreen estimate={state.estimate} photo={state.photo} onScanAnother={scan.reset} />;
     case 'error':
       return (
         <ScanErrorView

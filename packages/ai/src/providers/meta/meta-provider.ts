@@ -131,6 +131,10 @@ export class MetaProvider implements AIProvider {
     }
   }
 
+  async analyzeMealPhoto(): Promise<never> {
+    throw new AIMethodNotImplementedError(this.name, 'analyzeMealPhoto');
+  }
+
   async explainProduct(): Promise<never> {
     throw new AIMethodNotImplementedError(this.name, 'explainProduct');
   }

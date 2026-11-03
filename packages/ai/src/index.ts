@@ -9,6 +9,9 @@ export {
   type MockProviderConfig, type MockGoalMatchRecording,
 } from './providers/mock';
 
+export { MEAL_PHOTO_OUTPUT_SCHEMA, type MealPhotoAiItem, type MealPhotoAiOutput } from './meal-photo/meal-photo-output-schema';
+export { GoogleMealPhotoProvider, GOOGLE_MEAL_PHOTO_TIMEOUT_MS, type GoogleMealPhotoProviderConfig } from './providers/google/google-meal-photo-provider';
+export { MOCK_MEAL_PHOTO_OUTPUT } from './providers/mock/mock-meal-photo';
 export type { GoalMatchEvaluator } from './goal-match-provider';
 export { GoogleGoalMatchProvider, GOOGLE_GOAL_MATCH_MODEL, GOOGLE_GOAL_MATCH_TIMEOUT_MS, type GoogleGoalMatchProviderConfig } from './providers/google/google-goal-match-provider';
 export { GoogleProvider, GOOGLE_PRODUCT_TIMEOUT_MS, type GoogleProviderConfig } from './providers/google/google-provider';

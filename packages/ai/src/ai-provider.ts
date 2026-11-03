@@ -1,5 +1,7 @@
 import type { GoalMatchAiInput, GoalMatchAiOutput, Meal, MealPlan, Product } from '@foodlens/core';
+import type { MealPhotoAiOutput } from './meal-photo/meal-photo-output-schema';
 import type {
+  AnalyzeMealPhotoInput,
   AnalyzeProductInput,
   ExplainProductInput,
   GenerateMealPlanInput,
@@ -16,6 +18,12 @@ export interface AIProvider {
 
   /** Распознаёт продукт и возвращает его в нормализованном виде. */
   analyzeProduct(input: AnalyzeProductInput): Promise<Product>;
+
+  /**
+   * Оценка готового блюда по одному фото. Возвращает ответ модели после проверки схемы;
+   * числа проверяет и сводит в одну модель normalizeMealPhotoEstimate (@foodlens/nutrition).
+   */
+  analyzeMealPhoto(input: AnalyzeMealPhotoInput): Promise<MealPhotoAiOutput>;
 
   explainProduct(input: ExplainProductInput): Promise<ProductExplanation>;
 

@@ -329,14 +329,16 @@ describe('eat_healthier v3: AI portions, conservative confidence and ranges', ()
     const raw = calculateEatHealthier({ ...fixtureFeatures(pick('cola')), sugarSource: 'mixed' });
     assert.ok(raw.risks.sugars < 3);
   });
-  it('combined extreme scenarios wider than 3 points yield ambiguous, not a confident number', () => {
+  it('wide semantic scenarios retain a numeric result with low confidence and the full range', () => {
     const p = product('cola');
     const r = evaluate({ ...p, semantics: { ...p.semantics!,
       sugarSource: { value: 'unknown', confidence: 'low', evidence: [] },
       processing: { value: 'unknown', confidence: 'low', evidence: [] },
     } });
-    assert.equal(r.state, 'insufficient_data'); assert.equal(r.unavailableReason, 'ambiguous');
-    assert.equal(r.value, null); assert.ok(r.range!.max - r.range!.min > 3);
+    assert.equal(r.state, 'goal_match'); assert.equal(r.unavailableReason, null);
+    assert.equal(typeof r.value, 'number'); assert.equal(r.confidence, 'low');
+    assert.ok(r.range!.max - r.range!.min > 3);
+    assert.ok(r.uncertainty.includes('sugarSource')); assert.ok(r.uncertainty.includes('processing'));
   });
   it('basis deterministically identifies per_100ml beverages even when AI says food', () => {
     const p = product('cola');

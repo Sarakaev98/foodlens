@@ -1,4 +1,4 @@
-import type { GoalMatchV4, ProductScanResult } from '@foodlens/core';
+import type { GoalMatchV4, MealPhotoScanResult, ProductScanResult } from '@foodlens/core';
 import { File } from 'expo-file-system';
 import { Platform } from 'react-native';
 import { apiClient } from '@/shared/api';
@@ -17,6 +17,8 @@ export type ScanResponse = Omit<ProductScanResult, 'goalMatch'> & {
 
 /** С запасом на повторы запроса на сервере. */
 const SCAN_TIMEOUT_MS = 150_000;
+/** Блюдо: один AI-вызов без поиска по источникам. Сервер ждёт AI до 45 с. */
+const MEAL_TIMEOUT_MS = 60_000;
 
 export interface ScanRequestOptions {
   /** Штрихкод с камеры, если найден. Необязательная подсказка серверу: без него скан работает как раньше. */
@@ -73,6 +75,12 @@ export const scanApi = {
     form.append('roles', JSON.stringify(['nutrition']));
     await appendPhoto(form, 'image', photo);
     return apiClient.postForm<ScanResponse>('/scan/analyze', form, { timeoutMs: SCAN_TIMEOUT_MS });
+  },
+  /** Фото готового блюда: отдельный endpoint, ответ без Product Score. */
+  analyzeMeal: async (photo: ScanPhoto): Promise<MealPhotoScanResult> => {
+    const form = new FormData();
+    await appendPhoto(form, 'image', photo);
+    return apiClient.postForm<MealPhotoScanResult>('/scan/meal', form, { timeoutMs: MEAL_TIMEOUT_MS });
   },
   /** 2–3 фото одного продукта: один запрос, все файлы в нём. */
   analyzeMany: async (slots: readonly ScanSlot[], options: ScanRequestOptions = {}): Promise<ScanResponse> =>

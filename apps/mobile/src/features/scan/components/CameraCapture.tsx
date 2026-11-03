@@ -15,6 +15,8 @@ interface CameraCaptureProps {
   readonly mode: ScanMode;
   /** Нет при съёмке дополнительного фото: режим уже выбран. */
   readonly onModeChange?: (mode: ScanMode) => void;
+  /** Режимы переключателя. Без «Еды», если функция выключена флагом mealPhoto. */
+  readonly modes?: readonly ScanMode[];
   /** barcode: последний свежий штрихкод с камеры или null. Сам по себе он ничего не отправляет. */
   readonly onCaptured: (photo: ScanPhoto, barcode: string | null) => void;
   /** Новый код с камеры, ещё до снимка. */
@@ -27,15 +29,14 @@ interface CameraCaptureProps {
   readonly onCancel?: () => void;
 }
 
-const MODES: readonly { readonly id: ScanMode; readonly label: string }[] = [
-  { id: 'product', label: 'Сканировать продукт' },
-  { id: 'label', label: 'Сканировать таблицу' },
-];
+/** Короткие подписи: три вкладки помещаются в строку и на iPhone SE. */
+export const SCAN_MODE_LABELS: Readonly<Record<ScanMode, string>> = { product: 'Продукт', label: 'Таблица', meal: 'Еда' };
+const ALL_MODES: readonly ScanMode[] = ['product', 'label', 'meal'];
 
 /** Разовая фокусировка: столько держим режим "on", потом возвращаем непрерывный автофокус. */
 const REFOCUS_MS = 1200;
 
-export function CameraCapture({ mode, onModeChange, onCaptured, onBarcodeDetected, onAnalyzeBarcode, onCaptureFailed, onPickFromGallery, onCancel }: CameraCaptureProps) {
+export function CameraCapture({ mode, onModeChange, modes = ALL_MODES, onCaptured, onBarcodeDetected, onAnalyzeBarcode, onCaptureFailed, onPickFromGallery, onCancel }: CameraCaptureProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const [ready, setReady] = useState(false);
@@ -143,16 +144,16 @@ export function CameraCapture({ mode, onModeChange, onCaptured, onBarcodeDetecte
       <View style={[styles.top, { top: insets.top + spacing.sm }]}>
         {onModeChange ? (
           <View style={styles.modes} accessibilityRole="tablist">
-            {MODES.map((item) => (
+            {modes.map((id) => (
               <Pressable
-                key={item.id}
+                key={id}
                 accessibilityRole="tab"
-                accessibilityState={{ selected: item.id === mode }}
-                onPress={() => selectMode(item.id)}
-                style={[styles.mode, item.id === mode && styles.modeActive]}
+                accessibilityState={{ selected: id === mode }}
+                onPress={() => selectMode(id)}
+                style={[styles.mode, id === mode && styles.modeActive]}
               >
-                <Text style={[styles.modeLabel, item.id === mode && styles.modeLabelActive]} numberOfLines={1} adjustsFontSizeToFit>
-                  {item.label}
+                <Text style={[styles.modeLabel, id === mode && styles.modeLabelActive]} numberOfLines={1} adjustsFontSizeToFit>
+                  {SCAN_MODE_LABELS[id]}
                 </Text>
               </Pressable>
             ))}

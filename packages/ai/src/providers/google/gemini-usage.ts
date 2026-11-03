@@ -1,6 +1,6 @@
 import type {AILogger} from '../../ai-logger';
 
-export type GeminiRequestType='product_analysis'|'goal_match'|'nutrition_search'|'nutrition_extraction'|'ingredients_extraction'|'meal_plan';
+export type GeminiRequestType='product_analysis'|'goal_match'|'nutrition_search'|'nutrition_extraction'|'ingredients_extraction'|'meal_plan'|'meal_photo';
 
 /** Only numeric token counts from Gemini usageMetadata; null where Google did not report a count. */
 export interface GeminiUsage {
@@ -29,7 +29,7 @@ export function extractGeminiUsage(envelope:unknown):GeminiUsage|null{
 
 /**
  * One line per Google call: gemini_usage {"type":...,"model":...,"prompt":N,...}. Logged also for responses later rejected.
- * numberOfImages (product_analysis only) comes with retries:0: one scan is one HTTP call, there is no retry.
+ * numberOfImages (product_analysis and meal_photo) comes with retries:0: one scan is one HTTP call, there is no retry.
  */
 export function logGeminiUsage(logger:AILogger,type:GeminiRequestType,model:string,envelope:unknown,numberOfImages?:number):void{
   const usage=extractGeminiUsage(envelope);

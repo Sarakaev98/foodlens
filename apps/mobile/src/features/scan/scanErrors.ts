@@ -15,7 +15,8 @@ export type ScanFailureCode =
   | 'ai_timeout'
   | 'ai_unavailable'
   | 'product_not_recognized'
-  | 'label_not_readable';
+  | 'label_not_readable'
+  | 'meal_not_recognized';
 
 export class ScanFailure extends Error {
   constructor(readonly code: ScanFailureCode) {
@@ -94,6 +95,11 @@ export const SCAN_FAILURE_MESSAGES: Readonly<Record<ScanFailureCode, ScanFailure
     description: 'Сфотографируйте таблицу пищевой ценности ближе, ровно и при хорошем освещении.',
     retryable: false,
   },
+  meal_not_recognized: {
+    title: 'Не удалось распознать еду',
+    description: 'Сфотографируйте тарелку целиком, сверху или под углом, при хорошем освещении.',
+    retryable: false,
+  },
 };
 
 const SERVER_CODES: Readonly<Record<string, ScanFailureCode>> = {
@@ -111,6 +117,7 @@ const SERVER_CODES: Readonly<Record<string, ScanFailureCode>> = {
   AI_BAD_RESPONSE: 'ai_unavailable',
   PRODUCT_NOT_RECOGNIZED: 'product_not_recognized',
   NUTRITION_TABLE_NOT_FOUND: 'label_not_readable',
+  MEAL_NOT_RECOGNIZED: 'meal_not_recognized',
 };
 
 /** Переводит ответ API в ошибку сценария. Технические детали пользователю не показываются. */

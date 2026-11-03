@@ -12,13 +12,18 @@ export const SCAN_GUIDE_TEXT = {
     hint: 'Держите телефон ближе, чтобы текст был чётким',
     frameAccessibilityLabel: 'Рамка для таблицы пищевой ценности',
   },
+  meal: {
+    title: 'Сфотографируйте тарелку',
+    hint: 'Сверху или под углом, чтобы была видна вся еда',
+    frameAccessibilityLabel: 'Рамка для тарелки с едой',
+  },
   barcodeFound: 'Штрихкод найден',
   focusHint: 'Нажмите на экран, чтобы сфокусироваться',
 } as const;
 
 const WIDTH_SHARE = 0.8;
-/** Штрихкод вытянут по ширине, таблица почти квадратная. */
-const ASPECT: Readonly<Record<ScanMode, number>> = { product: 0.6, label: 1 };
+/** Штрихкод вытянут по ширине, таблица и тарелка почти квадратные. */
+const ASPECT: Readonly<Record<ScanMode, number>> = { product: 0.6, label: 1, meal: 1 };
 /** Высота рамки не больше этой доли экрана: на iPhone SE остаётся место для текста и кнопок. */
 const MAX_HEIGHT_SHARE = 0.42;
 

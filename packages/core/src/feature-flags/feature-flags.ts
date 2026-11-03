@@ -7,6 +7,7 @@ export const DEFAULT_FEATURE_FLAGS = {
   mealPlan: true,
   history: true,
   barcode: true,
+  mealPhoto: true,
 } as const satisfies Record<string, boolean>;
 
 export type FeatureFlag = keyof typeof DEFAULT_FEATURE_FLAGS;

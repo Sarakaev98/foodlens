@@ -1,7 +1,7 @@
 import {randomUUID} from 'node:crypto';
 import type {Product,GoalMatchAiInput,GoalMatchAiOutput,MealPlan} from '@foodlens/core';
 import type {AIProvider} from '../../ai-provider';
-import type {AnalyzeProductInput,GenerateMealPlanInput,ProductImageInput} from '../../ai-provider.types';
+import type {AnalyzeMealPhotoInput,AnalyzeProductInput,GenerateMealPlanInput,ProductImageInput} from '../../ai-provider.types';
 import {SILENT_AI_LOGGER,type AILogger} from '../../ai-logger';
 import {AIProviderError,AIMethodNotImplementedError,type AIProviderErrorCode} from '../../errors';
 import {findSchemaViolation} from '../../json-schema/json-schema';
@@ -13,6 +13,8 @@ import {GOOGLE_PRODUCT_ANALYSIS_SCHEMA,GOOGLE_PRODUCT_ANALYSIS_VERSION,googleNut
   validGoogleProductQuantities,googleProductResponseSchema} from './google-product-analysis';
 import {GOOGLE_PRODUCT_LABEL_PROMPT,GOOGLE_PRODUCT_MULTI_IMAGE_PROMPT,GOOGLE_PRODUCT_SYSTEM_PROMPT,GOOGLE_PRODUCT_USER_PROMPT} from './google-product-prompt';
 import {GoogleMealPlanProvider} from './google-meal-plan-provider';
+import {GoogleMealPhotoProvider} from './google-meal-photo-provider';
+import type {MealPhotoAiOutput} from '../../meal-photo/meal-photo-output-schema';
 import {logGeminiUsage} from './gemini-usage';
 
 export const GOOGLE_PRODUCT_TIMEOUT_MS=60000;
@@ -30,7 +32,7 @@ export class GoogleProvider implements AIProvider {
   readonly #key:string;readonly #project:string;readonly #location:string;
   readonly #transport:typeof globalThis.fetch;readonly #timeoutMs:number;
   readonly #logger:AILogger;readonly #now:()=>Date;readonly #id:()=>string;
-  readonly #evaluator:GoogleGoalMatchProvider;readonly #mealPlans:GoogleMealPlanProvider;
+  readonly #evaluator:GoogleGoalMatchProvider;readonly #mealPlans:GoogleMealPlanProvider;readonly #mealPhotos:GoogleMealPhotoProvider;
   constructor(config:GoogleProviderConfig){
     this.#evaluator=new GoogleGoalMatchProvider(config);
     this.model=this.#evaluator.model;this.#project=this.#evaluator.project;this.#location=this.#evaluator.location;
@@ -39,6 +41,8 @@ export class GoogleProvider implements AIProvider {
     this.#logger=config.logger??SILENT_AI_LOGGER;this.#now=config.now??(()=>new Date());this.#id=config.createId??randomUUID;
     this.#mealPlans=new GoogleMealPlanProvider({apiKey:this.#key,project:this.#project,location:this.#location,model:this.model,
       fetch:this.#transport,logger:this.#logger,createId:this.#id});
+    this.#mealPhotos=new GoogleMealPhotoProvider({apiKey:this.#key,project:this.#project,location:this.#location,model:this.model,
+      fetch:this.#transport,logger:this.#logger});
   }
   async analyzeProduct(input:AnalyzeProductInput):Promise<Product>{
     const images=input.kind==='image'?productImages(input):[];
@@ -110,6 +114,7 @@ export class GoogleProvider implements AIProvider {
     }
   }
   evaluateGoalMatch(input:GoalMatchAiInput):Promise<GoalMatchAiOutput>{return this.#evaluator.evaluateGoalMatch(input);}
+  analyzeMealPhoto(input:AnalyzeMealPhotoInput):Promise<MealPhotoAiOutput>{return this.#mealPhotos.analyze(input);}
   async explainProduct():Promise<never>{throw new AIMethodNotImplementedError(this.name,'explainProduct');}
   generateMealPlan(input:GenerateMealPlanInput):Promise<MealPlan>{return this.#mealPlans.generate(input);}
   async replaceMeal():Promise<never>{throw new AIMethodNotImplementedError(this.name,'replaceMeal');}
