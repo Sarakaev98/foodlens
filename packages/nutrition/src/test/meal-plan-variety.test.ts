@@ -1,3 +1,4 @@
+import { normalizeDietaryPreferences } from '@foodlens/core';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { sumMeals, type FoodPreferences, type Meal, type MealId, type MealPlan, type MealPlanId, type NutritionTargets } from '@foodlens/core';
@@ -24,8 +25,8 @@ describe('variation hint', () => {
       assert.ok(['grains', 'potatoes', 'legumes'].includes(emphasis), emphasis);
     }
   });
-  it('halal never gets a forbidden hint: there is no pork or alcohol among the hints at all', () => {
-    const hints = allowedEmphases({ dietaryPreferences: ['halal'], allergens: [] });
+  it('legacy dietary values use the neutral set of hints', () => {
+    const hints = allowedEmphases({ dietaryPreferences: normalizeDietaryPreferences(['halal']), allergens: [] });
     assert.ok(hints.every((hint) => !/pork|bacon|ham|wine|beer|alcohol/i.test(hint)));
     assert.ok(hints.includes('poultry'));
   });

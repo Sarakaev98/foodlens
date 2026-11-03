@@ -1,11 +1,12 @@
-import type {
-  ActivityLevel,
-  AllergenCode,
-  BiologicalSex,
-  DietaryPreference,
-  NutritionGoal,
-  UserNutritionProfile,
-  UserNutritionProfileId,
+import {
+  normalizeDietaryPreferences,
+  type ActivityLevel,
+  type AllergenCode,
+  type BiologicalSex,
+  type DietaryPreference,
+  type NutritionGoal,
+  type UserNutritionProfile,
+  type UserNutritionProfileId,
 } from '@foodlens/core';
 import type {
   DbActivityLevel,
@@ -34,7 +35,7 @@ export function toUserNutritionProfile(row: DbUserNutritionProfile): UserNutriti
     heightCm: row.heightCm,
     weightKg: row.weightKg,
     activityLevel: row.activityLevel,
-    dietaryPreferences: row.dietaryPreferences,
+    dietaryPreferences: normalizeDietaryPreferences(row.dietaryPreferences),
     allergens: row.allergens,
     avoidedIngredients: row.avoidedIngredients,
     createdAt: row.createdAt.toISOString(),

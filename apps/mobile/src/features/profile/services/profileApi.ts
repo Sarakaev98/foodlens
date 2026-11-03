@@ -1,4 +1,4 @@
-import type { UserNutritionProfile, UserNutritionProfileInput, ValidationIssue } from '@foodlens/core';
+import { normalizeDietaryPreferences, type UserNutritionProfile, type UserNutritionProfileInput, type ValidationIssue } from '@foodlens/core';
 import { ApiError, apiClient } from '@/shared/api';
 
 /** Сервер отклонил данные профиля. */
@@ -20,7 +20,8 @@ export const profileApi = {
   /** null — профиля ещё нет, нужен onboarding. */
   async get(): Promise<UserNutritionProfile | null> {
     try {
-      return await apiClient.get<UserNutritionProfile>('/profile');
+      const profile = await apiClient.get<UserNutritionProfile>('/profile');
+      return { ...profile, dietaryPreferences: normalizeDietaryPreferences(profile.dietaryPreferences) };
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) return null;
       throw error;
@@ -29,7 +30,8 @@ export const profileApi = {
 
   async save(input: UserNutritionProfileInput): Promise<UserNutritionProfile> {
     try {
-      return await apiClient.put<UserNutritionProfile>('/profile', input);
+      const profile = await apiClient.put<UserNutritionProfile>('/profile', { ...input, dietaryPreferences: normalizeDietaryPreferences(input.dietaryPreferences) });
+      return { ...profile, dietaryPreferences: normalizeDietaryPreferences(profile.dietaryPreferences) };
     } catch (error) {
       if (error instanceof ApiError && error.status === 400) throw new ProfileValidationError(readIssues(error.body));
       throw error;

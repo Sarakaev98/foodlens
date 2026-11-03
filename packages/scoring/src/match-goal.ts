@@ -1,3 +1,4 @@
+import { normalizeDietaryPreferences } from '@foodlens/core';
 import type {
   GoalMatch,
   GoalMatchFactor,
@@ -237,9 +238,9 @@ function allergensFactor(product: Product, plan: GoalMatchUserPlan): GoalMatchFa
   return factor('allergens', 'ok', 0, null);
 }
 
-/** null: в профиле нет диеты. Диеты, которые по этикетке не проверить (halal, other), дают not_counted. */
+/** null: в профиле нет диеты. Неподтверждённый состав даёт not_counted. */
 function dietFactor(product: Product, plan: GoalMatchUserPlan): GoalMatchFactor | null {
-  const diets = plan.dietaryPreferences.filter((diet) => diet !== 'none');
+  const diets = normalizeDietaryPreferences(plan.dietaryPreferences).filter((diet) => diet !== 'none');
   if (diets.length === 0) return null;
   const checkable = diets.map((diet) => DIET_CONFLICTS[diet]).filter((rule) => rule !== undefined);
   const allergens = product.allergens.value;

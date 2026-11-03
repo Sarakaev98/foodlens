@@ -145,7 +145,7 @@ export const AVOIDED_INGREDIENT_POINTS = -40;
 /**
  * Что противоречит диете. Проверяется только то, что видно на этикетке: аллергены «содержит» и категория.
  * Отсутствие противоречий не означает, что продукт веганский: например, желатин так не находится.
- * halal и other по этикетке не проверяются.
+ * none не задаёт ограничений.
  */
 export const DIET_CONFLICTS: Readonly<
   Partial<Record<DietaryPreference, { readonly allergens: readonly AllergenCode[]; readonly categories: readonly ProductCategory[] }>>

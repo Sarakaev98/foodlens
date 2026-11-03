@@ -1,3 +1,4 @@
+import { normalizeDietaryPreferences } from '@foodlens/core';
 import { ALLERGEN_CODES, sumMeals, type AllergenCode, type FoodPreferences, type Meal, type MealMacros, type MealPlan, type NutritionTargets } from '@foodlens/core';
 import { ALLERGEN_FOODS, DIET_FOODS, LABEL_ALLERGEN_FOODS, SAFE_PHRASES } from './restricted-foods';
 
@@ -79,7 +80,7 @@ function portionIssues(meal: Meal): readonly MealPlanIssue[] {
 function restrictionIssues(meal: Meal, { dietaryPreferences, allergens, avoidedIngredients }: FoodPreferences): readonly MealPlanIssue[] {
   const text = mealText(meal);
   const issue = (message: string): MealPlanIssue => ({ kind: 'restriction', message: `"${meal.name}": ${message}` });
-  const dietIssues = dietaryPreferences.flatMap((diet) => {
+  const dietIssues = normalizeDietaryPreferences(dietaryPreferences).flatMap((diet) => {
     const found = firstMatch(text, DIET_FOODS[diet] ?? []);
     return found ? [issue(`"${found}" is not allowed for a ${diet} diet`)] : [];
   });

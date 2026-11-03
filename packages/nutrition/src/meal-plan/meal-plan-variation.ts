@@ -1,3 +1,4 @@
+import { normalizeDietaryPreferences } from '@foodlens/core';
 import type { FoodPreferences } from '@foodlens/core';
 
 /** Мягкая подсказка для разнообразия: стиль кухни и основа дня. Не каталог блюд и не замена ограничений профиля. */
@@ -11,7 +12,7 @@ const STYLES = ['Mediterranean', 'Georgian-inspired', 'Turkish-inspired', 'Europ
 type Emphasis = 'grains' | 'potatoes' | 'legumes' | 'poultry' | 'fish' | 'dairy' | 'eggs';
 const EMPHASES: readonly Emphasis[] = ['grains', 'potatoes', 'legumes', 'poultry', 'fish', 'dairy', 'eggs'];
 
-/** Основы, которые диета или аллерген исключают. Свинины и алкоголя в списке нет, поэтому halal ничего не убирает. */
+/** Основы, которые диета или аллерген исключают. Ограничения применяются только к поддерживаемым диетам. */
 const EXCLUDED_BY_DIET: Readonly<Record<string, readonly Emphasis[]>> = {
   vegan: ['poultry', 'fish', 'dairy', 'eggs'],
   vegetarian: ['poultry', 'fish'],
@@ -21,7 +22,7 @@ const EXCLUDED_BY_ALLERGEN: Readonly<Record<string, readonly Emphasis[]>> = { mi
 
 /** Основы, которые профиль разрешает. Пустым список не бывает: картофель и бобовые остаются всегда. */
 export function allowedEmphases({ dietaryPreferences, allergens }: Pick<FoodPreferences, 'dietaryPreferences' | 'allergens'>): readonly Emphasis[] {
-  const excluded = new Set([...dietaryPreferences.flatMap((diet) => EXCLUDED_BY_DIET[diet] ?? []), ...allergens.flatMap((code) => EXCLUDED_BY_ALLERGEN[code] ?? [])]);
+  const excluded = new Set([...normalizeDietaryPreferences(dietaryPreferences).flatMap((diet) => EXCLUDED_BY_DIET[diet] ?? []), ...allergens.flatMap((code) => EXCLUDED_BY_ALLERGEN[code] ?? [])]);
   return EMPHASES.filter((emphasis) => !excluded.has(emphasis));
 }
 

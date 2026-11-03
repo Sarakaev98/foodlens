@@ -20,8 +20,6 @@ const MUSTARD = ['горчиц', 'горчичн', 'mustard'];
 const SESAME = ['кунжут', 'тахин', 'хумус', 'sesame', 'tahini', 'hummus'];
 const SULPHITES = ['вин[оа](?![а-я])', 'сухофрукт', 'кураг', 'изюм', 'чернослив', 'wine', 'raisin'];
 const LUPIN = ['люпин', 'lupin'];
-const PORK = ['свинин', 'свин[оа]', 'бекон', 'ветчин', 'сало(?![а-я])', 'pork', 'bacon', 'ham', 'lard'];
-const ALCOHOL = ['вин[оа](?![а-я])', 'пив[оа](?![а-я])', 'коньяк', 'ликер', 'wine', 'beer', 'rum'];
 
 /** Для состава с упаковки: сухофрукты и вино здесь не признак сульфитов, важно только прямое упоминание. */
 const SULPHITES_STATED = ['сульфит', 'диоксид серы', 'sulphite', 'sulfite', 'e22[0-8]'];
@@ -45,12 +43,11 @@ export const ALLERGEN_FOODS: Readonly<Record<AllergenCode, readonly string[]>> =
 
 export const LABEL_ALLERGEN_FOODS: Readonly<Record<AllergenCode, readonly string[]>> = { ...ALLERGEN_FOODS, sulphites: SULPHITES_STATED };
 
-/** Диеты без запретов (none, other) сюда не входят: проверять нечего. */
+/** Диета без запретов (none) сюда не входят: проверять нечего. */
 export const DIET_FOODS: Readonly<Partial<Record<DietaryPreference, readonly string[]>>> = {
   vegan: [...MEAT, ...FISH, ...CRUSTACEANS, ...MOLLUSCS, ...MILK, ...EGGS, ...HONEY],
   vegetarian: [...MEAT, ...FISH, ...CRUSTACEANS, ...MOLLUSCS],
   pescatarian: MEAT,
-  halal: [...PORK, ...ALCOHOL],
 };
 
 const ALTERNATIVES = 'соев|кокосов|миндальн|овсян|рисов|растительн|ореховы|кешью|гречнев';

@@ -1,3 +1,4 @@
+import { normalizeDietaryPreferences } from '@foodlens/core';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { sumMeals, type FoodPreferences, type Meal, type MealId, type MealPlan, type MealPlanId, type MealSlot, type NutritionTargets } from '@foodlens/core';
@@ -47,10 +48,10 @@ describe('validateMealPlan: ограничения', () => {
     assert.equal(restrictions(withMeal('Салат', ['тунец, 80 г']), { dietaryPreferences: ['vegetarian'] }).length, 1);
   });
 
-  it('пескетарианцу можно рыбу, халяль исключает свинину', () => {
+  it('пескетарианцу можно рыбу; legacy диета становится нейтральной', () => {
     assert.deepEqual(restrictions(withMeal('Салат', ['тунец, 80 г']), { dietaryPreferences: ['pescatarian'] }), []);
-    assert.equal(restrictions(withMeal('Рагу', ['свинина, 100 г']), { dietaryPreferences: ['halal'] }).length, 1);
-    assert.deepEqual(restrictions(withMeal('Рагу', ['говядина, 100 г']), { dietaryPreferences: ['halal'] }), []);
+    assert.equal(restrictions(withMeal('Рагу', ['свинина, 100 г']), { dietaryPreferences: normalizeDietaryPreferences(['halal']) }).length, 0);
+    assert.deepEqual(restrictions(withMeal('Рагу', ['говядина, 100 г']), { dietaryPreferences: normalizeDietaryPreferences(['halal']) }), []);
   });
 
   it('аллергены: названные продукты находятся, похожие слова нет', () => {

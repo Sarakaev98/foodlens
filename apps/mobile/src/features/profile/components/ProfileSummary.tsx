@@ -1,4 +1,4 @@
-import type { UserNutritionProfileInput } from '@foodlens/core';
+import { normalizeDietaryPreferences, type UserNutritionProfileInput } from '@foodlens/core';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '@/shared/ui';
 import {
@@ -22,7 +22,7 @@ export function ProfileSummary({ profile }: { readonly profile: UserNutritionPro
     ['Рост', `${profile.heightCm} см`],
     ['Вес', `${profile.weightKg} кг`],
     ['Активность', ACTIVITY_LEVEL_LABELS[profile.activityLevel].label],
-    ['Тип питания', joinOrDash(profile.dietaryPreferences.map((value) => DIETARY_PREFERENCE_LABELS[value]))],
+    ['Тип питания', joinOrDash(normalizeDietaryPreferences(profile.dietaryPreferences).map((value) => DIETARY_PREFERENCE_LABELS[value]))],
     ['Аллергены', joinOrDash(profile.allergens.map((value) => ALLERGEN_LABELS[value]))],
     ['Не хочу в составе', joinOrDash(profile.avoidedIngredients)],
   ];

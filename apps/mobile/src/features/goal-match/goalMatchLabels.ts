@@ -135,11 +135,10 @@ function nutrientReason(factor: GoalMatchFactor, name: string, daily: string): F
   };
 }
 
-/** Конкретная непроверенная диета из снимка плана; для «другое» полезного пояснения нет. */
+/** Поддерживаемая диета, для проверки которой не хватило состава. */
 export function dietVerificationNotes(factor: GoalMatchFactor | undefined): string[] {
   if (factor?.level !== 'not_counted') return [];
   const messages: Readonly<Record<string, string>> = {
-    halal: 'Халяль: по распознанным данным сертификацию подтвердить нельзя — проверьте маркировку на упаковке.',
     vegan: 'Веганство: недостаточно данных о составе для проверки — проверьте упаковку.',
     vegetarian: 'Вегетарианство: недостаточно данных о составе для проверки — проверьте упаковку.',
     pescatarian: 'Пескетарианство: недостаточно данных о составе для проверки — проверьте упаковку.',

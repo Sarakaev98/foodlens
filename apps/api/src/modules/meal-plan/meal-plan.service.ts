@@ -1,6 +1,6 @@
 import { HttpException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { AIProvider, GenerateMealPlanInput } from '@foodlens/ai';
-import type { GoalMatchUserPlan, MealPlan, MealPlanResult, NutritionTargets } from '@foodlens/core';
+import { normalizeDietaryPreferences, type GoalMatchUserPlan, type MealPlan, type MealPlanResult } from '@foodlens/core';
 import { chooseMealPlanVariation, validateMealPlan, type MealPlanIssue, type MealPlanVariation } from '@foodlens/nutrition';
 import { AI_PROVIDER } from '../ai/ai.tokens';
 import { NutritionTargetsService } from '../nutrition-targets/nutrition-targets.service';
@@ -8,6 +8,12 @@ import { NutritionTargetsService } from '../nutrition-targets/nutrition-targets.
 interface Attempt {
   readonly plan: MealPlan;
   readonly issues: readonly MealPlanIssue[];
+}
+
+function profileKey(plan: GoalMatchUserPlan): string {
+  return JSON.stringify({ goal: plan.goal, targets: plan.targets,
+    dietaryPreferences: normalizeDietaryPreferences(plan.dietaryPreferences),
+    allergens: plan.allergens, avoidedIngredients: plan.avoidedIngredients });
 }
 
 const hasRestrictionIssue = ({ issues }: Attempt) => issues.some((issue) => issue.kind === 'restriction');
@@ -25,7 +31,7 @@ export const RECENT_MEAL_NAMES = 12;
 @Injectable()
 export class MealPlanService {
   private readonly logger = new Logger(MealPlanService.name);
-  private readonly latest = new Map<string, { readonly targets: NutritionTargets; readonly result: MealPlanResult }>();
+  private readonly latest = new Map<string, { readonly profileKey: string; readonly result: MealPlanResult }>();
   private readonly recentMeals = new Map<string, readonly string[]>();
   private readonly lastVariation = new Map<string, MealPlanVariation>();
   /** Подменяется в тестах. */
@@ -36,12 +42,12 @@ export class MealPlanService {
     private readonly nutritionTargets: NutritionTargetsService,
   ) {}
 
-  /** null, если плана ещё нет или он составлен под другие цели. */
+  /** null, если плана ещё нет или он составлен под другие цели или ограничения. */
   async getLatest(userId: string): Promise<MealPlanResult | null> {
     const stored = this.latest.get(userId);
     if (!stored) return null;
     const plan = await this.nutritionTargets.findPlanForUser(userId);
-    return plan && JSON.stringify(plan.targets) === JSON.stringify(stored.targets) ? stored.result : null;
+    return plan && profileKey(plan) === stored.profileKey ? stored.result : null;
   }
 
   async generate(userId: string, mealsPerDay: 3 | 4 = 4): Promise<MealPlanResult> {
@@ -50,7 +56,7 @@ export class MealPlanService {
     const input: GenerateMealPlanInput = {
       goal: plan.goal,
       targets: plan.targets,
-      preferences: { dietaryPreferences: plan.dietaryPreferences, allergens: plan.allergens, avoidedIngredients: plan.avoidedIngredients },
+      preferences: { dietaryPreferences: normalizeDietaryPreferences(plan.dietaryPreferences), allergens: plan.allergens, avoidedIngredients: plan.avoidedIngredients },
       startDate: new Date().toISOString().slice(0, 10),
       days: 1,
       mealsPerDay,
@@ -62,7 +68,7 @@ export class MealPlanService {
     const best = await this.bestAttempt(input, plan);
     if (hasRestrictionIssue(best)) throw new HttpException({ statusCode: 422, code: 'MEAL_PLAN_INVALID', message: 'Could not build a plan that respects the profile' }, 422);
     const result: MealPlanResult = { plan: best.plan, targets: plan.targets, withinTargets: best.issues.length === 0 };
-    this.latest.set(userId, { targets: plan.targets, result });
+    this.latest.set(userId, { profileKey: profileKey(plan), result });
     this.remember(userId, best.plan, input.variation!);
     return result;
   }

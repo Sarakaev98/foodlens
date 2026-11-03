@@ -43,6 +43,22 @@ const status = (expected: number, code?: string) => (error: { getStatus(): numbe
   error.getStatus() === expected && (!code || (error.getResponse() as { code: string }).code === code);
 
 describe('MealPlanService', () => {
+  it('a dietary change invalidates the cached plan even when targets are unchanged', async () => {
+    let current: GoalMatchUserPlan = PROFILE;
+    const targets = { findPlanForUser: async () => current } as unknown as NutritionTargetsService;
+    const calls: GenerateMealPlanInput[] = [];
+    const ai = { generateMealPlan: async (input: GenerateMealPlanInput) => { calls.push(input); return GOOD; } } as unknown as AIProvider;
+    const service = new MealPlanService(ai, targets);
+    await service.generate('user'); assert.notEqual(await service.getLatest('user'), null);
+    current = { ...PROFILE, dietaryPreferences: ['pescatarian'] };
+    assert.equal(await service.getLatest('user'), null);
+    await service.generate('user'); assert.deepEqual(calls[1]!.preferences.dietaryPreferences, ['pescatarian']);
+  });
+  it('legacy cached plan preferences are sent to the provider as neutral', async () => {
+    const legacy = { ...PROFILE, dietaryPreferences: ['halal'] } as unknown as GoalMatchUserPlan;
+    const { service, calls } = setup([GOOD], legacy);
+    await service.generate('user'); assert.deepEqual(calls[0]!.preferences.dietaryPreferences, ['none']);
+  });
   it('хороший план: один вызов AI, цели и ограничения из профиля', async () => {
     const { service, calls } = setup([GOOD]);
     const result = await service.generate('user');

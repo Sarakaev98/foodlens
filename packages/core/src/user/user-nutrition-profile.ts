@@ -12,8 +12,21 @@ export const BIOLOGICAL_SEXES = ['female', 'male'] as const;
 export type BiologicalSex = (typeof BIOLOGICAL_SEXES)[number];
 
 /** Новое значение добавляется сюда (и в enum Prisma), остальной код подхватит его через тип. */
-export const DIETARY_PREFERENCES = ['none', 'vegetarian', 'vegan', 'pescatarian', 'halal', 'other'] as const;
+export const DIETARY_PREFERENCES = ['none', 'vegetarian', 'vegan', 'pescatarian'] as const;
 export type DietaryPreference = (typeof DIETARY_PREFERENCES)[number];
+
+/** Read compatibility for persisted profiles/cached DTOs. Keep one supported restriction, otherwise neutral. */
+export function normalizeDietaryPreferences(value: unknown): [DietaryPreference] {
+  if (!Array.isArray(value)) return ['none'];
+  const supported = value.find((item): item is DietaryPreference => item !== 'none' &&
+    (DIETARY_PREFERENCES as readonly unknown[]).includes(item));
+  return [supported ?? 'none'];
+}
+
+/** Deprecated wire values are accepted only at the migration/validation boundary. */
+export function isLegacyDietaryPreference(value: unknown): boolean {
+  return value === 'halal' || value === 'other';
+}
 
 export type UserNutritionProfileId = Brand<string, 'UserNutritionProfileId'>;
 

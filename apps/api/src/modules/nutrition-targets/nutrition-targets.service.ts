@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { GoalMatchUserPlan, NutritionTargets } from '@foodlens/core';
+import { normalizeDietaryPreferences, type GoalMatchUserPlan, type NutritionTargets } from '@foodlens/core';
 import { calculateNutritionTargets } from '@foodlens/nutrition';
 import { ProfileService } from '../profile/profile.service';
 
@@ -24,7 +24,7 @@ export class NutritionTargetsService {
     return {
       goal: profile.goal,
       targets: calculateNutritionTargets(profile),
-      dietaryPreferences: profile.dietaryPreferences,
+      dietaryPreferences: normalizeDietaryPreferences(profile.dietaryPreferences),
       allergens: profile.allergens,
       avoidedIngredients: profile.avoidedIngredients,
     };

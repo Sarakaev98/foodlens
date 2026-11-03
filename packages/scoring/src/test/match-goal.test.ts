@@ -306,26 +306,30 @@ describe('matchGoal: ограничения профиля', () => {
     assert.equal(matchGoal(yogurt(), plan('lose_weight')).factors.some((item) => item.kind === 'allergens'), false);
   });
 
-  it('диета: молоко для веганов и мясо для вегетарианцев → conflict; halal не проверяется', () => {
+  it('диета: молоко для веганов и мясо для вегетарианцев → conflict', () => {
     const vegan = matchGoal(yogurt({ allergens: observed([milk]) }), plan('maintain_weight', { dietaryPreferences: ['vegan'] }));
     assert.equal(vegan.level, 'conflict');
     assert.deepEqual(factor(vegan, 'diet')!.matches, ['milk']);
     const vegetarian = matchGoal(yogurt({ category: 'meat' }), plan('maintain_weight', { dietaryPreferences: ['vegetarian'] }));
     assert.equal(vegetarian.level, 'conflict');
-    const halal = matchGoal(yogurt(), plan('maintain_weight', { dietaryPreferences: ['halal'] }));
-    assert.equal(factor(halal, 'diet')!.level, 'not_counted');
-    assert.deepEqual(factor(halal, 'diet')!.matches, ['halal']);
-    assert.equal(halal.value, matchGoal(yogurt(), plan('maintain_weight')).value);
-    assert.notEqual(halal.level, 'conflict');
+
   });
 
-  it('непроверенные предпочтения передаются для пояснения без изменения баллов', () => {
+  it('поддерживаемые диеты без данных о составе не меняют баллы', () => {
     const base = matchGoal(yogurt(), plan('maintain_weight'));
-    for (const diets of [['other'], ['halal', 'other'], ['vegan', 'vegetarian', 'pescatarian']] as const) {
-      const unknown = matchGoal(yogurt({ allergens: NOT_DETECTED }), plan('maintain_weight', { dietaryPreferences: diets }));
+    for (const diet of ['vegan', 'vegetarian', 'pescatarian'] as const) {
+      const unknown = matchGoal(yogurt({ allergens: NOT_DETECTED }), plan('maintain_weight', { dietaryPreferences: [diet] }));
       assert.equal(factor(unknown, 'diet')!.level, 'not_counted');
-      assert.deepEqual(factor(unknown, 'diet')!.matches, diets);
+      assert.deepEqual(factor(unknown, 'diet')!.matches, [diet]);
       assert.equal(unknown.value, base.value);
+    }
+  });
+  it('legacy dietary profile values are neutral, never active restrictions', () => {
+    const base = matchGoal(yogurt(), plan('maintain_weight'));
+    for (const raw of [['halal'], ['other'], ['halal', 'other']]) {
+      const legacy = {...plan('maintain_weight'), dietaryPreferences: raw as unknown as GoalMatchUserPlan['dietaryPreferences']};
+      const result = matchGoal(yogurt(), legacy);
+      assert.equal(result.value, base.value); assert.equal(factor(result, 'diet'), undefined);
     }
   });
 
