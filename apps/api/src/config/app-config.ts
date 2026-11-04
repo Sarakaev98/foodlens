@@ -41,6 +41,7 @@ export interface AppConfig {
   };
   readonly labelAi: { readonly provider: 'google' | 'fireworks' };
   readonly scanAi: { readonly provider: 'google' | 'fireworks'; readonly fireworksApiKey: string; readonly timeoutMs: number };
+  readonly mealScanAi: { readonly provider: 'google' | 'fireworks' | undefined; readonly fireworksApiKey: string; readonly timeoutMs: number };
   readonly mealPlan: { readonly provider: 'google' | 'fireworks'; readonly fireworksApiKey: string; readonly timeoutMs: number };
   readonly goalMatchAi: { readonly mode: GoalMatchAiMode; readonly google: {
     readonly apiKey: string; readonly project: string; readonly location: string; readonly model: string;
@@ -79,6 +80,8 @@ export function loadAppConfig(env: Env): AppConfig {
       model: env.MODEL_NAME?.trim() || undefined,
       timeoutMs: parsePositiveInt(env.MODEL_TIMEOUT_MS, 'MODEL_TIMEOUT_MS'),
     },
+    mealScanAi: { provider: env.MEAL_SCAN_AI_PROVIDER?.trim() ? parseScanAIProvider(env.MEAL_SCAN_AI_PROVIDER, 'MEAL_SCAN_AI_PROVIDER') : undefined,
+      fireworksApiKey: env.FIREWORKS_API_KEY?.trim() ?? '', timeoutMs: parsePositiveInt(env.FIREWORKS_MEAL_SCAN_TIMEOUT_MS, 'FIREWORKS_MEAL_SCAN_TIMEOUT_MS') ?? 45000 },
     labelAi: { provider: parseScanAIProvider(env.LABEL_SCAN_AI_PROVIDER, 'LABEL_SCAN_AI_PROVIDER') },
     scanAi: { provider: parseScanAIProvider(env.PRODUCT_SCAN_AI_PROVIDER ?? env.SCAN_AI_PROVIDER,
       env.PRODUCT_SCAN_AI_PROVIDER !== undefined ? 'PRODUCT_SCAN_AI_PROVIDER' : 'SCAN_AI_PROVIDER'), fireworksApiKey: env.FIREWORKS_API_KEY?.trim() ?? '',

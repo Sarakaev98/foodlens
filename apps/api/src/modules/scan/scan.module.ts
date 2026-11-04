@@ -12,6 +12,7 @@ import { NutritionTargetsModule } from '../nutrition-targets/nutrition-targets.m
 import { ProductLookupModule } from '../product-lookup/product-lookup.module';
 import { ScanController } from './scan.controller';
 import { MealPhotoController } from './meal-photo.controller';
+import { MEAL_SCAN_AI_PROVIDER, createMealScanAIProvider } from './meal-scan-ai-provider.factory';
 import { MealPhotoService } from './meal-photo.service';
 import { IngredientsDisplayService } from './ingredients-display.service';
 import { ScanService } from './scan.service';
@@ -20,6 +21,7 @@ import { ScanService } from './scan.service';
   imports: [AiModule, NutritionTargetsModule, GoalMatchModule, ProductLookupModule],
   controllers: [ScanController, MealPhotoController],
   providers: [
+    { provide: MEAL_SCAN_AI_PROVIDER, useFactory: createMealScanAIProvider, inject: [APP_CONFIG] },
     { provide: PRODUCT_INGREDIENTS_DISPLAY, useFactory: (text: GoogleNutritionSearch) => new ProductIngredientsDisplayService(text), inject: [PRODUCT_TEXT_AI] },
     { provide: PRODUCT_GOAL_MATCH, useFactory: (config: AppConfig) => new GoalMatchService(createProductGoalMatchAI(config)), inject: [APP_CONFIG] },{ provide: LABEL_SCAN_AI_PROVIDER, useFactory: createLabelScanAIProvider, inject: [APP_CONFIG] }, { provide: SCAN_AI_PROVIDER, useFactory: createScanAIProvider, inject: [APP_CONFIG] }, ScanService, MealPhotoService, IngredientsDisplayService],
 })

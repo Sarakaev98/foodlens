@@ -23,3 +23,5 @@ export {
   GoogleNutritionSearch, GOOGLE_NUTRITION_EXTRACTION_SYSTEM_PROMPT, GOOGLE_NUTRITION_SEARCH_TIMEOUT_MS, GOOGLE_SOURCE_DISCOVERY_SYSTEM_PROMPT, MAX_EXTRACTION_TEXT_CHARS,
   type DiscoveredSource, type ExtractedPage, type ExtractionPage, type GoogleNutritionSearchConfig, type SourceDiscoveryInput, type SourceDiscoveryResponse,
 } from './providers/google/google-nutrition-search';
+
+export { FireworksMealPhotoProvider, FIREWORKS_MEAL_PHOTO_MODEL, FIREWORKS_MEAL_PHOTO_TIMEOUT_MS, type FireworksMealPhotoProviderConfig } from './providers/fireworks/fireworks-meal-photo-provider';
