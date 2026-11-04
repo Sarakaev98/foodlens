@@ -72,6 +72,7 @@ export function normalizeMetaProductAnalysis(analysis: MetaProductAnalysis, cont
     nutrition,
     semantics: normalizeProductSemantics(analysis.semantics, nutrition?.servingSize.value !== null && nutrition?.servingSize.value !== undefined),
     ingredients,
+    ...englishLabels(analysis),
     allergens,
     additives,
     confidence: normalizeConfidence(analysis, { name, nutrition, ingredients }),
@@ -294,4 +295,24 @@ export function normalizeConfidence(
 
   const sections = [identity, nutrition, ingredients].filter((level): level is ConfidenceLevel => level !== null);
   return { overall: lowestConfidence(model.overall, cap, ...sections), identity, nutrition, ingredients };
+}
+
+/** Reject unsafe display text without changing extraction, allergen detection or score inputs. */
+function englishLabels(analysis: MetaProductAnalysis): Pick<Product, 'labelTranslations'> {
+  const english = analysis.english;
+  if (!english) return {};
+  const pairs: { original: string; english: string }[] = [];
+  const tokens = (text: string) => text.match(/[eе]\s*[- ]?\s*\d{3,4}[a-z]?|\d+(?:[.,]\d+)?|[()[\]{},;:%/&+]/giu) ?? [];
+  const add = (original: string | null, translated: string | null | undefined) => {
+    if (!original || typeof translated !== 'string' || !translated.trim() ||
+        /(?=\p{L})\P{Script=Latin}/u.test(translated) || /[\u0000-\u001f]/u.test(translated) ||
+        translated.length > original.length * 5 + 80 || JSON.stringify(tokens(original)) !== JSON.stringify(tokens(translated))) return;
+    pairs.push({ original: original.trim(), english: translated.trim() });
+  };
+  if (analysis.identity.name.evidence === 'visible_text') add(analysis.identity.name.value, english.name);
+  if (analysis.ingredients.visible && english.ingredients.length === analysis.ingredients.items.length)
+    analysis.ingredients.items.forEach((item, i) => add(item.name, english.ingredients[i]));
+  if (analysis.ingredients.visible && english.additives.length === analysis.additives.length)
+    analysis.additives.forEach((item, i) => add(item.name, english.additives[i]));
+  return pairs.length ? { labelTranslations: pairs } : {};
 }

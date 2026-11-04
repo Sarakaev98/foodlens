@@ -49,3 +49,32 @@ it('bad semantic outputs, network errors and timeouts are safe and never retry a
 it('does not emulate Google Search grounding with invented source URLs',async()=>{
  const m=setup(true,{});await assert.rejects(m.text.discoverSources({barcode:null,brand:null,name:'test',serving:null}),e=>e instanceof AIProviderError&&e.code==='unsupported_input');assert.equal(m.calls.length,0);
 });
+
+it('Fireworks translation can finish after 12 seconds, without increasing the extraction deadline',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ let calls=0;
+ const ai=new FireworksProductTextAI({apiKey:'fake',fetch:(async()=>{
+  calls++;return new Promise<Response>(resolve=>setTimeout(()=>resolve(Response.json({model:FIREWORKS_PRODUCT_MODEL,choices:[{finish_reason:'stop',message:{role:'assistant',content:JSON.stringify({translations:[{id:0,text:'milk'}]})}}]})),13000));
+ }) as typeof fetch});
+ const translated=ai.translateIngredients(['молоко']);
+ t.mock.timers.tick(13001);
+ assert.deepEqual(await translated,['milk']);assert.equal(calls,1);
+ const extraction=assert.rejects(ai.extractIngredients('source'),e=>e instanceof AIProviderError&&e.code==='timeout');
+ t.mock.timers.tick(12001);await extraction;assert.equal(calls,2);
+});
+it('an explicitly configured Fireworks translation deadline is still honored',async t=>{
+ t.mock.timers.enable({apis:['setTimeout']});
+ const ai=new FireworksProductTextAI({apiKey:'fake',timeoutMs:10,fetch:(async()=>new Promise<Response>(()=>{})) as typeof fetch});
+ const result=assert.rejects(ai.translateIngredients(['молоко']),e=>e instanceof AIProviderError&&e.code==='timeout');
+ t.mock.timers.tick(11);await result;
+});
+
+it('external web deadline aborts the Fireworks extraction transport with no retry or alternate provider',async()=>{
+ const controller=new AbortController();let calls=0,received:AbortSignal|undefined;
+ const ai=new FireworksProductTextAI({apiKey:'fake',fetch:(async(_url,init)=>{
+  calls++;received=init!.signal!;return new Promise<Response>((_resolve,reject)=>received!.addEventListener('abort',()=>reject(Error('aborted')),{once:true}));
+ }) as typeof fetch});
+ const pending=assert.rejects(ai.extractNutrition([{id:0,text:'source text'}],controller.signal),e=>e instanceof AIProviderError);
+ controller.abort();await pending;assert.equal(calls,1);assert.equal(received!.aborted,true);
+ await assert.rejects(ai.extractIngredients('source text',controller.signal));assert.equal(calls,1);
+});

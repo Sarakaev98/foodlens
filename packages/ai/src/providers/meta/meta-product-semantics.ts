@@ -10,5 +10,5 @@ export function prepareMetaProductAnalysis(raw: unknown): unknown {
   const serving = table?.serving_size;
   const hasLabelServing = typeof serving?.amount === 'number' && Number.isFinite(serving.amount) &&
     serving.amount > 0 && (serving.unit === 'g' || serving.unit === 'ml');
-  return { ...r, semantics: normalizeProductSemantics(r.semantics, hasLabelServing) };
+  return { ...r, english: r.english && typeof r.english === 'object' && !Array.isArray(r.english) ? { name: null, ...r.english } : r.english ?? null, semantics: normalizeProductSemantics(r.semantics, hasLabelServing) };
 }

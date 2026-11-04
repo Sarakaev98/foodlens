@@ -64,6 +64,8 @@ export interface ProductLookupEvidence {
 
 /** Что уже известно о продукте. Только данные продукта: ни фото, ни профиля, ни оценок. */
 export interface ProductLookupContext {
+  /** Deadline shared by every stage of optional web enrichment. Not part of cache identity. */
+  readonly signal?: AbortSignal;
   readonly brand: string | null;
   readonly name: string | null;
   readonly serving: string | null;
@@ -106,6 +108,8 @@ export interface ProductLookupResult {
   readonly ingredients: readonly Ingredient[] | null;
   /** Source text ends in a list separator: completeness is not established. */
   readonly ingredientsIncomplete?: boolean;
+  /** Validated English presentation, aligned with the original ingredient list. */
+  readonly ingredientsEnglish?: readonly Ingredient[];
   readonly allergens: readonly Allergen[] | null;
   readonly additives: readonly Additive[] | null;
   readonly evidence?: ProductLookupEvidence;

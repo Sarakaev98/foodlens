@@ -1,5 +1,5 @@
 import {
-  fromExternalSource, inferred, isExternalProvenance, lowestConfidence, NOT_DETECTED, SALT_PER_SODIUM, saltGFromSodiumMg, type Additive, type Allergen, type ConfidenceLevel, type Detected,
+  canonicalizeAdditives, fromExternalSource, inferred, isExternalProvenance, lowestConfidence, NOT_DETECTED, SALT_PER_SODIUM, saltGFromSodiumMg, type Additive, type Allergen, type ConfidenceLevel, type Detected,
   type ExternalProvenance, type NutrientKey, type NutrientValue, type NutritionFacts, type Product, type ProductConfidence, type ServingSize,
 } from '@foodlens/core';
 import type { ProductLookupNutrition, ProductLookupResult, WebFieldSource } from './product-lookup.provider';
@@ -139,13 +139,12 @@ function mergeAdditives(current: Detected<readonly Additive[]>, lookup: readonly
   if (!lookup) return current;
   if (current.value === null) {
     report.filled.push('additives');
-    return fromExternalSource(lookup, source);
+    return fromExternalSource(canonicalizeAdditives(lookup), source);
   }
-  const known = new Set(current.value.map((additive) => additive.code));
-  const added = lookup.filter((additive) => !known.has(additive.code));
-  if (added.length === 0) return current;
+  const value = canonicalizeAdditives([...current.value, ...lookup]);
+  if (JSON.stringify(value) === JSON.stringify(current.value)) return current;
   report.filled.push('additives');
-  return { ...current, value: [...current.value, ...added] };
+  return { ...current, value };
 }
 
 /** Заменяет значения базы теми, что подтвердили более сильные источники. Прочитанное с этикетки не трогается. Соль и натрий меняются парой. */
@@ -284,6 +283,9 @@ export function mergeProductLookup(current: Product, lookup: ProductLookupResult
       brand: brandFilled ? fromExternalSource(lookup.brand!, source) : product.brand,
       nutrition,
       ingredients: ingredientsFilled ? fromExternalSource(lookup.ingredients!, source) : product.ingredients,
+      ...(ingredientsFilled && lookup.ingredientsEnglish?.length === lookup.ingredients?.length ? {
+        labelTranslations: [...(product.labelTranslations ?? []), ...lookup.ingredients!.map((item, i) => ({ original: item.name, english: lookup.ingredientsEnglish![i]!.name }))],
+      } : {}),
       allergens: mergeAllergens(product.allergens, lookup.allergens, source, report),
       additives: mergeAdditives(product.additives, lookup.additives, source, report),
       confidence,

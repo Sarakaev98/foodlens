@@ -124,10 +124,17 @@ export class ScanService {
       const summary = { requestId, barcode, images, steps, ai, aiProvider: analyzer.name ?? null, aiModel: analyzer.model ?? null, product, score, needsPhoto, goalMatch, rawGoalMatch, durationMs: () => Date.now() - startedAt };
       logScanSummary(this.logger, summary);
       this.logger.log(`nutrition_presence ${JSON.stringify({ requestId, ...nutritionPresence(product, score, goalMatch) })}`);
-      logScanFinished(this.logger, summary);
       const display = label ? this.ingredientsDisplay : this.productDisplay;
+      const shownProduct = display ? await display.decorate(product) : product;
+      this.logger.log(`scan_display ${JSON.stringify({ requestId,
+        ingredientsStatus: shownProduct.ingredientsDisplay?.status ?? 'missing',
+        ingredientsLanguage: shownProduct.ingredientsDisplay?.language ?? null,
+        additivesCount: shownProduct.additives.value?.length ?? null,
+        additivesDisplayCount: shownProduct.additivesDisplay?.length ?? null,
+      })}`);
+      logScanFinished(this.logger, summary);
       return {
-        product: display ? await display.decorate(product) : product,
+        product: shownProduct,
         score,
         goalMatch,
         ...(barcode ? { barcode } : {}),

@@ -121,3 +121,11 @@ it('Scan rejection logs a fixed diagnostic code without raw response fields',asy
   assert.equal(last.validationIssue,reason);assert.ok(!JSON.stringify(t.logs).includes(KEY));assert.ok(!JSON.stringify(t.logs).includes(DATA));
  }
 });
+
+it('new Fireworks analysis returns English display metadata in the same request, retaining printed fields',async()=>{
+ const raw=metaAnalysis({ingredients:{visible:true,items:[{name:'молоко',percent:20},{name:'эмульгатор (E322)',percent:null}]},additives:[{e_number:'E322',name:'эмульгатор'}],english:{name:null,ingredients:['milk','emulsifier (E322)'],additives:['emulsifier']}});
+ const fixture=setup(()=>reply(raw));const p=await fixture.provider.analyzeProduct(IMAGE);
+ assert.equal(fixture.calls.length,1);
+ assert.equal(p.ingredients.value?.[0]?.name,'молоко');assert.equal(p.additives.value?.[0]?.code,'E322');
+ assert.deepEqual(p.labelTranslations,[{original:'молоко',english:'milk'},{original:'эмульгатор (E322)',english:'emulsifier (E322)'},{original:'эмульгатор',english:'emulsifier'}]);
+});

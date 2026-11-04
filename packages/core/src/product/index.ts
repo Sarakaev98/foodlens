@@ -6,3 +6,4 @@ export * from './allergen';
 export * from './additive';
 export * from './product-semantics';
 export * from './product-semantics.validation';
+export * from './additive-identity';

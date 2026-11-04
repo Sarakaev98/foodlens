@@ -28,8 +28,8 @@ function createWebSearcher(config: AppConfig, textAI?: GoogleNutritionSearch): N
   const budget = new TavilyCreditBudget(tavily.monthlyCreditLimit);
   const search = new TavilySearch({ apiKey: tavily.apiKey, budget, logger: nestLogger('TavilySearch'), debug: scanDebugEnabled() });
   return {
-    discoverSources: (input) => search.discoverSources(input), searchQuery: (query) => search.searchQuery(query), extractNutrition: (pages) => google.extractNutrition(pages), extractIngredients: (text) => google.extractIngredients(text),
-    isAvailable: () => search.isAvailable(), readPages: (urls) => search.readPages(urls), creditsSpent: () => budget.spent,
+    discoverSources: (input, signal) => search.discoverSources(input, signal), searchQuery: (query, signal) => search.searchQuery(query, signal), extractNutrition: (pages, signal) => google.extractNutrition(pages, signal), extractIngredients: (text, signal) => google.extractIngredients(text, signal),
+    isAvailable: () => search.isAvailable(), readPages: (urls, signal) => search.readPages(urls, signal), creditsSpent: () => budget.spent,
   };
 }
 

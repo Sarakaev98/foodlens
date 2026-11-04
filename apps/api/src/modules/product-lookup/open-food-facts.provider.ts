@@ -6,7 +6,7 @@ export const OPEN_FOOD_FACTS_BASE_URL = 'https://world.openfoodfacts.org';
 const API_PATH = '/api/v3.6/product';
 export const OFF_REQUEST_FIELDS = [
   'product_name', 'product_name_ru', 'brands', 'nutrition', 'serving_size', 'serving_quantity', 'serving_quantity_unit',
-  'ingredients_text', 'ingredients_text_ru', 'allergens_tags', 'traces_tags', 'additives_tags', 'categories_tags', 'categories_hierarchy', 'nova_group',
+  'ingredients_text', 'ingredients_text_ru', 'ingredients_text_en', 'allergens_tags', 'traces_tags', 'additives_tags', 'categories_tags', 'categories_hierarchy', 'nova_group',
 ].join(',');
 
 /** Скан не должен заметно ждать базу: дольше ответа Gemini ждать нет смысла. */

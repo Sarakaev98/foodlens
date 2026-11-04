@@ -15,7 +15,7 @@ const CACHE_SIZE = 256;
 
 /** A letter outside the Latin script: the English UI cannot show this text as is. */
 const NON_LATIN = /(?=\p{L})\P{Script=Latin}/u;
-const needsTranslation = (text: string | null | undefined): text is string => !!text && NON_LATIN.test(text);
+const needsTranslation = (text: string | null | undefined): text is string => !!text && !isEnglishIngredientText(text);
 /** A name or additive translation must be one short Latin-script phrase. */
 const safeLabel = (translation: string | undefined, source: string): translation is string =>
   typeof translation === 'string' && !!translation.trim() && !NON_LATIN.test(translation) &&
@@ -32,21 +32,21 @@ export class IngredientsDisplayService {
 
   async decorate(product: Product): Promise<Product> {
     const items = product.ingredients.value?.length ? product.ingredients.value : null;
-    const name = needsTranslation(product.name.value) ? product.name.value : null;
-    const additives = product.additives.value?.some((additive) => needsTranslation(additive.name)) ? product.additives.value : null;
+    const name = product.name.value && NON_LATIN.test(product.name.value) ? product.name.value : null;
+    const additives = product.additives.value?.length ? product.additives.value : null;
     if (!items && !name && !additives) return product;
     let sourceHash = '';
     try {
       sourceHash = items ? createHash('sha256').update('ingredients-en-v1:' + JSON.stringify(items.map(item => [item.name, item.percent]))).digest('hex') : '';
-      const decorated = (!items || product.ingredientsDisplay?.sourceHash === sourceHash) &&
+      const decorated = (!items || (product.ingredientsDisplay?.sourceHash === sourceHash && product.ingredientsDisplay.language === 'en')) &&
         (!name || product.nameDisplay !== undefined) && (!additives || product.additivesDisplay !== undefined);
-      if (decorated) return product;
-      const key = createHash('sha256').update('display-en-v1:' + JSON.stringify([sourceHash, name, additives?.map(a => a.name) ?? null])).digest('hex');
+      if (decorated && !product.labelTranslations?.length && !additives) return product;
+      const key = createHash('sha256').update('display-en-v1:' + JSON.stringify([sourceHash, name, additives, product.labelTranslations ?? null])).digest('hex');
       const cached = this.cache.get(key);
       if (cached && cached.expires > Date.now()) return withParts(product, cached.parts);
       let work = this.pending.get(key);
       if (!work) {
-        work = this.translate(items, name, additives, sourceHash, key).finally(() => { this.pending.delete(key); });
+        work = this.translate(items, name, additives, sourceHash, key, product.labelTranslations).finally(() => { this.pending.delete(key); });
         this.pending.set(key, work);
       }
       return withParts(product, await work);
@@ -56,10 +56,17 @@ export class IngredientsDisplayService {
   }
 
   private async translate(items: Ingredients | null, name: string | null, additives: readonly Additive[] | null,
-    sourceHash: string, key: string): Promise<DisplayParts> {
-    const plan = items ? ingredientTranslationPlan(items, text => this.isEnglishIngredientText(text)) : null;
+    sourceHash: string, key: string, known: Product['labelTranslations']): Promise<DisplayParts> {
+    const translations = new Map((known ?? []).filter(pair => isEnglishIngredientText(pair.english)).map(pair => [pair.original, pair.english]));
+    // Derived additives may omit the E-code and punctuation from the ingredient text.
+    const additiveName = (text: string) => text.replace(/(?:^|[^a-zа-яё0-9])[eе]\s?-?\s?(\d{3,4})([a-z]?)(?![0-9])/gi, ' ').replace(/[(),:;]/g, ' ').replace(/\s+/g, ' ').trim();
+    for (const pair of known ?? []) {
+      if (isEnglishIngredientText(pair.english)) translations.set(additiveName(pair.original), additiveName(pair.english));
+    }
+    const displayItems = items?.map(item => ({ ...item, name: translations.get(item.name) ?? item.name })) ?? null;
+    const plan = displayItems ? ingredientTranslationPlan(displayItems, text => this.isEnglishIngredientText(text)) : null;
     const labels = [...(name ? [name] : []), ...(additives ?? []).map(a => a.name).filter(needsTranslation)];
-    const uniqueLabels = [...new Set(labels)];
+    const uniqueLabels = [...new Set(labels)].filter(text => !translations.has(text));
     const ingredientTexts = plan?.texts ?? [];
     let parts: DisplayParts;
     let failed = false;
@@ -70,15 +77,15 @@ export class IngredientsDisplayService {
       let ingredients: Display | null = null;
       if (items && plan) {
         try {
-          const shown = ingredientTexts.length > 0 ? plan.assemble(translated.slice(0, ingredientTexts.length)) : items;
-          ingredients = { sourceHash, items: shown, language: 'en', status: ingredientTexts.length > 0 ? 'translated' : 'unchanged' };
+          const shown = ingredientTexts.length > 0 ? plan.assemble(translated.slice(0, ingredientTexts.length)) : displayItems!;
+          ingredients = { sourceHash, items: shown, language: 'en', status: ingredientTexts.length > 0 || JSON.stringify(shown) !== JSON.stringify(items) ? 'translated' : 'unchanged' };
         } catch {
           ingredients = { sourceHash, items, language: 'original', status: 'fallback' };
           failed = true;
         }
       }
       const byLabel = new Map(uniqueLabels.map((label, i) => [label, translated[ingredientTexts.length + i]]));
-      const label = (source: string) => { const value = byLabel.get(source); return safeLabel(value, source) ? value.trim() : undefined; };
+      const label = (source: string) => { const value = translations.get(source) ?? byLabel.get(source); return safeLabel(value, source) ? value.trim() : undefined; };
       const shownName = name ? label(name) : undefined;
       // Without a safe translation an E-number alone is clearer than foreign text; a name-only additive keeps its original.
       const shownAdditives = additives?.map(a => {

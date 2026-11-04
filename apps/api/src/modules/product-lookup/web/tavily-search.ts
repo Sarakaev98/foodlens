@@ -104,15 +104,15 @@ export class TavilySearch {
     return this.config.apiKey.length > 0 && this.config.budget.hasCredits(SEARCH_CREDITS);
   }
 
-  discoverSources(input: SourceDiscoveryInput): Promise<SourceDiscoveryResponse> {
-    return this.searchQuery(tavilyQuery(input));
+  discoverSources(input: SourceDiscoveryInput, signal?: AbortSignal): Promise<SourceDiscoveryResponse> {
+    return this.searchQuery(tavilyQuery(input), signal);
   }
 
   /** Один поисковый запрос готовым текстом. Текст строит стратегия поиска: макросов в нём нет. */
-  async searchQuery(query: string): Promise<SourceDiscoveryResponse> {
+  async searchQuery(query: string, signal?: AbortSignal): Promise<SourceDiscoveryResponse> {
     const startedAt = Date.now();
     if (this.config.debug) this.config.logger.log('tavily_query', { query: query.slice(0, MAX_LOGGED_TEXT) });
-    const response = await this.post('search', { query, search_depth: 'basic', max_results: MAX_RESULTS, include_usage: true });
+    const response = await this.post('search', { query, search_depth: 'basic', max_results: MAX_RESULTS, include_usage: true }, signal);
     const sources = (Array.isArray(response.results) ? response.results : []).flatMap((item) => toSource(item) ?? []);
     const usage = record(response.usage) && typeof response.usage.credits === 'number' ? response.usage.credits : SEARCH_CREDITS;
     this.config.budget.spend(usage);
@@ -121,10 +121,10 @@ export class TavilySearch {
   }
 
   /** Запасной путь для страниц, которые не прочитались напрямую. Кредит списывается только за успешное чтение. */
-  async readPages(urls: readonly string[]): Promise<readonly TavilyPageContent[]> {
+  async readPages(urls: readonly string[], signal?: AbortSignal): Promise<readonly TavilyPageContent[]> {
     if (urls.length === 0 || !this.config.budget.hasCredits(EXTRACT_CREDITS)) return [];
     const startedAt = Date.now();
-    const response = await this.post('extract', { urls, extract_depth: 'basic', format: 'markdown', timeout: Math.floor(this.timeoutMs / 1000) - 1 });
+    const response = await this.post('extract', { urls, extract_depth: 'basic', format: 'markdown', timeout: Math.floor(this.timeoutMs / 1000) - 1 }, signal);
     const pages = (Array.isArray(response.results) ? response.results : []).flatMap((item): TavilyPageContent[] =>
       (record(item) && typeof item.url === 'string' && typeof item.raw_content === 'string' ? [{ url: item.url, content: item.raw_content }] : []));
     if (this.config.debug && Array.isArray(response.failed_results)) {
@@ -144,12 +144,13 @@ export class TavilySearch {
     this.config.logger.log('tavily_usage', { endpoint, credits, creditsThisMonth: this.config.budget.spent, resultCount: domains.length, domains, latencyMs: Date.now() - startedAt });
   }
 
-  private async post(endpoint: 'search' | 'extract', body: Json): Promise<Json> {
+  private async post(endpoint: 'search' | 'extract', body: Json, signal?: AbortSignal): Promise<Json> {
+    signal?.throwIfAborted();
     if (!this.config.apiKey) throw new TavilySearchError('not_configured');
     let response: Response;
     try {
       response = await this.transport(`${TAVILY_API}/${endpoint}`, {
-        method: 'POST', signal: AbortSignal.timeout(this.timeoutMs),
+        method: 'POST', signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(this.timeoutMs)]) : AbortSignal.timeout(this.timeoutMs),
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.config.apiKey}` }, body: JSON.stringify(body),
       });
     } catch {

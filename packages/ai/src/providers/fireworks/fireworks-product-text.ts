@@ -8,6 +8,9 @@ import type { GoalMatchEvaluator } from '../../goal-match-provider';
 import { FIREWORKS_PRODUCT_MODEL } from './fireworks-product-provider';
 import { FIREWORKS_MEAL_PLAN_ENDPOINT } from './fireworks-meal-plan-provider';
 
+// Translation uses the same model as vision, rather than the 12-second search deadline.
+const FIREWORKS_TRANSLATION_TIMEOUT_MS = 60_000;
+
 export interface FireworksProductTextConfig { readonly apiKey: string; readonly fetch?: typeof fetch; readonly logger?: AILogger; readonly timeoutMs?: number }
 const record=(x:unknown):x is Record<string,any>=>!!x&&typeof x==='object'&&!Array.isArray(x);
 const fail=(code:ConstructorParameters<typeof AIProviderError>[1])=>new AIProviderError('fireworks',code,`Fireworks product text: ${code}`);
@@ -72,10 +75,10 @@ async function safe<T>(work:()=>Promise<T>):Promise<T>{try{return await work();}
 
 /** Keeps the established text extraction/translation prompts and validation implementation. */
 export class FireworksProductTextAI extends GoogleNutritionSearch{
- constructor(config:FireworksProductTextConfig){const logger=config.logger??SILENT_AI_LOGGER;super({apiKey:config.apiKey,project:'fireworks-adapter',model:'gemini-3.5-flash-lite',timeoutMs:config.timeoutMs,
+ constructor(config:FireworksProductTextConfig){const logger=config.logger??SILENT_AI_LOGGER;super({apiKey:config.apiKey,project:'fireworks-adapter',model:'gemini-3.5-flash-lite',timeoutMs:config.timeoutMs,translationTimeoutMs:config.timeoutMs??FIREWORKS_TRANSLATION_TIMEOUT_MS,
   fetch:createFireworksProductTextTransport(config),logger:safeLogger(logger)});}
- override extractNutrition(p:readonly ExtractionPage[]):Promise<readonly ExtractedPage[]>{return safe(()=>super.extractNutrition(p));}
- override extractIngredients(t:string):Promise<string|null>{return safe(()=>super.extractIngredients(t));}
+ override extractNutrition(p:readonly ExtractionPage[],signal?:AbortSignal):Promise<readonly ExtractedPage[]>{return safe(()=>super.extractNutrition(p,signal));}
+ override extractIngredients(t:string,signal?:AbortSignal):Promise<string|null>{return safe(()=>super.extractIngredients(t,signal));}
  override translateIngredients(t:readonly string[]):Promise<readonly string[]>{return safe(()=>super.translateIngredients(t));}
  override async discoverSources():Promise<never>{throw fail('unsupported_input');}
 }

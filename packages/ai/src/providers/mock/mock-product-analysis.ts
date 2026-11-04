@@ -12,6 +12,7 @@ export const MOCK_META_PRODUCT_ANALYSIS: MetaProductAnalysis = {
     productForm: { value: 'food', confidence: 'high' },
     typicalServing: null,
   },
+  english: null,
   image: { is_food_product: true, quality: 'clear', visible_sections: ['front_of_package', 'nutrition_table', 'ingredients_list'] },
   identity: {
     name: { value: '  Греческий   йогурт 2% ', evidence: 'visible_text' },

@@ -1,3 +1,4 @@
+import { isEnglishIngredientText } from '../scan/ingredients-display-text';
 import { isAllergenCode, type Additive, type Allergen, type AllergenCode, type Ingredient, type NutrientKey, type ProductCategory, type ServingSize } from '@foodlens/core';
 import type { BeverageClassification, ProductLookupNutrition, ProductLookupResult } from './product-lookup.provider';
 
@@ -183,7 +184,14 @@ function mapEstimates(nutrition: unknown): Partial<Record<NutrientKey, number>> 
 export function mapOpenFoodFactsProduct(product: unknown, barcode: string): ProductLookupResult | null {
   if (!record(product)) return null;
   const beverage = classifyBeverage(product);
-  const ingredientsText = text(product.ingredients_text_ru) ?? text(product.ingredients_text);
+  const english = text(product.ingredients_text_en);
+  const englishText = english && isEnglishIngredientText(english) ? english : null;
+  const ingredientsText = text(product.ingredients_text_ru) ?? text(product.ingredients_text) ?? englishText;
+  const ingredients = ingredientsText ? splitIngredients(ingredientsText) : null;
+  const englishItems = englishText ? splitIngredients(englishText) : null;
+  const tokens = (value: string) => (value.match(/[eе]\s*[- ]?\s*\d{3,4}[a-z]?|\d+(?:[.,]\d+)?|[()[\]{}:%]/giu) ?? []).map(token => token.toLowerCase().replace(/е/g, 'e'));
+  const validEnglish = ingredients && englishItems && ingredients.length === englishItems.length &&
+    ingredients.every((item, i) => JSON.stringify(tokens(item.name)) === JSON.stringify(tokens(englishItems[i]!.name)));
   return {
     provider: OPEN_FOOD_FACTS_PROVIDER,
     match: 'exact_barcode',
@@ -193,7 +201,8 @@ export function mapOpenFoodFactsProduct(product: unknown, barcode: string): Prod
     nutrition: mapNutrition(product.nutrition, beverage === 'beverage'),
     beverage,
     servingSize: mapServing(product),
-    ingredients: ingredientsText ? splitIngredients(ingredientsText) : null,
+    ingredients,
+    ...(validEnglish ? { ingredientsEnglish: englishItems! } : {}),
     ...(ingredientsText && /[,;]\s*$/.test(ingredientsText) ? { ingredientsIncomplete: true } : {}),
     allergens: mapAllergens(product),
     additives: mapAdditives(product.additives_tags),

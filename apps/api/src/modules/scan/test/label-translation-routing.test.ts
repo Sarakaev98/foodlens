@@ -131,7 +131,7 @@ it('Label translation deadline preserves the original cached fallback and never 
     const app = await labelContext(config());
     try {
       const display = app.get(IngredientsDisplayService), pending = display.decorate(source());
-      t.mock.timers.tick(12001);
+      t.mock.timers.tick(60001);
       const result = await pending; assert.equal(result.ingredientsDisplay!.status, 'fallback');
       await display.decorate(source()); assert.equal(calls.length, 1); assert.match(calls[0]!.url, /fireworks.ai/);
     } finally { await app.close(); }
