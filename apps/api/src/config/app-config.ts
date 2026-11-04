@@ -39,6 +39,7 @@ export interface AppConfig {
     readonly model: string | undefined;
     readonly timeoutMs: number | undefined;
   };
+  readonly mealPlan: { readonly provider: 'google' | 'fireworks'; readonly fireworksApiKey: string; readonly timeoutMs: number };
   readonly goalMatchAi: { readonly mode: GoalMatchAiMode; readonly google: {
     readonly apiKey: string; readonly project: string; readonly location: string; readonly model: string;
   } };
@@ -76,12 +77,20 @@ export function loadAppConfig(env: Env): AppConfig {
       model: env.MODEL_NAME?.trim() || undefined,
       timeoutMs: parsePositiveInt(env.MODEL_TIMEOUT_MS, 'MODEL_TIMEOUT_MS'),
     },
+    mealPlan: { provider: parseMealPlanProvider(env.MEAL_PLAN_PROVIDER), fireworksApiKey: env.FIREWORKS_API_KEY?.trim() ?? '',
+      timeoutMs: parsePositiveInt(env.FIREWORKS_MEAL_PLAN_TIMEOUT_MS, 'FIREWORKS_MEAL_PLAN_TIMEOUT_MS') ?? 60000 },
     goalMatchAi: { mode: parseGoalMatchAiMode(env.GOAL_MATCH_AI), google: {
       apiKey: env.GOOGLE_API_KEY?.trim() ?? '', project: env.GOOGLE_CLOUD_PROJECT?.trim() ?? '',
       location: env.GOOGLE_CLOUD_LOCATION?.trim() || 'global', model: env.GOOGLE_GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite',
     } },
     featureFlags: resolveFeatureFlags(parseFeatureFlagOverrides(readFeatureFlagEnv(env))),
   };
+}
+
+function parseMealPlanProvider(value: string | undefined): 'google' | 'fireworks' {
+  const name = value?.trim() || 'google';
+  if (name !== 'google' && name !== 'fireworks') throw new Error('Unknown MEAL_PLAN_PROVIDER. Expected google or fireworks');
+  return name;
 }
 
 function requireEnv(env: Env, name: string): string {

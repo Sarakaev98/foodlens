@@ -1,8 +1,8 @@
 import { HttpException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { AIProvider, GenerateMealPlanInput } from '@foodlens/ai';
+import type { GenerateMealPlanInput } from '@foodlens/ai';
 import { normalizeDietaryPreferences, type GoalMatchUserPlan, type MealPlan, type MealPlanResult } from '@foodlens/core';
 import { chooseMealPlanVariation, validateMealPlan, type MealPlanIssue, type MealPlanVariation } from '@foodlens/nutrition';
-import { AI_PROVIDER } from '../ai/ai.tokens';
+import { MEAL_PLAN_PROVIDER, type MealPlanGenerator } from './meal-plan-provider.factory';
 import { NutritionTargetsService } from '../nutrition-targets/nutrition-targets.service';
 
 interface Attempt {
@@ -38,7 +38,7 @@ export class MealPlanService {
   random: () => number = Math.random;
 
   constructor(
-    @Inject(AI_PROVIDER) private readonly ai: AIProvider,
+    @Inject(MEAL_PLAN_PROVIDER) private readonly ai: MealPlanGenerator,
     private readonly nutritionTargets: NutritionTargetsService,
   ) {}
 

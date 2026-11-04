@@ -1,3 +1,4 @@
+export { FireworksMealPlanProvider, FIREWORKS_MEAL_PLAN_MODEL, FIREWORKS_MEAL_PLAN_ENDPOINT, type FireworksMealPlanProviderConfig } from './providers/fireworks/fireworks-meal-plan-provider';
 export type { AIProvider, AIProviderMethod } from './ai-provider';
 export type * from './ai-provider.types';
 export { MAX_PRODUCT_IMAGES, PRODUCT_IMAGE_ROLES, productImages } from './product-images';

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import type { AIProvider, GenerateMealPlanInput } from '@foodlens/ai';
+import { FireworksMealPlanProvider, FIREWORKS_MEAL_PLAN_MODEL, type AIProvider, type GenerateMealPlanInput } from '@foodlens/ai';
 import { sumMeals, type GoalMatchUserPlan, type Meal, type MealId, type MealPlan, type MealPlanId, type MealSlot } from '@foodlens/core';
 import type { NutritionTargetsService } from '../../nutrition-targets/nutrition-targets.service';
 import { MealPlanService, RECENT_MEAL_NAMES } from '../meal-plan.service';
@@ -168,5 +168,32 @@ describe('MealPlanService: разнообразие', () => {
     await service.generate('user');
     await service.getLatest('user'); await service.getLatest('user');
     assert.equal(calls.length, 1);
+  });
+});
+
+
+describe('Fireworks with the existing MealPlanService validation', () => {
+  function integrated(answer: MealPlan) {
+    let calls = 0;
+    const output = { meals: answer.days[0]!.meals.map(m => ({ slot: m.slot, name: m.name, description: m.description,
+      ingredients: m.ingredients, portion: m.portion, calories_kcal: m.caloriesKcal, protein_g: m.proteinG, carbs_g: m.carbsG, fat_g: m.fatG })) };
+    const provider = new FireworksMealPlanProvider({ apiKey: 'fake', fetch: (async () => {
+      calls++;
+      return Response.json({ model: FIREWORKS_MEAL_PLAN_MODEL, choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify(output) } }] });
+    }) as typeof fetch });
+    const service = new MealPlanService({ generateMealPlan: input => provider.generate(input) },
+      { findPlanForUser: async () => PROFILE } as unknown as NutritionTargetsService);
+    return { service, calls: () => calls };
+  }
+  it('valid Fireworks plan passes existing calorie/macro validation and cache', async () => {
+    const { service, calls } = integrated(GOOD);
+    const result = await service.generate('user');
+    assert.equal(result.withinTargets, true); assert.equal(calls(), 1);
+    assert.deepEqual(await service.getLatest('user'), result); assert.equal(calls(), 1);
+  });
+  it('unsafe Fireworks ingredients are rejected after the existing single correction', async () => {
+    const { service, calls } = integrated(WITH_CHICKEN);
+    await assert.rejects(service.generate('user'), status(422, 'MEAL_PLAN_INVALID'));
+    assert.equal(calls(), 2); assert.equal(await service.getLatest('user'), null);
   });
 });
