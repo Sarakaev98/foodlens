@@ -173,19 +173,25 @@ export class GoogleProvider implements AIProvider {
         },
       }),
     });
+    if (signal.aborted) {
+      void response.body?.cancel().catch(() => undefined);
+      throw new AIProviderError(this.name, 'timeout', message('timeout'));
+    }
     if (!response.ok) {
       const status = response.status,
         code: AIProviderErrorCode =
           status === 401 || status === 403 ? 'authentication_failed' : status === 429 ? 'rate_limited' : status >= 500 ? 'unavailable' : 'bad_request';
-      await response.body?.cancel().catch(() => undefined);
+      void response.body?.cancel().catch(() => undefined);
       throw new AIProviderError(this.name, code, message(code), { httpStatus: status });
     }
     let envelope: unknown;
     try {
       envelope = await response.json();
     } catch {
-      throw new AIProviderError(this.name, 'invalid_response', message('invalid_response'));
+      const code = signal.aborted ? 'timeout' : 'invalid_response';
+      throw new AIProviderError(this.name, code, message(code));
     }
+    if (signal.aborted) throw new AIProviderError(this.name, 'timeout', message('timeout'));
     logGeminiUsage(this.#logger, 'product_analysis', this.model, envelope, images.length);
     const candidate = record(envelope) && Array.isArray(envelope.candidates) ? envelope.candidates[0] : null;
     if (!record(candidate) || candidate.finishReason !== 'STOP') throw new AIProviderError(this.name, 'invalid_response', message('invalid_response'));

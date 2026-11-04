@@ -1,3 +1,4 @@
+import { productIngredientFactsText } from './product-ingredient-text';
 import { randomUUID } from 'node:crypto';
 import { lowestConfidence, NOT_DETECTED, PRODUCT_SEMANTICS_VERSION, type Barcode, type Product, type ProductId, type ProductSemantics } from '@foodlens/core';
 import type { LookupStep } from '../product-lookup/multi-source-product-lookup';
@@ -20,16 +21,16 @@ const NOVA_PROCESSING = ['whole_or_minimal', 'processed', 'processed', 'ultra_pr
  * Источник сахара и обработка по составу из источника штрихкода: те же признаки, что Goal Match получает с упаковки.
  * Только прямые слова состава, уверенность не выше medium. Без состава признаки остаются неизвестными.
  */
-export function semanticsFromIngredients(product: Product): ProductSemantics {
+export function semanticsFromIngredients(product: Product, incomplete = false): ProductSemantics {
   const ingredients = product.ingredients.value;
   if (!ingredients || ingredients.length === 0) return UNKNOWN_SEMANTICS;
-  const text = ingredients.map((item) => item.name).join(', ');
+  const text = productIngredientFactsText(ingredients.map((item) => item.name).join(', '));
   const sugars = product.nutrition?.sugarsG.value ?? null;
-  const sugarSource = sugars === 0 ? 'none' : ADDED_SUGAR.test(text) ? 'added' : 'intrinsic';
-  const processing = ULTRA_PROCESSED.test(text) ? 'ultra_processed' : ingredients.length <= MINIMAL_INGREDIENTS ? 'whole_or_minimal' : 'processed';
+  const sugarSource = sugars === 0 ? 'none' : ADDED_SUGAR.test(text) ? 'added' : incomplete ? 'unknown' : 'intrinsic';
+  const processing = ULTRA_PROCESSED.test(text) ? 'ultra_processed' : incomplete ? 'unknown' : ingredients.length <= MINIMAL_INGREDIENTS ? 'whole_or_minimal' : 'processed';
   return { ...UNKNOWN_SEMANTICS,
-    sugarSource: { value: sugarSource, confidence: 'medium', evidence: ['ingredients'] },
-    processing: { value: processing, confidence: 'medium', evidence: ['ingredients'] } };
+    sugarSource: { value: sugarSource, confidence: sugarSource === 'unknown' ? 'low' : 'medium', evidence: ['ingredients'] },
+    processing: { value: processing, confidence: processing === 'unknown' ? 'low' : 'medium', evidence: [incomplete ? 'incomplete_ingredients' : 'ingredients'] } };
 }
 
 /** Продукт для Product Score и Goal Match: состав только для показа в расчёты не идёт, в том числе через признаки продукта. */
@@ -52,7 +53,9 @@ export function emptyBarcodeProduct(barcode: string): Product {
 export function confirmBarcodeIdentity(product: Product, steps: readonly LookupStep[]): Product {
   if (!steps.some((step) => step.status === 'hit')) return product;
   const { nutrition } = product.confidence;
-  const semantics = semanticsFromIngredients(forScoring(product));
+  const incomplete = steps.some(step => step.result?.ingredientsIncomplete &&
+    JSON.stringify(step.result.ingredients) === JSON.stringify(product.ingredients.value));
+  const semantics = semanticsFromIngredients(forScoring(product), incomplete);
   const nova = steps.flatMap((step) => (step.result?.nova ? [step.result.nova] : []))[0];
   // Группа NOVA из базы дополняет признаки, только если состава нет.
   const processing = semantics.processing.value === 'unknown' && nova ? { value: NOVA_PROCESSING[nova - 1]!, confidence: 'medium' as const, evidence: ['nova_group'] } : semantics.processing;

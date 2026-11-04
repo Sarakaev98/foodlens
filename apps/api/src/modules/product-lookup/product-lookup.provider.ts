@@ -104,6 +104,8 @@ export interface ProductLookupResult {
   readonly nutrition: ProductLookupNutrition | null;
   readonly servingSize: ServingSize | null;
   readonly ingredients: readonly Ingredient[] | null;
+  /** Source text ends in a list separator: completeness is not established. */
+  readonly ingredientsIncomplete?: boolean;
   readonly allergens: readonly Allergen[] | null;
   readonly additives: readonly Additive[] | null;
   readonly evidence?: ProductLookupEvidence;

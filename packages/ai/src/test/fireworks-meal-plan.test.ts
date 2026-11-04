@@ -153,3 +153,28 @@ describe('Fireworks HTTP stage diagnostics (no network)', () => {
     assert.equal(t.logs.length, length); assert.equal(t.calls.length, 1);
   });
 });
+
+
+describe('Meal Plan optional tool_calls regression (offline)', () => {
+  it('omitted/null/empty tool calls preserve an identical validated plan', async () => {
+    let expected: unknown;
+    for (const toolCalls of [undefined, null, []]) {
+      const t = setup(() => Response.json({ ...envelope(), choices: [{ finish_reason: 'stop', message: {
+        role: 'assistant', content: JSON.stringify({ meals: [meal] }), ...(toolCalls === undefined ? {} : { tool_calls: toolCalls }),
+      } }] }));
+      const plan = await t.provider.generate(input);
+      if (expected === undefined) expected = plan; else assert.deepEqual(plan, expected);
+      assert.equal(t.calls.length, 1);
+    }
+  });
+  it('real/malformed tool calls and invalid meal JSON remain rejected', async () => {
+    for (const toolCalls of [[{ id: 'tool', type: 'function', function: { name: 'unexpected', arguments: '{}' } }], {}, 'bad', false, 0]) {
+      await assert.rejects(setup(() => Response.json({ ...envelope(), choices: [{ finish_reason: 'stop', message: {
+        role: 'assistant', content: JSON.stringify({ meals: [meal] }), tool_calls: toolCalls,
+      } }] })).provider.generate(input), code('invalid_response'));
+    }
+    await assert.rejects(setup(() => Response.json({ ...envelope(), choices: [{ finish_reason: 'stop', message: {
+      role: 'assistant', content: '{}', tool_calls: [],
+    } }] })).provider.generate(input), code('invalid_response'));
+  });
+});

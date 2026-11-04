@@ -114,7 +114,9 @@ export class FireworksMealPlanProvider {
       const choice: unknown = envelope.choices[0];
       if (!record(choice) || !record(choice.message)) throw failure('invalid_response');
       if (choice.finish_reason === 'content_filter' || choice.message.refusal) throw failure('refused');
-      if (choice.finish_reason !== 'stop' || choice.message.role !== 'assistant' || typeof choice.message.content !== 'string' || choice.message.tool_calls) throw failure('invalid_response');
+      const toolCalls = choice.message.tool_calls;
+      const unexpectedToolCalls = toolCalls != null && (!Array.isArray(toolCalls) || toolCalls.length > 0);
+      if (choice.finish_reason !== 'stop' || choice.message.role !== 'assistant' || typeof choice.message.content !== 'string' || unexpectedToolCalls) throw failure('invalid_response');
       let result: unknown;
       try { result = JSON.parse(choice.message.content); } catch { throw failure('invalid_response'); }
       if (findSchemaViolation(MEAL_PLAN_OUTPUT_SCHEMA, result)) throw failure('invalid_response');
