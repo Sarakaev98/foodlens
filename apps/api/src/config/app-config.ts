@@ -39,6 +39,8 @@ export interface AppConfig {
     readonly model: string | undefined;
     readonly timeoutMs: number | undefined;
   };
+  readonly labelAi: { readonly provider: 'google' | 'fireworks' };
+  readonly scanAi: { readonly provider: 'google' | 'fireworks'; readonly fireworksApiKey: string; readonly timeoutMs: number };
   readonly mealPlan: { readonly provider: 'google' | 'fireworks'; readonly fireworksApiKey: string; readonly timeoutMs: number };
   readonly goalMatchAi: { readonly mode: GoalMatchAiMode; readonly google: {
     readonly apiKey: string; readonly project: string; readonly location: string; readonly model: string;
@@ -77,6 +79,9 @@ export function loadAppConfig(env: Env): AppConfig {
       model: env.MODEL_NAME?.trim() || undefined,
       timeoutMs: parsePositiveInt(env.MODEL_TIMEOUT_MS, 'MODEL_TIMEOUT_MS'),
     },
+    labelAi: { provider: parseScanAIProvider(env.LABEL_SCAN_AI_PROVIDER, 'LABEL_SCAN_AI_PROVIDER') },
+    scanAi: { provider: parseScanAIProvider(env.SCAN_AI_PROVIDER), fireworksApiKey: env.FIREWORKS_API_KEY?.trim() ?? '',
+      timeoutMs: parsePositiveInt(env.FIREWORKS_SCAN_TIMEOUT_MS, 'FIREWORKS_SCAN_TIMEOUT_MS') ?? 60000 },
     mealPlan: { provider: parseMealPlanProvider(env.MEAL_PLAN_PROVIDER), fireworksApiKey: env.FIREWORKS_API_KEY?.trim() ?? '',
       timeoutMs: parsePositiveInt(env.FIREWORKS_MEAL_PLAN_TIMEOUT_MS, 'FIREWORKS_MEAL_PLAN_TIMEOUT_MS') ?? 60000 },
     goalMatchAi: { mode: parseGoalMatchAiMode(env.GOAL_MATCH_AI), google: {
@@ -85,6 +90,12 @@ export function loadAppConfig(env: Env): AppConfig {
     } },
     featureFlags: resolveFeatureFlags(parseFeatureFlagOverrides(readFeatureFlagEnv(env))),
   };
+}
+
+function parseScanAIProvider(value: string | undefined, setting = 'SCAN_AI_PROVIDER'): 'google' | 'fireworks' {
+  const name = value?.trim() || 'google';
+  if (name !== 'google' && name !== 'fireworks') throw new Error(`Unknown ${setting}. Expected google or fireworks`);
+  return name;
 }
 
 function parseMealPlanProvider(value: string | undefined): 'google' | 'fireworks' {

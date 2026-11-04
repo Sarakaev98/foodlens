@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import { AIProviderError, type AIProvider, type ProductImageRole } from '@foodlens/ai';
+import { AIProviderError, type ProductImageRole } from '@foodlens/ai';
 import type { GoalMatch, GoalMatchUserPlan, GoalMatchV4, Product, ProductScanResult } from '@foodlens/core';
 import { goalMatchUnavailable, hasRequiredFactors, limitByProductScore, matchGoal, scoreProduct } from '@foodlens/scoring';
 import type { ProductImageInput } from '@foodlens/ai';
-import { AI_PROVIDER } from '../ai/ai.tokens';
+import { SCAN_AI_PROVIDER, LABEL_SCAN_AI_PROVIDER, type ProductAnalyzer } from './scan-ai-provider.factory';
 import { GoalMatchService } from '../goal-match/goal-match.service';
 import { NutritionTargetsService } from '../nutrition-targets/nutrition-targets.service';
 import { MultiSourceProductLookup, type EnrichedProduct } from '../product-lookup/multi-source-product-lookup';
@@ -45,12 +45,14 @@ export class ScanService {
   private readonly readBarcode: ImageBarcodeReader;
 
   constructor(
-    @Inject(AI_PROVIDER) private readonly ai: AIProvider,
+    @Inject(SCAN_AI_PROVIDER) private readonly ai: ProductAnalyzer,
     private readonly nutritionTargets: NutritionTargetsService,
     @Optional() private readonly goalMatchV4?: GoalMatchService,
     @Optional() @Inject(PRODUCT_LOOKUP) productLookup?: MultiSourceProductLookup | ProductLookupProvider,
     @Optional() @Inject(IMAGE_BARCODE_READER) barcodeReader?: ImageBarcodeReader,
     @Optional() private readonly ingredientsDisplay?: IngredientsDisplayService,
+    // Nest requires this token. Default only preserves direct construction by existing unit fixtures.
+    @Inject(LABEL_SCAN_AI_PROVIDER) private readonly labelAi: ProductAnalyzer = ai,
   ) {
     this.readBarcode = barcodeReader ?? readImageBarcode;
     this.lookups = productLookup instanceof MultiSourceProductLookup ? productLookup : new MultiSourceProductLookup(productLookup ? [productLookup] : []);
@@ -61,6 +63,7 @@ export class ScanService {
     const startedAt = Date.now();
     try {
       const label = options.mode === SCAN_MODE_NUTRITION_LABEL;
+      const analyzer = label ? this.labelAi : this.ai;
       const sentBarcode = label ? null : parseScanBarcode(options.barcode);
       const uploads = toFileList(files);
       const images = label
@@ -113,7 +116,7 @@ export class ScanService {
         uncertainty: 'uncertainty' in goalMatch ? goalMatch.uncertainty : [],
         unavailableReason: goalMatch.unavailableReason,
       }));
-      const summary = { requestId, barcode, images, steps, ai, product, score, needsPhoto, goalMatch, rawGoalMatch, durationMs: () => Date.now() - startedAt };
+      const summary = { requestId, barcode, images, steps, ai, aiProvider: analyzer.name ?? null, aiModel: analyzer.model ?? null, product, score, needsPhoto, goalMatch, rawGoalMatch, durationMs: () => Date.now() - startedAt };
       logScanSummary(this.logger, summary);
       this.logger.log(`nutrition_presence ${JSON.stringify({ requestId, ...nutritionPresence(product, score, goalMatch) })}`);
       logScanFinished(this.logger, summary);
@@ -134,7 +137,7 @@ export class ScanService {
 
   /** Отдельный сценарий таблицы: только это фото, ничего не дополняется из баз. Без таблицы результата нет. */
   private async resolveLabel(images: readonly ProductImageInput[], requestId: string): Promise<ScanFlow> {
-    const product = await this.ai.analyzeProduct({ kind: 'image', images, requestId });
+    const product = await this.labelAi.analyzeProduct({ kind: 'image', images, requestId });
     if (!product.nutrition) throw new ScanError('NUTRITION_TABLE_NOT_FOUND', 422, 'No readable nutrition table in the photo');
     return { product, steps: [], ai: { called: true, reason: 'nutrition_label', images: images.length }, needsPhoto: false };
   }

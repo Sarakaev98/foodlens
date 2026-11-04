@@ -26,6 +26,8 @@ export interface ScanSummary {
   readonly images: readonly { readonly role?: string }[];
   readonly steps: readonly LookupStep[];
   readonly ai: ScanAiCall;
+  readonly aiProvider?: string | null;
+  readonly aiModel?: string | null;
   readonly product: Product;
   readonly score: ProductScore;
   readonly needsPhoto: boolean;
@@ -47,6 +49,12 @@ export function logScanSummary(logger: Logger, summary: ScanSummary): void {
       offHit: hit('open_food_facts'),
       tavilyUsed: steps.some((step) => step.provider === 'web_search' && step.status !== 'not_needed'),
       webHit: hit('web_search'),
+      aiProvider: summary.aiProvider ?? null,
+      aiModel: summary.aiModel ?? null,
+      aiCalled: ai.called,
+      aiReason: ai.reason,
+      aiImages: ai.images,
+      // Legacy aliases describe any vision call; aiProvider identifies the actual transport.
       geminiCalled: ai.called,
       geminiReason: ai.reason,
       geminiImages: ai.images,

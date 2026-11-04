@@ -303,3 +303,34 @@ describe('Google multi-image analyzeProduct (HTTP stubs)',()=>{
     for(const secret of [KEY,part(0),part(1),part(2),'Several images','Role hint'])assert.ok(!text.includes(secret),secret);
   });
 });
+
+
+describe('Gemini Label transport regressions (no network)',()=>{
+  const label={kind:'image' as const,images:[{mimeType:'image/jpeg' as const,base64:DATA,role:'nutrition' as const}]};
+  it('HTTP error is preserved even if error-body cancellation never settles',async()=>{
+    let calls=0;
+    const p=provider((async()=>{calls++;return new Response(new ReadableStream({cancel:()=>new Promise<void>(()=>{})}),{status:403});}) as typeof fetch,{productTimeoutMs:25});
+    await assert.rejects(p.analyzeProduct(label),(e:unknown)=>e instanceof AIProviderError&&e.code==='authentication_failed'&&e.httpStatus===403);
+    assert.equal(calls,1);
+  });
+  it('body timeout and network error stay safe and never retry',async()=>{
+    let calls=0;
+    await fails(()=>provider((async()=>{calls++;return new Response(new ReadableStream({start(){}}));}) as typeof fetch,{productTimeoutMs:15}).analyzeProduct(label),'timeout');
+    assert.equal(calls,1);
+    await fails(()=>provider((async()=>{throw new Error(KEY+DATA);}) as typeof fetch).analyzeProduct(label),'unavailable');
+  });
+  it('late headers/body after timeout cannot log successful extraction or usage',async()=>{
+    for(const phase of ['headers','body']){
+      const logs:unknown[]=[];let release!:(value:any)=>void;
+      const logger={log:(m:string,f:unknown)=>logs.push({m,f}),warn:(m:string,f:unknown)=>logs.push({m,f})};
+      const transport=(async()=>phase==='headers'?new Promise<Response>(resolve=>{release=resolve;}):Object.assign(new Response(),{json:()=>new Promise(resolve=>{release=resolve;})})) as typeof fetch;
+      const p=provider(transport,{productTimeoutMs:15,logger});
+      await fails(()=>p.analyzeProduct(label),'timeout');
+      const before=logs.length;
+      release(phase==='headers'?reply(metaAnalysis()):{candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(metaAnalysis())}]}}]});
+      await new Promise(resolve=>setImmediate(resolve));
+      assert.equal(logs.length,before);assert.ok(!JSON.stringify(logs).includes('gemini_usage'));
+      assert.ok(!JSON.stringify(logs).includes(KEY));assert.ok(!JSON.stringify(logs).includes(DATA));
+    }
+  });
+});
