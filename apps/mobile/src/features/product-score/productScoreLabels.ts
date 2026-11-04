@@ -4,36 +4,36 @@ type ScoredLevel = Exclude<ScoreFactor['level'], 'not_detected'>;
 
 /** Короткие причины оценки по id фактора ("sugars.high"). Текст детерминирован: никакого AI. */
 const REASONS: Readonly<Record<ScoreFactorKind, Partial<Record<ScoredLevel, string>>>> = {
-  energy: { low: 'Низкая калорийность', moderate: 'Умеренная калорийность', high: 'Высокая калорийность' },
-  protein: { low: 'Мало белка', moderate: 'Источник белка', high: 'Много белка' },
-  sugars: { low: 'Мало сахара', moderate: 'Умеренно сахара', high: 'Много сахара' },
-  saturatedFat: { low: 'Мало насыщенных жиров', moderate: 'Умеренно насыщенных жиров', high: 'Много насыщенных жиров' },
-  fiber: { low: 'Мало клетчатки', moderate: 'Источник клетчатки', high: 'Много клетчатки' },
-  salt: { low: 'Мало соли', moderate: 'Умеренно соли', high: 'Много соли' },
-  additives: { none: 'Без пищевых добавок', some: 'Есть пищевые добавки', many: 'Много пищевых добавок' },
-  processing: { none: 'Минимальная обработка', some: 'Продукт с обработкой', many: 'Ультрапереработанный продукт' },
+  energy: { low: 'Low in calories', moderate: 'Moderate calories', high: 'High in calories' },
+  protein: { low: 'Low in protein', moderate: 'Source of protein', high: 'High in protein' },
+  sugars: { low: 'Low in sugar', moderate: 'Moderate sugar', high: 'High in sugar' },
+  saturatedFat: { low: 'Low in saturated fat', moderate: 'Moderate saturated fat', high: 'High in saturated fat' },
+  fiber: { low: 'Low in fiber', moderate: 'Source of fiber', high: 'High in fiber' },
+  salt: { low: 'Low in salt', moderate: 'Moderate salt', high: 'High in salt' },
+  additives: { none: 'No additives', some: 'Contains additives', many: 'Many additives' },
+  processing: { none: 'Minimally processed', some: 'Processed product', many: 'Ultra-processed product' },
 };
 
-/** Название фактора для строки «Не учтено: …». */
+/** Название фактора для строки «Not counted: …». */
 export const FACTOR_NAMES: Readonly<Record<ScoreFactorKind, string>> = {
-  energy: 'калорийность',
-  protein: 'белок',
-  sugars: 'сахара',
-  saturatedFat: 'насыщенные жиры',
-  fiber: 'клетчатка',
-  salt: 'соль',
-  additives: 'добавки',
-  processing: 'обработка',
+  energy: 'calories',
+  protein: 'protein',
+  sugars: 'sugars',
+  saturatedFat: 'saturated fat',
+  fiber: 'fiber',
+  salt: 'salt',
+  additives: 'additives',
+  processing: 'processing',
 };
 
 const UNITS: Readonly<Record<ScoreFactorKind, string>> = {
-  energy: 'ккал',
-  protein: 'г',
-  sugars: 'г',
-  saturatedFat: 'г',
-  fiber: 'г',
-  salt: 'г',
-  additives: 'шт.',
+  energy: 'kcal',
+  protein: 'g',
+  sugars: 'g',
+  saturatedFat: 'g',
+  fiber: 'g',
+  salt: 'g',
+  additives: '',
   processing: '',
 };
 
@@ -50,43 +50,43 @@ export function isPreliminaryScore(score: ProductScore): boolean {
 export function partialScoreNote(score: ProductScore): string | null {
   if (score.missingFactors.length === 0) return null;
   const names = score.missingFactors.map((kind) => FACTOR_NAMES[kind]).join(', ');
-  return isPreliminaryScore(score) ? `Предварительная оценка: нет данных (${names}), поэтому она приблизительная.` : `Не учтено: ${names}.`;
+  return isPreliminaryScore(score) ? `Preliminary score: no data on ${names}, so it’s approximate.` : `Not counted: ${names}.`;
 }
 
 export const UNSCORED_MESSAGES: Readonly<Record<ProductScoreUnscoredReason, string>> = {
-  no_nutrition: 'На фото нет таблицы пищевой ценности. Сфотографируйте её, чтобы получить оценку.',
-  unknown_basis: 'Не видно, к какому количеству относятся значения на этикетке, поэтому сравнить их нельзя.',
-  too_few_factors: 'Известно слишком мало значений пищевой ценности. Сфотографируйте таблицу на упаковке.',
+  no_nutrition: 'No nutrition label in the photo. Take a photo of it to get a score.',
+  unknown_basis: 'The label doesn’t show what amount the values refer to, so they can’t be compared.',
+  too_few_factors: 'Too few nutrition values are known. Take a photo of the nutrition label on the package.',
 };
 
 /** Текст для оценки без значения. */
 export function unscoredMessage(score: ProductScore): string {
-  const prefix = 'Недостаточно данных для оценки.';
+  const prefix = 'Not enough data to score.';
   return score.unscoredReason ? `${prefix} ${UNSCORED_MESSAGES[score.unscoredReason]}` : prefix;
 }
 
 export function formatScore(value: number): string {
-  return value.toFixed(1).replace('.', ',');
+  return value.toFixed(1);
 }
 
 export function factorReason(factor: ScoreFactor): string {
   return (factor.level !== 'not_detected' && REASONS[factor.kind][factor.level]) || FACTOR_NAMES[factor.kind];
 }
 
-/** «3,6 г на 100 г», для добавок «2 шт.». */
+/** «3.6 g per 100 g», для добавок «2 additives». */
 export function factorDetail(factor: ScoreFactor, per: 'g' | 'ml'): string | null {
   if (factor.value === null) return null;
-  const value = String(factor.value).replace('.', ',');
+  const value = String(factor.value);
   if (factor.kind === 'processing') return null;
-  if (factor.kind === 'additives') return factor.value === 0 ? null : `${value} ${UNITS.additives}`;
-  return `${value} ${UNITS[factor.kind]} на 100 ${per === 'ml' ? 'мл' : 'г'}`;
+  if (factor.kind === 'additives') return factor.value === 0 ? null : `${value} ${factor.value === 1 ? 'additive' : 'additives'}`;
+  return `${value} ${UNITS[factor.kind]} per 100 ${per === 'ml' ? 'ml' : 'g'}`;
 }
 
 export function scoreVerdict(value: number): string {
-  if (value >= 9) return 'Отличный выбор';
-  if (value >= 7) return 'Хороший выбор';
-  if (value >= 5) return 'Средне';
-  if (value >= 3) return 'Лучше нечасто';
-  if (value >= 1) return 'Слабый состав';
-  return 'Крайне слабый состав';
+  if (value >= 9) return 'Excellent choice';
+  if (value >= 7) return 'Good choice';
+  if (value >= 5) return 'Average';
+  if (value >= 3) return 'Best in moderation';
+  if (value >= 1) return 'Poor nutrition';
+  return 'Very poor nutrition';
 }

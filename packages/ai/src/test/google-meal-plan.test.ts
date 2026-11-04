@@ -10,7 +10,7 @@ const targets: NutritionTargets = {
   calculation: { version: 'nutrition-v1', bmrKcal: 1500, tdeeKcal: 2350, goalAdjustmentPercent: -15, macroSplit: { proteinPercent: 30, fatPercent: 30, carbsPercent: 40 } },
 };
 const input: GenerateMealPlanInput = {
-  goal: 'lose_weight', targets, startDate: '2026-11-02', days: 1, locale: 'ru',
+  goal: 'lose_weight', targets, startDate: '2026-11-02', days: 1, locale: 'en',
   preferences: { dietaryPreferences: ['vegan'], allergens: ['soy'], avoidedIngredients: ['кинза'] },
 };
 const meal = { slot: 'breakfast', name: 'Каша', description: 'Завтрак', ingredients: ['рис, 80 г'], portion: '1 тарелка', calories_kcal: 500, protein_g: 20.4, carbs_g: 80.2, fat_g: 10 };
@@ -47,7 +47,7 @@ describe('GoogleMealPlanProvider', () => {
 
   it('недавние блюда и подсказка разнообразия идут в запрос, prompt запрещает повторы и не подталкивает к продукту', async () => {
     const requests: RequestInit[] = [];
-    const recentMealNames = ['Курица с рисом', 'Овсянка с ягодами'];
+    const recentMealNames = ['Chicken with Rice', 'Oatmeal with Berries'];
     await provider(() => Response.json(envelope({ meals: [meal] })), requests).generate({ ...input, recentMealNames, variation: { style: 'Mediterranean', emphasis: 'legumes' } });
     const body = JSON.parse(String(requests[0]!.body));
     const user = JSON.parse(body.contents[0].parts[0].text);
@@ -58,6 +58,8 @@ describe('GoogleMealPlanProvider', () => {
     assert.match(system, /near-identical variant/);
     assert.match(system, /different primary protein sources/);
     assert.doesNotMatch(system, /гречка/);
+    assert.match(system, /Write name, description, ingredients and portion in natural English/);
+    assert.doesNotMatch(system, /[\u0400-\u04ff]/);
     const plain: RequestInit[] = [];
     await provider(() => Response.json(envelope({ meals: [meal] })), plain).generate(input);
     const first = JSON.parse(JSON.parse(String(plain[0]!.body)).contents[0].parts[0].text);

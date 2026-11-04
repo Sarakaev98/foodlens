@@ -68,10 +68,10 @@ export const COLA_HALLUCINATION: GoalMatchAiOutput = {
   version: 'goal-match-ai-v1', band: 'excellent_fit', score: 9, confidence: 'high',
   dimensions: { nutrientDensity: 'positive', processing: 'positive', sugar: 'positive', fatQuality: 'strong_positive', sodium: 'strong_positive', portion: 'positive' },
   factors: [
-    { code: 'low_salt', direction: 'positive', impact: 'high', facts: ['product.per100.saltG'], text: 'Соли нет.' },
-    { code: 'fits_portion', direction: 'positive', impact: 'medium', facts: ['facts.share.dailyKcalPct'], text: 'Порция умещается в дневной план.' },
+    { code: 'low_salt', direction: 'positive', impact: 'high', facts: ['product.per100.saltG'], text: 'No salt.' },
+    { code: 'fits_portion', direction: 'positive', impact: 'medium', facts: ['facts.share.dailyKcalPct'], text: 'The serving fits your daily plan.' },
   ],
-  summary: 'Отличный выбор для здорового питания.', warnings: [],
+  summary: 'An excellent choice for healthy eating.', warnings: [],
 };
 
 /** Умеренное расхождение: чипсы на 6.5 при v3 4.2 (коридор до 5.7). */
@@ -79,10 +79,10 @@ export const CHIPS_TOO_HIGH: GoalMatchAiOutput = {
   version: 'goal-match-ai-v1', band: 'mixed_fit', score: 6.5, confidence: 'high',
   dimensions: { nutrientDensity: 'neutral', processing: 'strong_negative', sugar: 'positive', fatQuality: 'neutral', sodium: 'negative', portion: 'positive' },
   factors: [
-    { code: 'ultra_processed', direction: 'negative', impact: 'medium', facts: ['semantics.processing.value'], text: 'Ультрапереработанный снек.' },
-    { code: 'fits_portion', direction: 'positive', impact: 'low', facts: ['facts.share.dailyKcalPct'], text: 'Порция небольшая.' },
+    { code: 'ultra_processed', direction: 'negative', impact: 'medium', facts: ['semantics.processing.value'], text: 'Ultra-processed snack.' },
+    { code: 'fits_portion', direction: 'positive', impact: 'low', facts: ['facts.share.dailyKcalPct'], text: 'Small serving.' },
   ],
-  summary: 'Можно изредка: порция небольшая, но продукт ультрапереработан.', warnings: [],
+  summary: 'Fine now and then: the serving is small, but the product is ultra-processed.', warnings: [],
 };
 
 /** Не проходит validator: band не совпадает с оценкой. */
@@ -93,10 +93,10 @@ export const CHIPS_PROTEIN_CLAIM: GoalMatchAiOutput = {
   version: 'goal-match-ai-v1', band: 'poor_fit', score: 3, confidence: 'high',
   dimensions: { nutrientDensity: 'negative', processing: 'strong_negative', sugar: 'neutral', fatQuality: 'negative', sodium: 'strong_negative', portion: 'neutral' },
   factors: [
-    { code: 'ultra_processed', direction: 'negative', impact: 'high', facts: ['semantics.processing.value'], text: 'Ультрапереработанный снек.' },
-    { code: 'high_protein', direction: 'positive', impact: 'medium', facts: ['facts.perServing.proteinG'], text: 'Много белка.' },
+    { code: 'ultra_processed', direction: 'negative', impact: 'high', facts: ['semantics.processing.value'], text: 'Ultra-processed snack.' },
+    { code: 'high_protein', direction: 'positive', impact: 'medium', facts: ['facts.perServing.proteinG'], text: 'High in protein.' },
   ],
-  summary: 'Снек с белком, но ультрапереработанный.', warnings: [],
+  summary: 'A snack with protein, but ultra-processed.', warnings: [],
 };
 
 /** Провайдер-шпион поверх любого AIProvider: считает вызовы evaluateGoalMatch и запоминает входы. */

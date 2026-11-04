@@ -1,3 +1,4 @@
+import { INGREDIENTS_TRANSLATION_PROMPT, VERTEX_INGREDIENTS_TRANSLATION_SCHEMA, readIngredientTranslations } from '../../ingredients/ingredients-translation';
 import { SILENT_AI_LOGGER, type AILogger } from '../../ai-logger';
 import { AIProviderError, type AIProviderErrorCode } from '../../errors';
 import { findSchemaViolation, nullable, objectSchema, type JsonSchema } from '../../json-schema/json-schema';
@@ -254,8 +255,31 @@ export class GoogleNutritionSearch {
     if (findSchemaViolation(INGREDIENTS_SCHEMA, output) !== null) throw new AIProviderError('google', 'invalid_response', message('invalid_response'));
     return (output as { ingredients: string | null }).ingredients;
   }
+  /** UI translation only: reuses this existing configured transport/deadline, without Search. */
+  async translateIngredients(texts: readonly string[]): Promise<readonly string[]> {
+    if (texts.length === 0) return [];
+    if (texts.length > 256 || texts.reduce((sum, text) => sum + text.length, 0) > MAX_EXTRACTION_TEXT_CHARS) {
+      throw new AIProviderError('google', 'unsupported_input', message('unsupported_input'));
+    }
+    const candidate = await this.call('ingredients_translation', {
+      systemInstruction: { parts: [{ text: INGREDIENTS_TRANSLATION_PROMPT }] },
+      contents: [{ role: 'user', parts: [{ text: JSON.stringify({ segments: texts.map((text, id) => ({ id, text })) }) }] }],
+      generationConfig: {
+        ...(this.#model.startsWith('gemini-3.5-flash-lite') ? { thinkingConfig: { thinkingLevel: 'MINIMAL' } } : { temperature: 0 }),
+        responseMimeType: 'application/json', responseSchema: VERTEX_INGREDIENTS_TRANSLATION_SCHEMA, maxOutputTokens: 4096,
+      },
+    });
+    const content = record(candidate.content) ? candidate.content : null;
+    const parts = content && Array.isArray(content.parts) ? content.parts : [];
+    const text = parts.filter(part => record(part) && typeof part.text === 'string' && part.thought !== true).map(part => (part as Record<string, unknown>).text).join('');
+    let value: unknown;
+    try { value = JSON.parse(text); } catch { throw new AIProviderError('google', 'invalid_response', message('invalid_response')); }
+    const result = readIngredientTranslations(value, texts.length);
+    if (!result) throw new AIProviderError('google', 'invalid_response', message('invalid_response'));
+    return result;
+  }
   private async call(
-    type: 'nutrition_search' | 'nutrition_extraction' | 'ingredients_extraction',
+    type: 'nutrition_search' | 'nutrition_extraction' | 'ingredients_extraction' | 'ingredients_translation',
     body: Record<string, unknown>,
   ): Promise<Record<string, unknown>> {
     if (!this.#key || !this.#project) throw new AIProviderError('google', 'not_configured', message('not_configured'));
@@ -278,7 +302,7 @@ export class GoogleNutritionSearch {
     }
   }
   private async request(
-    type: 'nutrition_search' | 'nutrition_extraction' | 'ingredients_extraction',
+    type: 'nutrition_search' | 'nutrition_extraction' | 'ingredients_extraction' | 'ingredients_translation',
     body: Record<string, unknown>,
     signal: AbortSignal,
   ): Promise<Record<string, unknown>> {

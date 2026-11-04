@@ -12,9 +12,9 @@ export const GOAL_MATCH_OUTPUT_SCHEMA: JsonSchema = objectSchema({
   factors: { type:'array',items:objectSchema({
     code:enumSchema(GOAL_MATCH_AI_FACTOR_CODES), direction:enumSchema(['positive','negative']),
     impact:enumSchema(['high','medium','low']), facts:{type:'array',items:{type:'string'}},
-    text:{type:'string',description:'Russian, at most 90 characters; only supported facts'},
+    text:{type:'string',description:'English, at most 90 characters; only supported facts'},
   }) },
-  summary:{type:'string',description:'One Russian sentence, at most 140 characters'},
+  summary:{type:'string',description:'One English sentence, at most 140 characters'},
   warnings:{type:'array',items:enumSchema(GOAL_MATCH_AI_WARNINGS)},
 });
 

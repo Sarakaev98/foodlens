@@ -27,9 +27,9 @@ function RootNavigator() {
   if (profile.status === 'error') {
     return (
       <CenteredMessage
-        title="Не удалось подключиться к серверу"
-        description={`Проверьте, что API запущен: ${API_URL}`}
-        actionLabel="Повторить"
+        title="Can’t Connect to Server"
+        description={`Make sure the API is running: ${API_URL}`}
+        actionLabel="Try Again"
         onAction={profile.reload}
       />
     );
@@ -42,7 +42,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
           name="profile-edit"
-          options={{ headerShown: true, title: 'Изменить профиль', headerBackTitle: 'Назад' }}
+          options={{ headerShown: true, title: 'Edit Profile', headerBackTitle: 'Back' }}
         />
       </Stack.Protected>
       <Stack.Protected guard={!hasProfile}>

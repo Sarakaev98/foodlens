@@ -19,7 +19,7 @@ export function OnboardingStepLayout({
   stepNumber,
   totalSteps,
   children,
-  actionLabel = 'Далее',
+  actionLabel = 'Next',
   onAction,
   loading,
   error,
@@ -36,7 +36,7 @@ export function OnboardingStepLayout({
     >
       <View style={styles.progressRow}>
         <Text style={typography.caption}>
-          Шаг {stepNumber} из {totalSteps}
+          Step {stepNumber} of {totalSteps}
         </Text>
         <View style={styles.track}>
           <View style={[styles.fill, { width: `${(stepNumber / totalSteps) * 100}%` }]} />

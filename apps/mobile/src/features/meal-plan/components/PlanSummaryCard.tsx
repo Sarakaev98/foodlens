@@ -9,28 +9,28 @@ interface PlanSummaryCardProps {
 }
 
 const MACROS: readonly { readonly key: 'proteinG' | 'carbsG' | 'fatG'; readonly label: string }[] = [
-  { key: 'proteinG', label: 'Белки' },
-  { key: 'carbsG', label: 'Углеводы' },
-  { key: 'fatG', label: 'Жиры' },
+  { key: 'proteinG', label: 'Protein' },
+  { key: 'carbsG', label: 'Carbs' },
+  { key: 'fatG', label: 'Fat' },
 ];
 
 export function PlanSummaryCard({ targets, totals }: PlanSummaryCardProps) {
   return (
     <View style={styles.card}>
-      <Text style={typography.caption}>Цель на день</Text>
+      <Text style={typography.caption}>Daily Goal</Text>
       <View style={styles.calories}>
         <Text style={styles.kcal}>{Math.round(targets.caloriesKcal)}</Text>
-        <Text style={styles.unit}>ккал</Text>
+        <Text style={styles.unit}>kcal</Text>
       </View>
       <View style={styles.macros}>
         {MACROS.map(({ key, label }) => (
           <View key={key} style={styles.macro}>
             <Text style={typography.caption}>{label}</Text>
-            <Text style={styles.macroValue}>{Math.round(targets[key])} г</Text>
+            <Text style={styles.macroValue}>{Math.round(targets[key])} g</Text>
           </View>
         ))}
       </View>
-      {totals ? <Text style={typography.caption}>В рационе: {totals.caloriesKcal} ккал · Б {totals.proteinG} · У {totals.carbsG} · Ж {totals.fatG}</Text> : null}
+      {totals ? <Text style={typography.caption}>In plan: {totals.caloriesKcal} kcal · P {totals.proteinG} · C {totals.carbsG} · F {totals.fatG}</Text> : null}
     </View>
   );
 }

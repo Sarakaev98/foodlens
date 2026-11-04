@@ -47,7 +47,7 @@ describe('gemini_usage logging (stubbed HTTP, no network)',()=>{
 
   it('goal_match: logged also when the response is later rejected, and "missing" without usageMetadata',async()=>{
     const output=MOCK_GOAL_MATCH_RECORDINGS.find(x=>x.id==='greek_yogurt')!.responses[0];
-    const input={version:'goal-match-ai-input-v1',goal:'eat_healthier',locale:'ru',product:{name:'Greek yogurt',per100:{kcal:66}}} as GoalMatchAiInput;
+    const input={version:'goal-match-ai-input-v1',goal:'eat_healthier',locale:'en',product:{name:'Greek yogurt',per100:{kcal:66}}} as GoalMatchAiInput;
     const {lines,logger}=recorder();
     const replies=[envelope(output),envelope({bad:true}),envelope(output,null)];
     const provider=new GoogleGoalMatchProvider({apiKey:KEY,project:'foodlens-513112',logger,

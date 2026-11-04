@@ -16,15 +16,15 @@ function joinOrDash(values: readonly string[]): string {
 /** Сводка профиля только для чтения (Profile, шаг Review в onboarding). */
 export function ProfileSummary({ profile }: { readonly profile: UserNutritionProfileInput }) {
   const rows: [string, string][] = [
-    ['Цель', GOAL_LABELS[profile.goal]],
-    ['Возраст', `${profile.age} лет`],
-    ['Пол', SEX_LABELS[profile.sex]],
-    ['Рост', `${profile.heightCm} см`],
-    ['Вес', `${profile.weightKg} кг`],
-    ['Активность', ACTIVITY_LEVEL_LABELS[profile.activityLevel].label],
-    ['Тип питания', joinOrDash(normalizeDietaryPreferences(profile.dietaryPreferences).map((value) => DIETARY_PREFERENCE_LABELS[value]))],
-    ['Аллергены', joinOrDash(profile.allergens.map((value) => ALLERGEN_LABELS[value]))],
-    ['Не хочу в составе', joinOrDash(profile.avoidedIngredients)],
+    ['Goal', GOAL_LABELS[profile.goal]],
+    ['Age', `${profile.age} years`],
+    ['Sex', SEX_LABELS[profile.sex]],
+    ['Height', `${profile.heightCm} cm`],
+    ['Weight', `${profile.weightKg} kg`],
+    ['Activity', ACTIVITY_LEVEL_LABELS[profile.activityLevel].label],
+    ['Diet', joinOrDash(normalizeDietaryPreferences(profile.dietaryPreferences).map((value) => DIETARY_PREFERENCE_LABELS[value]))],
+    ['Allergens', joinOrDash(profile.allergens.map((value) => ALLERGEN_LABELS[value]))],
+    ['Avoid in Ingredients', joinOrDash(profile.avoidedIngredients)],
   ];
 
   return (

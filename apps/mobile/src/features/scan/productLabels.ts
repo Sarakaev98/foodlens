@@ -1,54 +1,54 @@
 import { NUTRIENT_KEYS, type AllergenCode, type ExternalProvenance, type NutritionBasis, type Product, type ProductCategory } from '@foodlens/core';
 
 export const CATEGORY_LABELS: Readonly<Record<ProductCategory, string>> = {
-  beverage: 'Напиток',
-  water: 'Вода',
-  juice: 'Сок',
-  dairy: 'Молочный продукт',
-  yogurt: 'Йогурт',
-  cheese: 'Сыр',
-  meat: 'Мясо',
-  fish: 'Рыба',
-  nuts: 'Орехи',
-  snack: 'Снек',
-  chocolate: 'Шоколад',
-  sweets: 'Сладости',
-  bakery: 'Выпечка',
-  bread: 'Хлеб',
-  cereal: 'Злаки и хлопья',
-  sauce: 'Соус',
-  ready_meal: 'Готовое блюдо',
-  protein_product: 'Протеиновый продукт',
-  fruit: 'Фрукты',
-  vegetable: 'Овощи',
-  other: 'Другое',
+  beverage: 'Beverage',
+  water: 'Water',
+  juice: 'Juice',
+  dairy: 'Dairy',
+  yogurt: 'Yogurt',
+  cheese: 'Cheese',
+  meat: 'Meat',
+  fish: 'Fish',
+  nuts: 'Nuts',
+  snack: 'Snack',
+  chocolate: 'Chocolate',
+  sweets: 'Sweets',
+  bakery: 'Bakery',
+  bread: 'Bread',
+  cereal: 'Cereals & Grains',
+  sauce: 'Sauce',
+  ready_meal: 'Ready Meal',
+  protein_product: 'Protein Product',
+  fruit: 'Fruit',
+  vegetable: 'Vegetables',
+  other: 'Other',
 };
 
 export const ALLERGEN_LABELS: Readonly<Record<AllergenCode, string>> = {
-  gluten: 'Глютен',
-  crustaceans: 'Ракообразные',
-  eggs: 'Яйца',
-  fish: 'Рыба',
-  peanuts: 'Арахис',
-  soy: 'Соя',
-  milk: 'Молоко',
-  tree_nuts: 'Орехи',
-  celery: 'Сельдерей',
-  mustard: 'Горчица',
-  sesame: 'Кунжут',
-  sulphites: 'Сульфиты',
-  lupin: 'Люпин',
-  molluscs: 'Моллюски',
+  gluten: 'Gluten',
+  crustaceans: 'Crustaceans',
+  eggs: 'Eggs',
+  fish: 'Fish',
+  peanuts: 'Peanuts',
+  soy: 'Soy',
+  milk: 'Milk',
+  tree_nuts: 'Tree nuts',
+  celery: 'Celery',
+  mustard: 'Mustard',
+  sesame: 'Sesame',
+  sulphites: 'Sulphites',
+  lupin: 'Lupin',
+  molluscs: 'Molluscs',
 };
 
 export const BASIS_LABELS: Readonly<Record<NutritionBasis, string>> = {
-  per_100g: 'на 100 г',
-  per_100ml: 'на 100 мл',
-  per_serving: 'на порцию',
-  unknown: 'основа не указана',
+  per_100g: 'per 100 g',
+  per_100ml: 'per 100 ml',
+  per_serving: 'per serving',
+  unknown: 'basis not specified',
 };
 
-export const NOT_DETECTED_LABEL = 'Не обнаружено';
+export const NOT_DETECTED_LABEL = 'Not detected';
 
 function usesSource(product: Product, source: ExternalProvenance): boolean {
   const fields = [product.name, product.brand, product.ingredients, product.allergens, product.additives];
@@ -66,13 +66,13 @@ export const usesOpenFoodFacts = (product: Product): boolean => usesSource(produ
 export const usesFatSecret = (product: Product): boolean => usesSource(product, 'fatsecret');
 
 /** Подпись к тексту с упаковки на другом языке: его показываем как есть и не переводим. */
-export const ORIGINAL_TEXT_LABEL = 'как на упаковке, без перевода';
+export const ORIGINAL_TEXT_LABEL = 'as printed on the package, not translated';
 
-/** Больше букв не кириллицей, чем кириллицей. Диапазоны вместо \p{L}: так надёжнее в Hermes. */
+/** Больше букв не латиницей, чем латиницей: интерфейс на английском. Диапазоны вместо \p{L}: так надёжнее в Hermes. */
 export function isForeignText(text: string): boolean {
-  const cyrillic = text.match(/[\u0400-\u04FF]/g)?.length ?? 0;
-  const other = text.match(/[A-Za-z\u00C0-\u024F\u0370-\u03FF\u0590-\u1FFF\u3040-\uD7FF]/g)?.length ?? 0;
-  return other > cyrillic;
+  const latin = text.match(/[A-Za-z\u00C0-\u024F]/g)?.length ?? 0;
+  const other = text.match(/[\u0370-\u03FF\u0400-\u04FF\u0590-\u1FFF\u3040-\uD7FF]/g)?.length ?? 0;
+  return other > latin;
 }
 
 /** E-номер понятен на любом языке: название на другом языке рядом с ним только мешает. */

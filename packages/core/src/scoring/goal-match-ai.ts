@@ -21,7 +21,7 @@ export interface GoalMatchAiPer100 {
   readonly fiberG: number | null; readonly saltG: number;
 }
 export interface GoalMatchAiInput {
-  readonly version: 'goal-match-ai-input-v1'; readonly goal: 'eat_healthier'; readonly locale: 'ru';
+  readonly version: 'goal-match-ai-input-v1'; readonly goal: 'eat_healthier'; readonly locale: 'en';
   readonly product: {
     readonly name: string | null; readonly brand: string | null; readonly category: string | null;
     readonly ingredients: readonly string[] | null; readonly ingredientsStatus: 'observed' | 'unknown';

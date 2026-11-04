@@ -5,9 +5,9 @@ import { Button, colors, spacing, typography } from '@/shared/ui';
 import type { ScanMode, ScanPhoto } from '../types/scan.types';
 
 export const ANALYZING_STAGES: Readonly<Record<ScanMode, readonly string[]>> = {
-  product: ['Распознаём продукт', 'Ищем данные', 'Анализируем состав', 'Рассчитываем оценку'],
-  label: ['Распознаём таблицу', 'Анализируем состав', 'Рассчитываем оценку'],
-  meal: ['Распознаём блюдо', 'Оцениваем порции', 'Считаем калории'],
+  product: ['Recognizing product', 'Looking up data', 'Analyzing ingredients', 'Calculating score'],
+  label: ['Reading nutrition label', 'Analyzing ingredients', 'Calculating score'],
+  meal: ['Recognizing meal', 'Estimating portions', 'Counting calories'],
 };
 
 /** Сервер отвечает одним ответом, поэтому этапы идут по времени; последний ждёт результата. */
@@ -44,7 +44,7 @@ export function AnalyzingView({ photo, mode, onCancel }: AnalyzingViewProps) {
           </View>
         ))}
       </View>
-      <Button label="Отменить" variant="secondary" onPress={onCancel} />
+      <Button label="Cancel" variant="secondary" onPress={onCancel} />
     </SafeAreaView>
   );
 }

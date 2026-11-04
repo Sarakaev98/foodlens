@@ -60,19 +60,19 @@ function product(missing = [], overrides = {}) {
     confidence: {overall: 'medium', identity: 'high', nutrition: 'medium', ingredients: null}};
 }
 const COMBINATIONS = [
-  [['sugars'], 'сахарах'],
-  [['saturatedFat'], 'насыщенных жирах'],
-  [['salt'], 'соли'],
-  [['sugars', 'saturatedFat'], 'сахарах и насыщенных жирах'],
-  [['sugars', 'salt'], 'сахарах и соли'],
-  [['saturatedFat', 'salt'], 'насыщенных жирах и соли'],
-  [['sugars', 'saturatedFat', 'salt'], 'сахарах, насыщенных жирах и соли'],
+  [['sugars'], 'sugars'],
+  [['saturatedFat'], 'saturated fat'],
+  [['salt'], 'salt'],
+  [['sugars', 'saturatedFat'], 'sugars and saturated fat'],
+  [['sugars', 'salt'], 'sugars and salt'],
+  [['saturatedFat', 'salt'], 'saturated fat and salt'],
+  [['sugars', 'saturatedFat', 'salt'], 'sugars, saturated fat and salt'],
 ];
 
 describe('missing nutrition messages', () => {
   it('both cards name exactly the missing fields, in the same words', () => {
     for (const [missing, fields] of COMBINATIONS) {
-      const expected = `Для персональной оценки не хватает данных о ${fields}.`;
+      const expected = `Not enough data on ${fields} for a personal rating.`;
       const item = product(missing), score = scoreProduct(item), goalMatch = matchGoal(item, plan);
       assert.equal(typeof score.value, 'number', 'Product Score survives missing nutrients');
       assert.equal(goalMatch.value, null);
@@ -80,41 +80,41 @@ describe('missing nutrition messages', () => {
       assert.equal(goalLabels.unavailableMessage(goalMatch, item), expected);
       assert.ok(text(GoalMatchCard({goalMatch, product: item})).includes(expected));
       for (const kind of missing) assert.ok(scoreLabels.partialScoreNote(score).includes(scoreLabels.FACTOR_NAMES[kind]), kind);
-      assert.ok(text(ProductScoreCard({score, per: 'g'})).includes(missing.length >= 2 ? 'Предварительная оценка' : 'Не учтено'));
+      assert.ok(text(ProductScoreCard({score, per: 'g'})).includes(missing.length >= 2 ? 'Preliminary score' : 'Not counted'));
     }
   });
   it('the partial note lists only what is missing and the list follows the server rule', () => {
     assert.deepEqual(COMBINATIONS.at(-1)[0], [...REQUIRED_FACTORS]);
     const message = scoreLabels.partialScoreNote(scoreProduct(product(['sugars'])));
-    assert.doesNotMatch(message, /насыщенные|соль/);
+    assert.doesNotMatch(message, /saturated|salt/);
   });
   it('fields outside the rule are not listed and a complete label still scores', () => {
     const item = product([], {fiberG: NOT_DETECTED, proteinG: NOT_DETECTED});
     assert.notEqual(scoreProduct(item).value, null);
     assert.doesNotMatch(goalLabels.unavailableMessage(matchGoal(product(['salt'], {proteinG: NOT_DETECTED}), plan),
-      product(['salt'], {proteinG: NOT_DETECTED})), /белок/);
+      product(['salt'], {proteinG: NOT_DETECTED})), /protein/);
   });
   it('low confidence never shows a confident verdict', () => {
     const score = scoreProduct(product(['sugars', 'saturatedFat', 'salt']));
     assert.equal(score.confidence, 'low');
     const card = text(ProductScoreCard({score, per: 'g'}));
-    assert.ok(card.includes('Предварительно'));
-    assert.ok(card.includes('Данных недостаточно для надёжной оценки'));
-    assert.doesNotMatch(card, /Отличный выбор|Хороший выбор/);
+    assert.ok(card.includes('Preliminary'));
+    assert.ok(card.includes('Not enough data for a reliable score'));
+    assert.doesNotMatch(card, /Excellent choice|Good choice/);
   });
   it('other reasons keep their own messages', () => {
     const noTable = {...product(), nutrition: null};
     assert.equal(scoreLabels.unscoredMessage(scoreProduct(noTable)),
-      `Недостаточно данных для оценки. ${scoreLabels.UNSCORED_MESSAGES.no_nutrition}`);
+      `Not enough data to score. ${scoreLabels.UNSCORED_MESSAGES.no_nutrition}`);
     const unknown = product([], {basis: 'unknown'});
     assert.equal(scoreLabels.unscoredMessage(scoreProduct(unknown)),
-      `Недостаточно данных для оценки. ${scoreLabels.UNSCORED_MESSAGES.unknown_basis}`);
+      `Not enough data to score. ${scoreLabels.UNSCORED_MESSAGES.unknown_basis}`);
     assert.equal(goalLabels.unavailableMessage(matchGoal(unknown, plan), unknown),
-      'Недостаточно данных для оценки: не удалось определить основу пищевой ценности.');
+      'Not enough data to rate: couldn’t tell what amount the nutrition values refer to.');
   });
   it('too_few_factors without a usable factor list falls back without naming fields', () => {
     const message = scoreLabels.unscoredMessage({value: null, unscoredReason: 'too_few_factors', factors: []});
-    assert.equal(message, `Недостаточно данных для оценки. ${scoreLabels.UNSCORED_MESSAGES.too_few_factors}`);
-    assert.doesNotMatch(message, /сахара|соль/);
+    assert.equal(message, `Not enough data to score. ${scoreLabels.UNSCORED_MESSAGES.too_few_factors}`);
+    assert.doesNotMatch(message, /sugars|salt/);
   });
 });

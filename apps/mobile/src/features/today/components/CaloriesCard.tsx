@@ -12,10 +12,10 @@ export function CaloriesCard({ caloriesKcal, consumedKcal }: CaloriesCardProps) 
   if (consumedKcal === undefined) {
     return (
       <View style={styles.card}>
-        <Text style={typography.caption}>Дневная цель</Text>
+        <Text style={typography.caption}>Daily Goal</Text>
         <View style={styles.valueRow}>
           <Text style={styles.value}>{formatInteger(caloriesKcal)}</Text>
-          <Text style={styles.unit}>ккал</Text>
+          <Text style={styles.unit}>kcal</Text>
         </View>
       </View>
     );
@@ -23,10 +23,10 @@ export function CaloriesCard({ caloriesKcal, consumedKcal }: CaloriesCardProps) 
   const share = caloriesKcal > 0 ? Math.min(1, consumedKcal / caloriesKcal) : 0;
   return (
     <View style={styles.card}>
-      <Text style={typography.caption}>Съедено сегодня</Text>
+      <Text style={typography.caption}>Eaten Today</Text>
       <View style={styles.valueRow}>
         <Text style={styles.value}>{formatInteger(consumedKcal)}</Text>
-        <Text style={styles.unit}>из {formatInteger(caloriesKcal)} ккал</Text>
+        <Text style={styles.unit}>of {formatInteger(caloriesKcal)} kcal</Text>
       </View>
       <View style={styles.track} accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: caloriesKcal, now: consumedKcal }}>
         <View style={[styles.fill, { width: `${Math.round(share * 100)}%` }]} />

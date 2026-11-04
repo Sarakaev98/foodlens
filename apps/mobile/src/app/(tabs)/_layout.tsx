@@ -8,9 +8,9 @@ import { colors } from '@/shared/ui';
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 function tabIcon(name: IconName): BottomTabNavigationOptions['tabBarIcon'] {
-  return ({ focused, size }) => (
-    <Ionicons name={name} size={size} color={focused ? colors.accent : colors.inactive} />
-  );
+  return function TabIcon({ focused, size }) {
+    return <Ionicons name={name} size={size} color={focused ? colors.accent : colors.inactive} />;
+  };
 }
 
 export default function TabsLayout() {
@@ -25,12 +25,12 @@ export default function TabsLayout() {
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
       }}
     >
-      <Tabs.Screen name="index" options={{ title: 'Сегодня', tabBarIcon: tabIcon('today-outline') }} />
-      <Tabs.Screen name="scan" options={{ title: 'Скан', tabBarIcon: tabIcon('scan-outline') }} />
+      <Tabs.Screen name="index" options={{ title: 'Today', tabBarIcon: tabIcon('today-outline') }} />
+      <Tabs.Screen name="scan" options={{ title: 'Scan', tabBarIcon: tabIcon('scan-outline') }} />
       <Tabs.Protected guard={mealPlanEnabled}>
-        <Tabs.Screen name="plan" options={{ title: 'План', tabBarIcon: tabIcon('restaurant-outline') }} />
+        <Tabs.Screen name="plan" options={{ title: 'Plan', tabBarIcon: tabIcon('restaurant-outline') }} />
       </Tabs.Protected>
-      <Tabs.Screen name="profile" options={{ title: 'Профиль', tabBarIcon: tabIcon('person-outline') }} />
+      <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: tabIcon('person-outline') }} />
     </Tabs>
   );
 }

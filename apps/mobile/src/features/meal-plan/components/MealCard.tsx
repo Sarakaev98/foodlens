@@ -8,19 +8,19 @@ import { MEAL_SLOT_LABELS } from '../mealPlanLabels';
 /** Карточка блюда: главное сразу, ингредиенты и порция по нажатию. */
 export function MealCard({ meal }: { readonly meal: Meal }) {
   const [open, setOpen] = useState(false);
-  const macros = `Б ${Math.round(meal.proteinG)} · У ${Math.round(meal.carbsG)} · Ж ${Math.round(meal.fatG)}`;
+  const macros = `P ${Math.round(meal.proteinG)} · C ${Math.round(meal.carbsG)} · F ${Math.round(meal.fatG)}`;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ expanded: open }}
-      accessibilityHint="Показать ингредиенты"
+      accessibilityHint="Shows ingredients"
       onPress={() => setOpen((value) => !value)}
       style={({ pressed }) => [styles.card, pressed && styles.pressed]}
     >
       <View style={styles.header}>
         <Text style={styles.slot}>{MEAL_SLOT_LABELS[meal.slot]}</Text>
-        <Text style={styles.kcal}>{Math.round(meal.caloriesKcal)} ккал</Text>
+        <Text style={styles.kcal}>{Math.round(meal.caloriesKcal)} kcal</Text>
       </View>
       <Text style={styles.name}>{meal.name}</Text>
       <Text style={typography.subtitle}>{meal.description}</Text>

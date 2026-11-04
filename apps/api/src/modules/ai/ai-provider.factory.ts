@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { GoogleProvider, GoogleGoalMatchProvider, type GoalMatchEvaluator, MetaProvider, MockProvider, type AILogger, type AIProvider, type MockProviderConfig } from '@foodlens/ai';
+import { GoogleNutritionSearch, GoogleProvider, GoogleGoalMatchProvider, type GoalMatchEvaluator, MetaProvider, MockProvider, type AILogger, type AIProvider, type MockProviderConfig } from '@foodlens/ai';
 import type { AppConfig } from '../../config/app-config';
 
 /** iPhone visual check: chips golden data with protein missing, matching the existing v3 missing_nutrients regression. */
@@ -87,4 +87,9 @@ export function nestLogger(context: string): AILogger {
     log: (message, fields) => logger.log(`${message} ${JSON.stringify(fields)}`),
     warn: (message, fields) => logger.warn(`${message} ${JSON.stringify(fields)}`),
   };
+}
+
+/** Shared text client for enrichment and UI-only ingredient translation. No additional transport/client. */
+export function createGoogleTextAI(config: AppConfig): GoogleNutritionSearch {
+  return new GoogleNutritionSearch({ ...config.goalMatchAi.google, logger: nestLogger('GoogleNutritionText') });
 }

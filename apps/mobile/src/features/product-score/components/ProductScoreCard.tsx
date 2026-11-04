@@ -34,7 +34,7 @@ export function ProductScoreCard({ score, per, estimated = false }: ProductScore
   if (score.value === null) {
     return (
       <View style={styles.card}>
-        <Text style={styles.title}>Оценка продукта</Text>
+        <Text style={styles.title}>Product Score</Text>
         <Text style={typography.subtitle}>{unscoredMessage(score)}</Text>
       </View>
     );
@@ -48,16 +48,16 @@ export function ProductScoreCard({ score, per, estimated = false }: ProductScore
   const partial = partialScoreNote(score);
 
   return (
-    <View style={styles.card} accessible accessibilityLabel={`Оценка продукта ${formatScore(score.value)} из 10`}>
+    <View style={styles.card} accessible accessibilityLabel={`Product Score ${formatScore(score.value)} out of 10`}>
       <View style={styles.header}>
         <View style={[styles.badge, { backgroundColor: background }]}>
           <Text style={[styles.value, { color }]}>{formatScore(score.value)}</Text>
           <Text style={[styles.outOf, { color }]}>/ 10</Text>
         </View>
         <View style={styles.headerText}>
-          <Text style={styles.title}>Оценка продукта</Text>
-          <Text style={typography.caption}>Общее качество продукта</Text>
-          <Text style={[styles.verdict, { color }]}>{preliminary ? 'Предварительно' : scoreVerdict(score.value)}</Text>
+          <Text style={styles.title}>Product Score</Text>
+          <Text style={typography.caption}>Overall product quality</Text>
+          <Text style={[styles.verdict, { color }]}>{preliminary ? 'Preliminary' : scoreVerdict(score.value)}</Text>
         </View>
       </View>
 
@@ -74,13 +74,13 @@ export function ProductScoreCard({ score, per, estimated = false }: ProductScore
 
       {score.ceiling ? (
         <Text style={typography.caption}>
-          Оценка не выше {formatScore(score.ceiling.max)}: {score.ceiling.factorIds.map((id) => factorReason(byId(score, id)).toLowerCase()).join(', ')}
+          Score capped at {formatScore(score.ceiling.max)}: {score.ceiling.factorIds.map((id) => factorReason(byId(score, id)).toLowerCase()).join(', ')}
         </Text>
       ) : null}
-      {preliminary ? <Text style={styles.unreliable}>Данных недостаточно для надёжной оценки</Text> : null}
-      {estimated ? <Text style={typography.caption}>Часть пищевых данных оценена автоматически.</Text> : null}
+      {preliminary ? <Text style={styles.unreliable}>Not enough data for a reliable score</Text> : null}
+      {estimated ? <Text style={typography.caption}>Some nutrition values were estimated automatically.</Text> : null}
       {partial ? <Text style={[typography.caption, styles.partial]}>{partial}</Text> : null}
-      <Text style={typography.caption}>Общая оценка продукта, не зависит от ваших целей.</Text>
+      <Text style={typography.caption}>Overall product rating, independent of your goals.</Text>
     </View>
   );
 }

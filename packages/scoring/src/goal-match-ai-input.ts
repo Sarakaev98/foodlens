@@ -58,7 +58,7 @@ export function prepareGoalMatchV4(product: Product, profile: GoalMatchUserPlan 
   if (ingredients === null) missing.push('product.ingredients');
   if (product.additives.value === null) missing.push('product.additives');
   const input: GoalMatchAiInput = {
-    version: 'goal-match-ai-input-v1', goal: 'eat_healthier', locale: 'ru',
+    version: 'goal-match-ai-input-v1', goal: 'eat_healthier', locale: 'en',
     product: { name: product.name.value, brand: product.brand.value, category: product.category.value,
       ingredients, ingredientsStatus: product.ingredients.provenance === 'observed' && ingredients !== null ? 'observed' : 'unknown',
       additives: product.additives.value?.map(x => ({ code: x.code, name: x.name })) ?? null,

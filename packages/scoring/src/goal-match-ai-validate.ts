@@ -45,7 +45,7 @@ export function resolveGoalMatchFact(input: GoalMatchAiInput, path: string): str
   if (path === 'product.ingredients' && Array.isArray(value) && value.every(x => typeof x === 'string')) return value;
   return null;
 }
-const medical = /диабет|гипертони|холестерин|лечит|лечени|лечебн|профилактик|снижа[а-яё]*\s+риск|детокс|сжига[а-яё]*\s+жир|рекомендую при|дозиров|\d\s*(?:мг|мкг|таблет|капсул)|врач|излеч|исцеля/iu;
+const medical = /диабет|гипертони|холестерин|лечит|лечени|лечебн|профилактик|снижа[а-яё]*\s+риск|детокс|сжига[а-яё]*\s+жир|рекомендую при|дозиров|\d\s*(?:мг|мкг|таблет|капсул)|врач|излеч|исцеля|diabet|hypertension|blood pressure|cholesterol|\bcures?\b|\btreat(?:s|ment|ing)\b|therapeutic|\bprevent(?:s|ion)?\b|(?:lowers?|reduces?)\s+(?:the\s+)?risk|detox|burns?\s+fat|fat[- ]burning|recommended\s+for|dosage|\bdoses?\b|\d\s*(?:mg|mcg|µg|tablet|capsule)|doctor|physician|\bheals?\b/iu;
 const normalize = (s: string) => s.toLowerCase().replace(/ё/gu,'е');
 export function ingredientSignals(input: GoalMatchAiInput) {
   const ingredients = input.product.ingredientsStatus === 'observed' && !input.missing.includes('product.ingredients')
@@ -92,6 +92,8 @@ export function factorCodeAllowed(code: GoalMatchAiFactorCode, input: GoalMatchA
     case 'energy_dense': return daily !== null && daily >= 20;
   }
 }
+/** User-facing AI text is English only: Latin letters and no Cyrillic. */
+const english = (text: string) => /[a-z]/iu.test(text) && !/[Ѐ-ӿ]/u.test(text);
 function schema(x: unknown): x is GoalMatchAiOutput {
   if (!object(x) || !keys(x,['version','band','score','confidence','dimensions','factors','summary','warnings'])) return false;
   if (x.version !== 'goal-match-ai-v1' || !oneOf(x.band,GOAL_MATCH_AI_BANDS) || !finite(x.score) || x.score < 0 || x.score > 10 ||
@@ -99,7 +101,7 @@ function schema(x: unknown): x is GoalMatchAiOutput {
   if (!object(x.dimensions) || !keys(x.dimensions,GOAL_MATCH_AI_DIMENSIONS) ||
       Object.values(x.dimensions).some(v => !oneOf(v,GOAL_MATCH_AI_DIMENSION_VALUES))) return false;
   if (typeof x.summary !== 'string' || !x.summary.trim() || x.summary.length > 140 || /\n/u.test(x.summary) ||
-      !/[а-яё]/iu.test(x.summary) || x.summary.split(/[.!?]+/u).filter(s=>s.trim()).length > 1) return false;
+      !english(x.summary) || x.summary.split(/[.!?]+/u).filter(s=>s.trim()).length > 1) return false;
   if (!Array.isArray(x.warnings) || x.warnings.some(w=>!oneOf(w,GOAL_MATCH_AI_WARNINGS)) || new Set(x.warnings).size !== x.warnings.length) return false;
   if (!Array.isArray(x.factors) || x.factors.length < 1 || x.factors.length > 4) return false;
   const seen = new Set<string>();
@@ -107,7 +109,7 @@ function schema(x: unknown): x is GoalMatchAiOutput {
     if (!object(f) || !keys(f,['code','direction','impact','facts','text']) || !oneOf(f.code,GOAL_MATCH_AI_FACTOR_CODES) ||
       !oneOf(f.direction,['positive','negative']) || !oneOf(f.impact,['high','medium','low']) ||
       !Array.isArray(f.facts) || f.facts.length < 1 || f.facts.length > 3 || f.facts.some(p=>typeof p !== 'string') ||
-      typeof f.text !== 'string' || !f.text.trim() || f.text.length > 90 || !/[а-яё]/iu.test(f.text) || seen.has(f.code)) return false;
+      typeof f.text !== 'string' || !f.text.trim() || f.text.length > 90 || !english(f.text) || seen.has(f.code)) return false;
     seen.add(f.code);
   }
   const factors = x.factors as unknown as GoalMatchAiFactor[];
@@ -136,8 +138,8 @@ function dimensionsConsistent(x: GoalMatchAiOutput, input: GoalMatchAiInput): bo
 function supportedText(text: string, refs: readonly string[], codes: readonly GoalMatchAiFactorCode[], input: GoalMatchAiInput): boolean {
   if (medical.test(text)) return false;
   const t = normalize(text);
-  const missingWords: Record<string,RegExp> = { proteinG: /бел[окк]/iu, fiberG: /клетчат/iu, sugarsG: /сахар/iu,
-    saturatedFatG: /насыщенн/iu, saltG: /сол[ьиь]|натри/iu, fatG: /жир/iu, carbsG: /углевод/iu };
+  const missingWords: Record<string,RegExp> = { proteinG: /бел[окк]|protein/iu, fiberG: /клетчат|fib(?:er|re)/iu, sugarsG: /сахар|sugar/iu,
+    saturatedFatG: /насыщенн|saturate/iu, saltG: /сол[ьиь]|натри|salt|sodium/iu, fatG: /жир|\bfats?\b/iu, carbsG: /углевод|carb/iu };
   if (input.missing.some(k => missingWords[k]?.test(t))) return false;
   const numbers: number[] = [];
   let hasPer100Value = false;
@@ -154,25 +156,25 @@ function supportedText(text: string, refs: readonly string[], codes: readonly Go
   // Only the numeric token inside a referenced per-100 basis is exempt, never every "100".
   const basisOffsets = new Set<number>();
   if (hasPer100Value) {
-    for (const basis of text.matchAll(/(?:^|[^\p{L}\p{N}_])на\s+(100)\s*(?:мл|г)(?=$|[^\p{L}\p{N}_])/giu)) {
+    for (const basis of text.matchAll(/(?:^|[^\p{L}\p{N}_])(?:на|per)\s+(100)\s*(?:мл|г|ml|g)(?=$|[^\p{L}\p{N}_])/giu)) {
       basisOffsets.add(basis.index! + basis[0].indexOf(basis[1]!));
     }
   }
   for (const m of text.matchAll(/[-+]?\d+(?:[.,]\d+)?/gu)) {
     if (m[0] === '100' && basisOffsets.has(m.index!)) continue;
     const number = Number(m[0].replace(',','.'));
-    const percent = /^\s*(?:%|процент)/iu.test(text.slice(m.index!+m[0].length));
+    const percent = /^\s*(?:%|процент|percent)/iu.test(text.slice(m.index!+m[0].length));
     if (!numbers.some(n=>Math.abs(number - n) < 1e-7 || percent && number === Math.round(n))) return false;
   }
-  if (/без\s+(?:добавленного\s+)?сахар/iu.test(t)) {
-    if (/без\s+добавленного\s+сахар/iu.test(t)) {
+  if (/без\s+(?:добавленного\s+)?сахар|\bno\s+(?:added\s+)?sugars?\b|sugar[- ]free|without\s+(?:added\s+)?sugar|zero\s+sugar/iu.test(t)) {
+    if (/без\s+добавленного\s+сахар|\bno\s+added\s+sugars?\b|without\s+added\s+sugar/iu.test(t)) {
       if (!codes.includes('intrinsic_sugar') || input.semantics.sugarSource.confidence === 'low') return false;
     } else if (!codes.includes('low_sugar') || input.product.per100.sugarsG !== 0) return false;
   }
-  if (/без\s+(?:пищевых\s+)?добавок/iu.test(t) && (!codes.includes('whole_food') ||
+  if (/без\s+(?:пищевых\s+)?добавок|\bno\s+(?:food\s+)?additives\b|additive[- ]free|without\s+additives/iu.test(t) && (!codes.includes('whole_food') ||
     input.product.ingredientsStatus !== 'observed' || input.product.additives === null || input.product.additives.length !== 0 ||
     input.missing.includes('product.additives'))) return false;
-  if (/натуральн/iu.test(t) && !codes.includes('whole_food')) return false;
+  if (/натуральн|\bnatural/iu.test(t) &&!codes.includes('whole_food')) return false;
   return true;
 }
 export function validateGoalMatchAiOutput(raw: unknown, input: GoalMatchAiInput): GoalMatchAiValidation {

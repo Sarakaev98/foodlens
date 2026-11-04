@@ -75,7 +75,7 @@ describe('v4 reconciliation: asymmetric corridor, no averaging',()=>{
 describe('v4 pure end-to-end fixtures: preparation -> validation -> reconciliation',()=>{
   it('apple accepts 8.5 without any Product Score input',()=>{
     const prepared=prepareGoalMatchV4(v4Product('apple'),healthPlan());assert.equal(prepared.state,'ready');if(prepared.state!=='ready')return;
-    const output=aiOutput(8.5,[{code:'whole_food',direction:'positive',impact:'high',facts:['semantics.processing.value'],text:'Цельный продукт.'}]);
+    const output=aiOutput(8.5,[{code:'whole_food',direction:'positive',impact:'high',facts:['semantics.processing.value'],text:'Whole food.'}]);
     const validation=validateGoalMatchAiOutput(output,prepared.input);assert.equal(validation.valid,true);if(!validation.valid)return;
     const result=reconcileGoalMatch({...prepared,ai:validation.output,validationAdjusted:validation.adjusted});
     assert.equal(result.value,8.5);assert.equal(result.source,'ai');assert.equal(result.version,'goal-match-v4');
@@ -87,7 +87,7 @@ describe('v4 pure end-to-end fixtures: preparation -> validation -> reconciliati
     const product={...original,ingredients:{value:[{name:'сукралоза',percent:null}],provenance:'observed' as const}};
     const prepared=prepareGoalMatchV4(product,healthPlan());assert.equal(prepared.state,'ready');if(prepared.state!=='ready')return;
     assert.equal(prepared.deterministic.value,8.9);
-    const output=aiOutput(5.5,[{code:'sweeteners',direction:'negative',impact:'high',facts:['product.ingredients'],text:'В составе есть подсластитель.'}]);
+    const output=aiOutput(5.5,[{code:'sweeteners',direction:'negative',impact:'high',facts:['product.ingredients'],text:'Contains a sweetener.'}]);
     const valid=validateGoalMatchAiOutput(output,prepared.input);assert.equal(valid.valid,true);if(!valid.valid)return;
     const result=reconcileGoalMatch({...prepared,ai:valid.output});
     assert.equal(result.value,5.5);assert.equal(result.source,'ai');

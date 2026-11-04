@@ -36,7 +36,7 @@ async function rejectsWith(promise: Promise<unknown>, code: string): Promise<voi
 describe('GoogleMealPhotoProvider', () => {
   it('valid meal photo response: несколько компонентов разбираются по схеме', async () => {
     const output = await provider(() => Response.json(envelope(MOCK_MEAL_PHOTO_OUTPUT))).analyze({ image: IMAGE });
-    assert.equal(output.meal_name, 'Курица с рисом и овощами');
+    assert.equal(output.meal_name, 'Chicken with Rice and Vegetables');
     assert.equal(output.items.length, 4);
     assert.deepEqual(output, MOCK_MEAL_PHOTO_OUTPUT);
   });
@@ -49,6 +49,8 @@ describe('GoogleMealPhotoProvider', () => {
     const body = requests[0]!.body as { contents: { parts: { inlineData?: unknown }[] }[]; generationConfig: Record<string, unknown>; systemInstruction: { parts: { text: string }[] } };
     assert.equal(body.contents[0]!.parts.filter((part) => part.inlineData).length, 1);
     assert.ok(body.systemInstruction.parts[0]!.text.length < 800, 'prompt stays short');
+    assert.match(body.systemInstruction.parts[0]!.text, /in English/);
+    assert.doesNotMatch(body.systemInstruction.parts[0]!.text, /in Russian/);
     assert.equal(body.generationConfig.responseMimeType, 'application/json');
     assert.equal(body.generationConfig.maxOutputTokens, 1024);
     assert.ok(body.generationConfig.responseSchema);

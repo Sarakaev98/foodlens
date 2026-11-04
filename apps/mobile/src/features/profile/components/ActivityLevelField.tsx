@@ -14,7 +14,7 @@ interface ActivityLevelFieldProps {
 
 export function ActivityLevelField({ draft, onChange, issues }: ActivityLevelFieldProps) {
   return (
-    <FormField label="Активность" error={findIssueMessage(issues, 'activityLevel')}>
+    <FormField label="Activity" error={findIssueMessage(issues, 'activityLevel')}>
       <ChoiceList
         options={OPTIONS}
         value={draft.activityLevel}

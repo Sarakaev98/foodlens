@@ -15,11 +15,11 @@ export function MacroCard({ label, grams, consumedG }: MacroCardProps) {
       <Text style={typography.caption}>{label}</Text>
       {consumedG === undefined ? (
         <Text style={styles.value}>
-          {formatInteger(grams)} <Text style={styles.unit}>г</Text>
+          {formatInteger(grams)} <Text style={styles.unit}>g</Text>
         </Text>
       ) : (
         <Text style={styles.value}>
-          {formatInteger(consumedG)} <Text style={styles.unit}>/ {formatInteger(grams)} г</Text>
+          {formatInteger(consumedG)} <Text style={styles.unit}>/ {formatInteger(grams)} g</Text>
         </Text>
       )}
     </View>

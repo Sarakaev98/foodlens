@@ -33,7 +33,7 @@ export function useSaveProfile() {
       setError(
         cause instanceof ProfileValidationError
           ? describeIssues(cause.issues)
-          : 'Не удалось сохранить. Проверьте подключение к серверу.',
+          : 'Couldn’t save. Check your connection to the server.',
       );
       return null;
     } finally {

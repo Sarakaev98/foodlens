@@ -3,22 +3,22 @@ import type { ScanMode } from './types/scan.types';
 /** Тексты и размеры рамки-подсказки на экране камеры. Рамка — только оверлей, в снимок она не попадает. */
 export const SCAN_GUIDE_TEXT = {
   product: {
-    title: 'Наведите на штрихкод',
-    hint: 'Или сфотографируйте упаковку',
-    frameAccessibilityLabel: 'Рамка для штрихкода',
+    title: 'Point at the Barcode',
+    hint: 'Or take a photo of the package',
+    frameAccessibilityLabel: 'Barcode frame',
   },
   label: {
-    title: 'Наведите на таблицу пищевой ценности',
-    hint: 'Держите телефон ближе, чтобы текст был чётким',
-    frameAccessibilityLabel: 'Рамка для таблицы пищевой ценности',
+    title: 'Point at the Nutrition Label',
+    hint: 'Hold your phone closer so the text is sharp',
+    frameAccessibilityLabel: 'Nutrition label frame',
   },
   meal: {
-    title: 'Сфотографируйте тарелку',
-    hint: 'Сверху или под углом, чтобы была видна вся еда',
-    frameAccessibilityLabel: 'Рамка для тарелки с едой',
+    title: 'Take a Photo of Your Plate',
+    hint: 'From above or at an angle, with all the food in view',
+    frameAccessibilityLabel: 'Plate frame',
   },
-  barcodeFound: 'Штрихкод найден',
-  focusHint: 'Нажмите на экран, чтобы сфокусироваться',
+  barcodeFound: 'Barcode Found',
+  focusHint: 'Tap the screen to focus',
 } as const;
 
 const WIDTH_SHARE = 0.8;

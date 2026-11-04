@@ -4,15 +4,15 @@ import type { ScanPhoto, ScanPhotoRole, ScanSlot } from '../types/scan.types';
 export const MAX_SCAN_PHOTOS = 3;
 
 export const SCAN_PHOTO_LABELS: Readonly<Record<ScanPhotoRole, string>> = {
-  product: 'Фото продукта',
-  nutrition: 'Таблица питания',
-  ingredients: 'Состав',
+  product: 'Product photo',
+  nutrition: 'Nutrition label',
+  ingredients: 'Ingredients',
 };
 
 /** Что можно доснять к первому фото. */
 export const EXTRA_PHOTO_OPTIONS: readonly { readonly role: ScanPhotoRole; readonly label: string }[] = [
-  { role: 'nutrition', label: 'Таблицу питания' },
-  { role: 'ingredients', label: 'Состав' },
+  { role: 'nutrition', label: 'Nutrition Label' },
+  { role: 'ingredients', label: 'Ingredients' },
 ];
 
 export function addScanPhoto(slots: readonly ScanSlot[], photo: ScanPhoto, role: ScanPhotoRole): readonly ScanSlot[] {

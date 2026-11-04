@@ -41,7 +41,7 @@ export function ScanScreen() {
           barcode={state.barcode}
           notice={state.notice}
           allowExtraPhotos={scan.mode === 'product'}
-          photoLabel={scan.mode === 'meal' ? 'Фото блюда' : undefined}
+          photoLabel={scan.mode === 'meal' ? 'Meal photo' : undefined}
           onAnalyze={scan.analyze}
           onAddPhoto={scan.addPhoto}
           onRetake={scan.retakePhoto}

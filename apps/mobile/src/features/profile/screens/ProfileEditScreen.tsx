@@ -38,7 +38,7 @@ function ProfileEditForm({ initialDraft }: { readonly initialDraft: UserNutritio
       footer={
         <>
           {error ? <Text style={typography.error}>{error}</Text> : null}
-          <Button label="Сохранить" onPress={submit} loading={saving} />
+          <Button label="Save" onPress={submit} loading={saving} />
         </>
       }
     >

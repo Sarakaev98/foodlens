@@ -12,9 +12,11 @@ interface FormScreenProps {
   readonly footer?: ReactNode;
   /** false, если верхний отступ уже даёт заголовок навигации. */
   readonly safeTop?: boolean;
+  /** false, если нижнюю safe area уже учитывает tab bar. */
+  readonly safeBottom?: boolean;
 }
 
-export function FormScreen({ title, subtitle, children, footer, safeTop = true }: FormScreenProps) {
+export function FormScreen({ title, subtitle, children, footer, safeTop = true, safeBottom = true }: FormScreenProps) {
   const edges: Edge[] = safeTop ? ['top', 'left', 'right'] : ['left', 'right'];
   return (
     <SafeAreaView style={styles.safeArea} edges={edges}>
@@ -24,7 +26,7 @@ export function FormScreen({ title, subtitle, children, footer, safeTop = true }
           {subtitle ? <Text style={typography.subtitle}>{subtitle}</Text> : null}
           <View style={styles.body}>{children}</View>
         </ScrollView>
-        {footer ? <SafeAreaView edges={['bottom']} style={styles.footer}>{footer}</SafeAreaView> : null}
+        {footer ? <SafeAreaView edges={safeBottom ? ['bottom'] : []} style={styles.footer}>{footer}</SafeAreaView> : null}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

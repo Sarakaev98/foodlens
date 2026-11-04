@@ -49,9 +49,20 @@ export interface Product {
   readonly semantics?: ProductSemantics | null;
   /** Состав в порядке этикетки. not_detected: состава на изображении нет. */
   readonly ingredients: Detected<readonly Ingredient[]>;
+  /** UI-only English projection. Never an input for enrichment, estimator, allergens or scoring. */
+  readonly ingredientsDisplay?: {
+    readonly sourceHash: string;
+    readonly language: 'en' | 'original';
+    readonly status: 'unchanged' | 'translated' | 'fallback';
+    readonly items: readonly Ingredient[];
+  };
   /** not_detected: ни состава, ни заявления об аллергенах не видно. Пустой список: аллергены не указаны. */
   readonly allergens: Detected<readonly Allergen[]>;
   readonly additives: Detected<readonly Additive[]>;
+  /** UI-only English product name, set only when the original name is not in Latin script. Never an input for logic. */
+  readonly nameDisplay?: string;
+  /** UI-only English additive names in the same order as additives. Never an input for logic. */
+  readonly additivesDisplay?: readonly Additive[];
   readonly confidence: ProductConfidence;
   readonly source: ProductSource;
   /** Откуда взято значение из внешнего источника. Для отладки и будущей ссылки на источник. */

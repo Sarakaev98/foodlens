@@ -45,12 +45,12 @@ const v3 = {...base, factors: [
   {id: 'whole.ok', kind: 'whole', level: 'ok', impact: 'positive', points: 1, value: 1, portionShare: null, matches: []},
 ]};
 const ai = {version: 'goal-match-ai-v1', band: 'good_fit', score: 8, confidence: 'high',
-  dimensions: {}, warnings: [], summary: 'Хороший выбор: много белка и простой состав.',
+  dimensions: {}, warnings: [], summary: 'Good choice: high in protein with simple ingredients.',
   factors: [
-    {code: 'high_protein', direction: 'positive', impact: 'high', facts: [], text: 'Много белка на порцию.'},
-    {code: 'whole_food', direction: 'positive', impact: 'medium', facts: [], text: 'Простой состав.'},
-    {code: 'low_salt', direction: 'positive', impact: 'low', facts: [], text: 'Почти нет соли.'},
-    {code: 'fits_portion', direction: 'positive', impact: 'low', facts: [], text: 'Порция небольшая.'},
+    {code: 'high_protein', direction: 'positive', impact: 'high', facts: [], text: 'High in protein per serving.'},
+    {code: 'whole_food', direction: 'positive', impact: 'medium', facts: [], text: 'Simple ingredients.'},
+    {code: 'low_salt', direction: 'positive', impact: 'low', facts: [], text: 'Almost no salt.'},
+    {code: 'fits_portion', direction: 'positive', impact: 'low', facts: [], text: 'Small serving.'},
   ],
   inputVersion: 'goal-match-ai-input-v1', promptVersion: 'eat-healthier-rubric-v2', model: 'gemini', cacheHit: false};
 const v4ai = {...v3, version: 'goal-match-v4', value: 8, level: 'great', range: null, factors: [], source: 'ai', ai,
@@ -58,45 +58,45 @@ const v4ai = {...v3, version: 'goal-match-v4', value: 8, level: 'great', range: 
 const v4det = {...v3, version: 'goal-match-v4', source: 'deterministic', ai: null, deterministic: v3, adjusted: false, ai_disagreement: true};
 
 describe('GoalMatchCard v4 presentation', () => {
-  it('v4 is already 0–10: 8.0 stays 8,0 and is not divided by 10', () => {
-    assert.equal(labels.formatGoalMatchValue(v4ai), '8,0');
-    assert.equal(labels.formatGoalMatchValue({...v4ai, value: 5.7}), '5,7');
-    assert.ok(GoalMatchCard({goalMatch: v4ai}).props.accessibilityLabel.includes('8,0 из 10'));
+  it('v4 is already 0–10: 8.0 stays 8.0 and is not divided by 10', () => {
+    assert.equal(labels.formatGoalMatchValue(v4ai), '8.0');
+    assert.equal(labels.formatGoalMatchValue({...v4ai, value: 5.7}), '5.7');
+    assert.ok(GoalMatchCard({goalMatch: v4ai}).props.accessibilityLabel.includes('8.0 out of 10'));
   });
   it('source=ai shows the AI label, summary and at most 3 AI reasons', () => {
     const shown = text(GoalMatchCard({goalMatch: v4ai}));
-    assert.match(shown, /AI-анализ/);
-    assert.match(shown, /Хороший выбор: много белка и простой состав\./);
-    assert.match(shown, /Много белка на порцию/); assert.match(shown, /Почти нет соли/);
-    assert.doesNotMatch(shown, /Порция небольшая/);
-    assert.doesNotMatch(shown, /Белок помогает выполнить дневную цель/);
+    assert.match(shown, /AI analysis/);
+    assert.match(shown, /Good choice: high in protein with simple ingredients\./);
+    assert.match(shown, /High in protein per serving/); assert.match(shown, /Almost no salt/);
+    assert.doesNotMatch(shown, /Small serving/);
+    assert.doesNotMatch(shown, /Protein helps you reach your daily goal/);
   });
   it('profile restrictions come before AI reasons', () => {
     const restriction = {id: 'allergens.may_contain', kind: 'allergens', level: 'may_contain', impact: 'negative', points: -0.3,
       value: null, portionShare: null, matches: ['milk']};
     const shown = text(GoalMatchCard({goalMatch: {...v4ai, factors: [restriction]}}));
-    assert.match(shown, /Может содержать следы/);
-    assert.doesNotMatch(shown, /Почти нет соли/);
+    assert.match(shown, /May contain traces of/);
+    assert.doesNotMatch(shown, /Almost no salt/);
   });
   it('source=deterministic shows the calculated label and v3 reasons, no technical flags', () => {
     const shown = text(GoalMatchCard({goalMatch: v4det}));
-    assert.match(shown, /Расчётная оценка/);
-    assert.match(shown, /Белок помогает выполнить дневную цель/);
-    assert.doesNotMatch(shown, /AI-анализ|disagreement|adjusted|Хороший выбор/);
+    assert.match(shown, /Calculated rating/);
+    assert.match(shown, /Protein helps you reach your daily goal/);
+    assert.doesNotMatch(shown, /AI analysis|disagreement|adjusted|Good choice/);
   });
   it('v4 terminal states keep the existing messages, without a source label', () => {
     const terminal = {...v4det, state: 'insufficient_data', value: null, level: null, unavailableReason: 'no_calories', factors: []};
     const shown = text(GoalMatchCard({goalMatch: terminal}));
-    assert.match(shown, /Калорийность не прочитана/);
-    assert.doesNotMatch(shown, /Расчётная оценка|AI-анализ/);
+    assert.match(shown, /couldn’t read the calories/);
+    assert.doesNotMatch(shown, /Calculated rating|AI analysis/);
     const invalid = {...terminal, unavailableReason: 'invalid_nutrition'};
-    assert.match(text(GoalMatchCard({goalMatch: invalid})), /противоречат друг другу/);
-    assert.match(text(GoalMatchCard({goalMatch: {...v4det, state: 'not_applicable', value: null, level: null}})), /Не влияет на вашу цель/);
+    assert.match(text(GoalMatchCard({goalMatch: invalid})), /contradict each other/);
+    assert.match(text(GoalMatchCard({goalMatch: {...v4det, state: 'not_applicable', value: null, level: null}})), /Doesn’t affect your goal/);
   });
   it('v4 without a printed portion is shown as approximate; v1 and v3 are unchanged', () => {
-    assert.match(text(GoalMatchCard({goalMatch: {...v4ai, confidence: 'low', portion: {basis: 'per_100', amount: 100, unit: 'g', caloriesKcal: 430}}})), /Примерная оценка/);
-    assert.equal(labels.formatGoalMatchValue({...base, version: 'goal-match-v1', value: 79}), '7,9');
-    assert.equal(labels.formatGoalMatchValue(base), '8,7');
+    assert.match(text(GoalMatchCard({goalMatch: {...v4ai, confidence: 'low', portion: {basis: 'per_100', amount: 100, unit: 'g', caloriesKcal: 430}}})), /Approximate rating/);
+    assert.equal(labels.formatGoalMatchValue({...base, version: 'goal-match-v1', value: 79}), '7.9');
+    assert.equal(labels.formatGoalMatchValue(base), '8.7');
     assert.equal(labels.goalMatchSourceLabel(base), null);
   });
 });

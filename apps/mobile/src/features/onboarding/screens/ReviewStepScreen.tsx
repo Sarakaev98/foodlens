@@ -21,7 +21,7 @@ export function ReviewStepScreen() {
       step={step}
       stepNumber={stepNumber}
       totalSteps={totalSteps}
-      actionLabel="Продолжить"
+      actionLabel="Continue"
       onAction={finish}
       loading={saving}
       error={error}
@@ -29,7 +29,7 @@ export function ReviewStepScreen() {
       {completed.ok ? (
         <ProfileSummary profile={completed.value} />
       ) : (
-        <Text style={typography.error}>Некоторые данные не заполнены. Вернитесь к предыдущим шагам.</Text>
+        <Text style={typography.error}>Some details are missing. Go back to the previous steps.</Text>
       )}
     </OnboardingStepLayout>
   );

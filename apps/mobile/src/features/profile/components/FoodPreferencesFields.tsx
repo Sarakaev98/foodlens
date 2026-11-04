@@ -30,14 +30,14 @@ export function FoodPreferencesFields({ draft, onChange, issues }: FoodPreferenc
 
   return (
     <>
-      <FormField label="Тип питания" error={findIssueMessage(issues, 'dietaryPreferences')}>
+      <FormField label="Diet" error={findIssueMessage(issues, 'dietaryPreferences')}>
         <ChoiceList
           options={DIET_OPTIONS}
           value={dietaryPreference}
           onChange={(value) => onChange({ dietaryPreferences: [value] })}
         />
       </FormField>
-      <FormField label="Аллергены" hint="Отметьте, если есть" error={findIssueMessage(issues, 'allergens')}>
+      <FormField label="Allergens" hint="Select any that apply" error={findIssueMessage(issues, 'allergens')}>
         <ChipGroup
           options={ALLERGEN_OPTIONS}
           selected={allergens}
@@ -45,15 +45,15 @@ export function FoodPreferencesFields({ draft, onChange, issues }: FoodPreferenc
         />
       </FormField>
       <FormField
-        label="Не хочу в составе"
-        hint="Ингредиенты, которых вы избегаете"
+        label="Avoid in Ingredients"
+        hint="Ingredients you want to avoid"
         error={findIssueMessage(issues, 'avoidedIngredients')}
       >
         <TagInput
-          accessibilityLabel="Ингредиент, которого вы избегаете"
+          accessibilityLabel="Ingredient to avoid"
           values={draft.avoidedIngredients ?? []}
           onChange={(avoidedIngredients) => onChange({ avoidedIngredients })}
-          placeholder="Например, кинза"
+          placeholder="For example, cilantro"
           maxLength={PROFILE_LIMITS.avoidedIngredients.maxLength}
         />
       </FormField>
