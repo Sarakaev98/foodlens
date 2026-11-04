@@ -1,4 +1,6 @@
 export { FireworksMealPlanProvider, FIREWORKS_MEAL_PLAN_MODEL, FIREWORKS_MEAL_PLAN_ENDPOINT, type FireworksMealPlanProviderConfig } from './providers/fireworks/fireworks-meal-plan-provider';
+export { FireworksProductProvider, FIREWORKS_PRODUCT_MODEL, FIREWORKS_PRODUCT_ANALYSIS_VERSION, FIREWORKS_PRODUCT_RESPONSE_SCHEMA, type FireworksProductProviderConfig } from './providers/fireworks/fireworks-product-provider';
+export { FireworksProductTextAI, FireworksProductGoalMatch, createFireworksProductTextTransport, productJsonSchema, type FireworksProductTextConfig } from './providers/fireworks/fireworks-product-text';
 export type { AIProvider, AIProviderMethod } from './ai-provider';
 export type * from './ai-provider.types';
 export { MAX_PRODUCT_IMAGES, PRODUCT_IMAGE_ROLES, productImages } from './product-images';
@@ -21,3 +23,5 @@ export {
   GoogleNutritionSearch, GOOGLE_NUTRITION_EXTRACTION_SYSTEM_PROMPT, GOOGLE_NUTRITION_SEARCH_TIMEOUT_MS, GOOGLE_SOURCE_DISCOVERY_SYSTEM_PROMPT, MAX_EXTRACTION_TEXT_CHARS,
   type DiscoveredSource, type ExtractedPage, type ExtractionPage, type GoogleNutritionSearchConfig, type SourceDiscoveryInput, type SourceDiscoveryResponse,
 } from './providers/google/google-nutrition-search';
+
+export { FireworksMealPhotoProvider, FIREWORKS_MEAL_PHOTO_MODEL, FIREWORKS_MEAL_PHOTO_TIMEOUT_MS, type FireworksMealPhotoProviderConfig } from './providers/fireworks/fireworks-meal-photo-provider';

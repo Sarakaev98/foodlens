@@ -1,16 +1,18 @@
 import { randomUUID } from 'node:crypto';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
-import { AIProviderError, type AIProvider, type ProductImageRole } from '@foodlens/ai';
+import { AIProviderError, type ProductImageRole } from '@foodlens/ai';
 import type { GoalMatch, GoalMatchUserPlan, GoalMatchV4, Product, ProductScanResult } from '@foodlens/core';
 import { goalMatchUnavailable, hasRequiredFactors, limitByProductScore, matchGoal, scoreProduct } from '@foodlens/scoring';
 import type { ProductImageInput } from '@foodlens/ai';
-import { AI_PROVIDER } from '../ai/ai.tokens';
+import { SCAN_AI_PROVIDER, LABEL_SCAN_AI_PROVIDER, type ProductAnalyzer } from './scan-ai-provider.factory';
 import { GoalMatchService } from '../goal-match/goal-match.service';
 import { NutritionTargetsService } from '../nutrition-targets/nutrition-targets.service';
 import { MultiSourceProductLookup, type EnrichedProduct } from '../product-lookup/multi-source-product-lookup';
 import { PRODUCT_LOOKUP, type ProductLookupProvider } from '../product-lookup/product-lookup.provider';
 import { confirmBarcodeIdentity, emptyBarcodeProduct, forScoring } from './barcode-product';
+import { PRODUCT_GOAL_MATCH, PRODUCT_INGREDIENTS_DISPLAY } from '../ai/product-ai-support.factory';
 import { IngredientsDisplayService } from './ingredients-display.service';
+import { withProductIngredientFacts } from './product-ingredient-facts';
 import { withIngredientFacts } from './ingredient-facts';
 import { IMAGE_BARCODE_READER } from './image-barcode.token';
 import { readImageBarcode, type ImageBarcodeReader } from './image-barcode';
@@ -45,12 +47,16 @@ export class ScanService {
   private readonly readBarcode: ImageBarcodeReader;
 
   constructor(
-    @Inject(AI_PROVIDER) private readonly ai: AIProvider,
+    @Inject(SCAN_AI_PROVIDER) private readonly ai: ProductAnalyzer,
     private readonly nutritionTargets: NutritionTargetsService,
     @Optional() private readonly goalMatchV4?: GoalMatchService,
     @Optional() @Inject(PRODUCT_LOOKUP) productLookup?: MultiSourceProductLookup | ProductLookupProvider,
     @Optional() @Inject(IMAGE_BARCODE_READER) barcodeReader?: ImageBarcodeReader,
     @Optional() private readonly ingredientsDisplay?: IngredientsDisplayService,
+    // Nest requires this token. Default only preserves direct construction by existing unit fixtures.
+    @Inject(LABEL_SCAN_AI_PROVIDER) private readonly labelAi: ProductAnalyzer = ai,
+    @Inject(PRODUCT_INGREDIENTS_DISPLAY) private readonly productDisplay: IngredientsDisplayService | undefined = ingredientsDisplay,
+    @Inject(PRODUCT_GOAL_MATCH) private readonly productGoalMatch: GoalMatchService | undefined = goalMatchV4,
   ) {
     this.readBarcode = barcodeReader ?? readImageBarcode;
     this.lookups = productLookup instanceof MultiSourceProductLookup ? productLookup : new MultiSourceProductLookup(productLookup ? [productLookup] : []);
@@ -61,6 +67,7 @@ export class ScanService {
     const startedAt = Date.now();
     try {
       const label = options.mode === SCAN_MODE_NUTRITION_LABEL;
+      const analyzer = label ? this.labelAi : this.ai;
       const sentBarcode = label ? null : parseScanBarcode(options.barcode);
       const uploads = toFileList(files);
       const images = label
@@ -92,17 +99,18 @@ export class ScanService {
       // Keep display-only composition in the response, never in the scoring/estimation snapshot.
       const completed = { ...estimated, ingredients: flow.product.ingredients };
       this.debug('ESTIMATION_RESULT', () => ({ requestId, estimatedFields: estimatedNutritionFields(completed), metadata: completed.nutritionMetadata }));
-      const product = withIngredientFacts(completed);
+      const ingredientFacts = label ? withIngredientFacts : withProductIngredientFacts;
+      const product = ingredientFacts(completed);
       steps.forEach((step) => logLookupStep(this.logger, requestId, barcode, step));
       // Состав только для показа в расчёты не идёт, поэтому и выведенные из него добавки считаются без него.
-      const scoring = withIngredientFacts(forScoring(completed));
+      const scoring = ingredientFacts(forScoring(completed));
       this.debug('SCORING_INPUT', () => ({ requestId, nutrition: scoring.nutrition }));
       const score = scoreProduct(scoring);
       const needsPhoto = flow.needsPhoto && !hasRequiredFactors(score);
       this.debug('SCORING_RESULT', () => ({ requestId, value: score.value, confidence: score.confidence, missingFactors: score.missingFactors }));
       // Both scores consume exactly the same completed snapshot; provenance stays intact.
       this.debug('GOAL_MATCH_INPUT', () => ({ requestId, nutrition: scoring.nutrition, nutritionMetadata: scoring.nutritionMetadata }));
-      const rawGoalMatch = await this.matchGoal(scoring, await plan, requestId);
+      const rawGoalMatch = await this.matchGoal(scoring, await plan, requestId, label ? this.goalMatchV4 : this.productGoalMatch);
       const goalMatch = limitByProductScore(rawGoalMatch, score);
       this.debug('GOAL_MATCH_RESULT', () => ({
         requestId,
@@ -113,12 +121,13 @@ export class ScanService {
         uncertainty: 'uncertainty' in goalMatch ? goalMatch.uncertainty : [],
         unavailableReason: goalMatch.unavailableReason,
       }));
-      const summary = { requestId, barcode, images, steps, ai, product, score, needsPhoto, goalMatch, rawGoalMatch, durationMs: () => Date.now() - startedAt };
+      const summary = { requestId, barcode, images, steps, ai, aiProvider: analyzer.name ?? null, aiModel: analyzer.model ?? null, product, score, needsPhoto, goalMatch, rawGoalMatch, durationMs: () => Date.now() - startedAt };
       logScanSummary(this.logger, summary);
       this.logger.log(`nutrition_presence ${JSON.stringify({ requestId, ...nutritionPresence(product, score, goalMatch) })}`);
       logScanFinished(this.logger, summary);
+      const display = label ? this.ingredientsDisplay : this.productDisplay;
       return {
-        product: this.ingredientsDisplay ? await this.ingredientsDisplay.decorate(product) : product,
+        product: display ? await display.decorate(product) : product,
         score,
         goalMatch,
         ...(barcode ? { barcode } : {}),
@@ -134,7 +143,7 @@ export class ScanService {
 
   /** Отдельный сценарий таблицы: только это фото, ничего не дополняется из баз. Без таблицы результата нет. */
   private async resolveLabel(images: readonly ProductImageInput[], requestId: string): Promise<ScanFlow> {
-    const product = await this.ai.analyzeProduct({ kind: 'image', images, requestId });
+    const product = await this.labelAi.analyzeProduct({ kind: 'image', images, requestId });
     if (!product.nutrition) throw new ScanError('NUTRITION_TABLE_NOT_FOUND', 422, 'No readable nutrition table in the photo');
     return { product, steps: [], ai: { called: true, reason: 'nutrition_label', images: images.length }, needsPhoto: false };
   }
@@ -199,11 +208,11 @@ export class ScanService {
     }
   }
 
-  private async matchGoal(product: Product, plan: GoalMatchUserPlan | null | 'unavailable', requestId: string): Promise<GoalMatch | GoalMatchV4> {
+  private async matchGoal(product: Product, plan: GoalMatchUserPlan | null | 'unavailable', requestId: string, evaluator = this.goalMatchV4): Promise<GoalMatch | GoalMatchV4> {
     if (plan === 'unavailable') return goalMatchUnavailable('profile_unavailable');
-    if (plan?.goal === 'eat_healthier' && this.goalMatchV4?.enabled) {
+    if (plan?.goal === 'eat_healthier' && evaluator?.enabled) {
       try {
-        const evaluation = await this.goalMatchV4.evaluate(product, plan, requestId);
+        const evaluation = await evaluator.evaluate(product, plan, requestId);
         this.logger.log(
           `goal match v4 ${JSON.stringify({ requestId, outcome: evaluation.outcome, aiCalls: evaluation.aiCalls, cacheHit: evaluation.cacheHit })}`,
         );

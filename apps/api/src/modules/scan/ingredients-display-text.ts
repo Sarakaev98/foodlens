@@ -32,16 +32,16 @@ export function isEnglishIngredientText(text: string): boolean {
 }
 
 type Part = { readonly literal: string } | { readonly index: number; readonly before: string; readonly after: string };
-export function ingredientTranslationPlan(items: readonly Ingredient[]) {
+export function ingredientTranslationPlan(items: readonly Ingredient[], isEnglish = isEnglishIngredientText) {
   const texts: string[] = [];
   const indexByText = new Map<string, number>();
   const names = items.map(item => {
-    if (isEnglishIngredientText(item.name)) return [{ literal: item.name }] as Part[];
+    if (isEnglish(item.name)) return [{ literal: item.name }] as Part[];
     const parts: Part[] = [];
     let start = 0;
     const append = (value: string) => {
       const text = value.trim();
-      if (!text || isEnglishIngredientText(text)) { parts.push({ literal: value }); return; }
+      if (!text || isEnglish(text)) { parts.push({ literal: value }); return; }
       let index = indexByText.get(text);
       if (index === undefined) { index = texts.length; indexByText.set(text, index); texts.push(text); }
       parts.push({ index, before: value.slice(0, value.indexOf(text)), after: value.slice(value.indexOf(text) + text.length) });
@@ -56,7 +56,7 @@ export function ingredientTranslationPlan(items: readonly Ingredient[]) {
   return { texts, assemble(translations: readonly string[]): readonly Ingredient[] {
     if (translations.length !== texts.length) throw new Error('Translation segment count mismatch');
     // Detect English in list context; isolated technical names are often misidentified.
-    if (!isEnglishIngredientText(translations.join(' '))) throw new Error('Non-English ingredient translation');
+    if (!isEnglish(translations.join(' '))) throw new Error('Non-English ingredient translation');
     translations.forEach((text, i) => {
       const structuralText = text.replace(/(?<=[a-z])-(?=[a-z])/giu, '');
       const conjunctions = (value: string) => value.toLowerCase().match(/(?<!\p{L})(?:and|or|with|и|или|с|со|ve|veya|ile|et|ou|avec|und|mit|y|con)(?!\p{L})/gu)?.length ?? 0;

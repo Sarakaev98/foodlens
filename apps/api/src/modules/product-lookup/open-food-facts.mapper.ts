@@ -194,6 +194,7 @@ export function mapOpenFoodFactsProduct(product: unknown, barcode: string): Prod
     beverage,
     servingSize: mapServing(product),
     ingredients: ingredientsText ? splitIngredients(ingredientsText) : null,
+    ...(ingredientsText && /[,;]\s*$/.test(ingredientsText) ? { ingredientsIncomplete: true } : {}),
     allergens: mapAllergens(product),
     additives: mapAdditives(product.additives_tags),
     category: mapCategory(product),

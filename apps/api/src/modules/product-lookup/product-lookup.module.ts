@@ -4,6 +4,7 @@ import { scanDebugEnabled } from '../../common/scan-debug';
 import type { AppConfig } from '../../config/app-config';
 import { APP_CONFIG } from '../../config/app-config.module';
 import { AiModule } from '../ai/ai.module';
+import { PRODUCT_TEXT_AI, createProductTextAI } from '../ai/product-ai-support.factory';
 import { nestLogger } from '../ai/ai-provider.factory';
 import { CachedProductLookupProvider } from './cached-product-lookup.provider';
 import { FatSecretProductLookupProvider } from './fatsecret.provider';
@@ -21,7 +22,7 @@ const FATSECRET_FOUND_TTL_MS = 12 * 60 * 60 * 1000;
 function createWebSearcher(config: AppConfig, textAI?: GoogleNutritionSearch): NutritionSearcher | null {
   const { webSearch, tavily } = config.productLookup;
   if (webSearch === 'off') return null;
-  const google = textAI ?? new GoogleNutritionSearch({ ...config.goalMatchAi.google, logger: nestLogger('GoogleNutritionSearch') });
+  const google = textAI ?? createProductTextAI(config);
   if (webSearch === 'gemini') return google;
   if (!tavily.apiKey) return null;
   const budget = new TavilyCreditBudget(tavily.monthlyCreditLimit);
@@ -55,7 +56,7 @@ function createProductLookup(config: AppConfig, textAI: GoogleNutritionSearch): 
 
 @Module({
   imports: [AiModule],
-  providers: [{ provide: PRODUCT_LOOKUP, useFactory: createProductLookup, inject: [APP_CONFIG, GoogleNutritionSearch] }],
+  providers: [{ provide: PRODUCT_LOOKUP, useFactory: createProductLookup, inject: [APP_CONFIG, PRODUCT_TEXT_AI] }],
   exports: [PRODUCT_LOOKUP],
 })
 export class ProductLookupModule {}
