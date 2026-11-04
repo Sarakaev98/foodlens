@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import { GoogleNutritionSearch } from '@foodlens/ai';
 import type { Additive, Product } from '@foodlens/core';
-import { ingredientTranslationPlan } from './ingredients-display-text';
+import { ingredientTranslationPlan, isEnglishIngredientText } from './ingredients-display-text';
 
 type Display = NonNullable<Product['ingredientsDisplay']>;
 type Translator = Pick<GoogleNutritionSearch, 'translateIngredients'>;
@@ -27,6 +27,8 @@ export class IngredientsDisplayService {
   private readonly cache = new Map<string, { parts: DisplayParts; expires: number }>();
   private readonly pending = new Map<string, Promise<DisplayParts>>();
   constructor(@Inject(GoogleNutritionSearch) private readonly translator: Translator) {}
+
+  protected isEnglishIngredientText(text: string): boolean { return isEnglishIngredientText(text); }
 
   async decorate(product: Product): Promise<Product> {
     const items = product.ingredients.value?.length ? product.ingredients.value : null;
@@ -55,7 +57,7 @@ export class IngredientsDisplayService {
 
   private async translate(items: Ingredients | null, name: string | null, additives: readonly Additive[] | null,
     sourceHash: string, key: string): Promise<DisplayParts> {
-    const plan = items ? ingredientTranslationPlan(items) : null;
+    const plan = items ? ingredientTranslationPlan(items, text => this.isEnglishIngredientText(text)) : null;
     const labels = [...(name ? [name] : []), ...(additives ?? []).map(a => a.name).filter(needsTranslation)];
     const uniqueLabels = [...new Set(labels)];
     const ingredientTexts = plan?.texts ?? [];

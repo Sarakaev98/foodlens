@@ -1,7 +1,7 @@
 # Independent Fireworks Label Scan
 
 Label mode uses its own required Nest DI token and explicit factory. Endpoint /scan/analyze with
-mode=nutrition_label routes to that analyzer; ordinary Product mode retains SCAN_AI_PROVIDER and
+mode=nutrition_label routes to that analyzer; ordinary Product mode uses PRODUCT_SCAN_AI_PROVIDER (legacy alias SCAN_AI_PROVIDER) and
 Meal mode retains the existing AI_PROVIDER endpoint. No UI or response contract changes are needed.
 
 Set in server-only apps/api/.env:
@@ -19,12 +19,11 @@ Label mode always analyzes the photo, bypassing the barcode/database lookup path
 
 Absent LABEL_SCAN_AI_PROVIDER defaults to google. To choose Gemini explicitly, set google and restart.
 There is no model switch after an API error, timeout, missing key or bad response.
-Changing SCAN_AI_PROVIDER alone no longer selects the Label analyzer.
+Changing PRODUCT_SCAN_AI_PROVIDER or its legacy alias SCAN_AI_PROVIDER does not select the Label analyzer.
 The constructor default exists only for older directly-constructed test fixtures; production Nest
 requires LABEL_SCAN_AI_PROVIDER injection and does not substitute the Product analyzer on failure.
 
-The local setup keeps SCAN_AI_PROVIDER=google, AI_PROVIDER=google, MEAL_PLAN_PROVIDER=fireworks,
-and enables only LABEL_SCAN_AI_PROVIDER=fireworks. All other .env values are preserved.
+For Label-only use, leave PRODUCT_SCAN_AI_PROVIDER=google and AI_PROVIDER=google, and set LABEL_SCAN_AI_PROVIDER=fireworks. Meal Plan is selected independently by MEAL_PLAN_PROVIDER. Product can also explicitly select Fireworks without changing Label.
 
 Offline tests cover provider isolation, explicit Gemini alternative, missing-key/HTTP failure without
 fallback, and exact normalization/Product Score/Goal Match parity for stubbed responses.
