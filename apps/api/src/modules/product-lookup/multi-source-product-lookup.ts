@@ -1,3 +1,4 @@
+import { abortableLookup, WEB_ENRICHMENT_TIMEOUT_MS } from './lookup-budget';
 import { isExternalProvenance, type Product } from '@foodlens/core';
 import type { IngredientsDecision, ProductLookupContext, ProductLookupProvider, ProductLookupResult, WebSearchSummary } from './product-lookup.provider';
 import { nutritionAnomalies } from './nutrition-anomalies';
@@ -79,15 +80,20 @@ function lookupContext(product: Product, missing: readonly string[], suspicious:
   };
 }
 
-async function runLookup(source: ProductLookupProvider, barcode: string | null, context?: ProductLookupContext): Promise<Lookup> {
+async function runLookup(source: ProductLookupProvider, barcode: string | null, context?: ProductLookupContext, budgetMs = WEB_ENRICHMENT_TIMEOUT_MS): Promise<Lookup> {
   const startedAt = Date.now();
   let ingredients: IngredientsDecision | undefined;
   let search: WebSearchSummary | undefined;
+  if (source.name === 'web_search' && budgetMs <= 0) return { status: 'error', result: null, latencyMs: 0, error: 'web enrichment deadline exceeded' };
+  const controller = source.name === 'web_search' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), budgetMs) : undefined;
   try {
-    const result = await source.lookup(barcode, context && { ...context, onIngredients: (decision) => { ingredients = decision; }, onSearch: (summary) => { search = summary; } });
+    const result = await abortableLookup(controller?.signal, () => source.lookup(barcode, context && { ...context, ...(controller ? { signal: controller.signal } : {}), onIngredients: (decision) => { ingredients = decision; }, onSearch: (summary) => { search = summary; } }));
     return { status: result ? 'hit' : 'miss', result, latencyMs: Date.now() - startedAt, error: null, ...(ingredients ? { ingredients } : {}), ...(search ? { search } : {}) };
   } catch (error) {
     return { status: 'error', result: null, latencyMs: Date.now() - startedAt, error: (error as Error)?.message ?? 'lookup failed' };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -104,6 +110,7 @@ export class MultiSourceProductLookup {
     const needsBarcodeFirst = sources[0]?.needsBarcode !== false;
     const first = needsBarcodeFirst ? sources[0] : undefined;
     const rest = needsBarcodeFirst ? sources.slice(1) : sources;
+    let webDeadline: number | null = null;
     const started = first ? runLookup(first, barcode) : null;
 
     return {
@@ -129,12 +136,18 @@ export class MultiSourceProductLookup {
           // Состав ищет веб-поиск; достаточность идентификации проверяет провайдер.
           const ingredientsOnly = source.needsBarcode === false && product.ingredients.value === null;
           diagnostic('MISSING_FIELDS', { provider: source.name, missing, ingredients: product.ingredients.value === null });
-          if (missing.length === 0 && !ingredientsOnly) {
-            steps.push({ provider: source.name, status: 'not_needed', result: null, report: null, latencyMs: 0, error: null, missingFields: [] });
+          // Missing fiber alone does not justify a web search when OFF supplied all core/risk nutrients.
+          const offSufficient = source.name === 'web_search' && !ingredientsOnly &&
+            steps.some(step => step.provider === 'open_food_facts' && step.status === 'hit') &&
+            missing.every(field => field === 'fiber');
+          if ((missing.length === 0 && !ingredientsOnly) || offSufficient) {
+            steps.push({ provider: source.name, status: 'not_needed', result: null, report: null, latencyMs: 0, error: null, missingFields: missing });
             continue;
           }
           diagnostic('ENRICHMENT_STARTED', { provider: source.name, missing });
-          apply(source.name, await runLookup(source, barcode, lookupContext(product, missing, suspicious)), missing);
+          if (source.name === 'web_search') webDeadline ??= Date.now() + WEB_ENRICHMENT_TIMEOUT_MS;
+          const budgetMs = source.name === 'web_search' ? Math.max(0, webDeadline! - Date.now()) : WEB_ENRICHMENT_TIMEOUT_MS;
+          apply(source.name, await runLookup(source, barcode, lookupContext(product, missing, suspicious), budgetMs), missing);
           const step = steps.at(-1)!;
           diagnostic('ENRICHMENT_RESULT', { provider: source.name, status: step.status, errorPresent: step.error !== null, report: step.report, search: step.search ?? null });
         }

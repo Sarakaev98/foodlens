@@ -1,4 +1,4 @@
-import { inferred, type Additive, type Allergen, type Detected, type Ingredient, type Product } from '@foodlens/core';
+import { canonicalizeAdditives, inferred, type Additive, type Allergen, type Detected, type Ingredient, type Product } from '@foodlens/core';
 import { detectAllergens } from '@foodlens/nutrition';
 
 /** E-номер в тексте состава: латинская или кириллическая Е, с пробелом или дефисом. */
@@ -33,8 +33,9 @@ function mergeAdditives(known: Detected<readonly Additive[]>, ingredients: reado
     seen.add(key);
     return true;
   });
-  if (known.value === null) return inferred(fresh);
-  return fresh.length > 0 ? { ...known, value: [...known.value, ...fresh] } : known;
+  if (known.value === null) return inferred(canonicalizeAdditives(fresh));
+  const value = canonicalizeAdditives(fresh.length > 0 ? [...known.value, ...fresh] : known.value);
+  return value === known.value ? known : { ...known, value };
 }
 
 function mergeAllergens(known: Detected<readonly Allergen[]>, ingredients: readonly Ingredient[]): Detected<readonly Allergen[]> {
@@ -60,6 +61,11 @@ function mergeAllergens(known: Detected<readonly Allergen[]>, ingredients: reado
  */
 export function withIngredientFacts(product: Product): Product {
   const ingredients = product.ingredients.value;
-  if (!ingredients || ingredients.length === 0) return product;
+  if (!ingredients || ingredients.length === 0) {
+    const value = product.additives.value;
+    if (!value) return product;
+    const canonical = canonicalizeAdditives(value);
+    return canonical === value ? product : {...product,additives:{...product.additives,value:canonical}};
+  }
   return { ...product, additives: mergeAdditives(product.additives, ingredients), allergens: mergeAllergens(product.allergens, ingredients) };
 }

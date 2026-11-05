@@ -107,6 +107,8 @@ export interface GoogleNutritionSearchConfig {
   readonly location?: string;
   readonly model?: string;
   readonly timeoutMs?: number;
+  /** Optional provider-specific budget for UI translation; extraction retains timeoutMs. */
+  readonly translationTimeoutMs?: number;
   readonly fetch?: typeof globalThis.fetch;
   readonly logger?: AILogger;
 }
@@ -161,6 +163,7 @@ export class GoogleNutritionSearch {
   readonly #model: string;
   readonly #transport: typeof globalThis.fetch;
   readonly #timeoutMs: number;
+  readonly #translationTimeoutMs: number;
   readonly #logger: AILogger;
   constructor(config: GoogleNutritionSearchConfig) {
     this.#key = config.apiKey?.trim() ?? '';
@@ -169,15 +172,16 @@ export class GoogleNutritionSearch {
     this.#model = config.model?.trim() || GOOGLE_GOAL_MATCH_MODEL;
     this.#transport = config.fetch ?? globalThis.fetch;
     this.#timeoutMs = config.timeoutMs ?? GOOGLE_NUTRITION_SEARCH_TIMEOUT_MS;
+    this.#translationTimeoutMs = config.translationTimeoutMs ?? this.#timeoutMs;
     this.#logger = config.logger ?? SILENT_AI_LOGGER;
   }
-  async discoverSources(input: SourceDiscoveryInput): Promise<SourceDiscoveryResponse> {
+  async discoverSources(input: SourceDiscoveryInput, signal?: AbortSignal): Promise<SourceDiscoveryResponse> {
     const candidate = await this.call('nutrition_search', {
       systemInstruction: { parts: [{ text: GOOGLE_SOURCE_DISCOVERY_SYSTEM_PROMPT }] },
       contents: [{ role: 'user', parts: [{ text: JSON.stringify(input) }] }],
       tools: [{ googleSearch: {} }],
       generationConfig: { maxOutputTokens: 512 },
-    });
+    }, signal);
     const metadata = candidate.groundingMetadata;
     const queries = record(metadata) && Array.isArray(metadata.webSearchQueries) ? metadata.webSearchQueries.filter((q) => typeof q === 'string') : [];
     const sources = groundingSources(candidate),
@@ -193,7 +197,7 @@ export class GoogleNutritionSearch {
     });
     return { sources, webSearchQueries: queries.length };
   }
-  async extractNutrition(pages: readonly ExtractionPage[]): Promise<readonly ExtractedPage[]> {
+  async extractNutrition(pages: readonly ExtractionPage[], signal?: AbortSignal): Promise<readonly ExtractedPage[]> {
     if (pages.length === 0) return [];
     let left = MAX_EXTRACTION_TEXT_CHARS;
     const trimmed = pages
@@ -212,7 +216,7 @@ export class GoogleNutritionSearch {
         responseSchema: VERTEX_EXTRACTION_SCHEMA,
         maxOutputTokens: 1024,
       },
-    });
+    }, signal);
     const content = record(candidate.content) ? candidate.content : null,
       parts = content && Array.isArray(content.parts) ? content.parts : [];
     const text = parts
@@ -228,7 +232,7 @@ export class GoogleNutritionSearch {
     if (findSchemaViolation(EXTRACTION_SCHEMA, output) !== null) throw new AIProviderError('google', 'invalid_response', message('invalid_response'));
     return (output as { pages: ExtractedPage[] }).pages;
   }
-  async extractIngredients(text: string): Promise<string | null> {
+  async extractIngredients(text: string, signal?: AbortSignal): Promise<string | null> {
     if (!text.trim()) return null;
     const candidate = await this.call('ingredients_extraction', {
       systemInstruction: { parts: [{ text: GOOGLE_INGREDIENTS_EXTRACTION_SYSTEM_PROMPT }] },
@@ -239,7 +243,7 @@ export class GoogleNutritionSearch {
         responseSchema: VERTEX_INGREDIENTS_SCHEMA,
         maxOutputTokens: 1024,
       },
-    });
+    }, signal);
     const content = record(candidate.content) ? candidate.content : null,
       parts = content && Array.isArray(content.parts) ? content.parts : [];
     const answer = parts
@@ -281,7 +285,9 @@ export class GoogleNutritionSearch {
   private async call(
     type: 'nutrition_search' | 'nutrition_extraction' | 'ingredients_extraction' | 'ingredients_translation',
     body: Record<string, unknown>,
+    externalSignal?: AbortSignal,
   ): Promise<Record<string, unknown>> {
+    externalSignal?.throwIfAborted();
     if (!this.#key || !this.#project) throw new AIProviderError('google', 'not_configured', message('not_configured'));
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -289,10 +295,10 @@ export class GoogleNutritionSearch {
       timer = setTimeout(() => {
         controller.abort();
         reject(new AIProviderError('google', 'timeout', message('timeout')));
-      }, this.#timeoutMs);
+      }, type === 'ingredients_translation' ? this.#translationTimeoutMs : this.#timeoutMs);
     });
     try {
-      return await Promise.race([this.request(type, body, controller.signal), deadline]);
+      return await Promise.race([this.request(type, body, externalSignal ? AbortSignal.any([externalSignal, controller.signal]) : controller.signal), deadline]);
     } catch (error) {
       const code = error instanceof AIProviderError ? error.code : controller.signal.aborted ? 'timeout' : 'unavailable';
       throw new AIProviderError('google', code, message(code));

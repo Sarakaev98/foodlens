@@ -85,8 +85,9 @@ export class PageFetcher {
     this.maxBytes = config.maxBytes ?? PAGE_MAX_BYTES;
   }
 
-  async fetchPage(url: string): Promise<FetchedPage> {
-    const signal = AbortSignal.timeout(this.timeoutMs);
+  async fetchPage(url: string, externalSignal?: AbortSignal): Promise<FetchedPage> {
+    const signal = externalSignal ? AbortSignal.any([externalSignal, AbortSignal.timeout(this.timeoutMs)]) : AbortSignal.timeout(this.timeoutMs);
+    signal.throwIfAborted();
     let current = url;
     for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
       const target = await this.checkedUrl(current);

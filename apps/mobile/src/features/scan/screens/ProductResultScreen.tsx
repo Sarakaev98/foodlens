@@ -7,7 +7,7 @@ import { Button, colors, radius, spacing, typography } from '@/shared/ui';
 import { NutritionTable } from '../components/NutritionTable';
 import { NotDetected, ProductSection } from '../components/ProductSection';
 import {
-  additiveLabel, ALLERGEN_LABELS, BASIS_LABELS, CATEGORY_LABELS, isForeignText, NOT_DETECTED_LABEL, ORIGINAL_TEXT_LABEL,
+  additiveLabel, ALLERGEN_LABELS, BASIS_LABELS, CATEGORY_LABELS, isForeignText, NOT_DETECTED_LABEL, TRANSLATION_UNAVAILABLE_LABEL,
   usesFatSecret, usesOpenFoodFacts,
 } from '../productLabels';
 import type { ScanPhoto } from '../types/scan.types';
@@ -42,6 +42,7 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
   ])];
   const displayIngredients = product.ingredientsDisplay?.items ?? ingredients.value;
   const displayAdditives = additives.value === null ? null : product.additivesDisplay ?? additives.value;
+  const foreignIngredients = displayIngredients?.some(item => isForeignText(item.name)) ?? false;
   const foreignAdditives = displayAdditives?.some((item) => !item.code && item.name !== null && isForeignText(item.name)) ?? false;
 
   return (
@@ -85,7 +86,7 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
           )}
         </ProductSection>
 
-        <ProductSection title="Ingredients">
+        <ProductSection title="Ingredients" subtitle={foreignIngredients ? TRANSLATION_UNAVAILABLE_LABEL : undefined}>
           {displayIngredients ? (
             <Text style={typography.body}>
               {displayIngredients.map((item) => (item.percent !== null ? `${item.name} (${item.percent}%)` : item.name)).join(', ')}
@@ -113,7 +114,7 @@ export function ProductResultScreen({ product, score, goalMatch, photo, barcode,
           )}
         </ProductSection>
 
-        <ProductSection title="Additives" subtitle={foreignAdditives ? ORIGINAL_TEXT_LABEL : undefined}>
+        <ProductSection title="Additives" subtitle={foreignAdditives ? TRANSLATION_UNAVAILABLE_LABEL : undefined}>
           {displayAdditives === null ? (
             <NotDetected text={NOT_DETECTED_LABEL} />
           ) : displayAdditives.length === 0 ? (

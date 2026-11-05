@@ -65,8 +65,8 @@ export const usesOpenFoodFacts = (product: Product): boolean => usesSource(produ
 /** Есть ли в продукте данные FatSecret: тогда нужна их подпись. */
 export const usesFatSecret = (product: Product): boolean => usesSource(product, 'fatsecret');
 
-/** Подпись к тексту с упаковки на другом языке: его показываем как есть и не переводим. */
-export const ORIGINAL_TEXT_LABEL = 'as printed on the package, not translated';
+/** A failed or legacy English projection retains the source text. */
+export const TRANSLATION_UNAVAILABLE_LABEL = 'English translation unavailable. Showing original text.';
 
 /** Больше букв не латиницей, чем латиницей: интерфейс на английском. Диапазоны вместо \p{L}: так надёжнее в Hermes. */
 export function isForeignText(text: string): boolean {

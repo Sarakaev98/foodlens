@@ -1,3 +1,4 @@
+import { abortableLookup } from './lookup-budget';
 import type { AILogger, ExtractedPage, ExtractionPage, SourceDiscoveryInput, SourceDiscoveryResponse } from '@foodlens/ai';
 import { SALT_PER_SODIUM, sodiumMgFromSaltG, type NutrientKey } from '@foodlens/core';
 import { scanDebugEnabled } from '../../common/scan-debug';
@@ -116,22 +117,22 @@ export class WebSearchLimitError extends Error {
 
 /** Поиск страниц и AI-извлечение. Сменные: сюда можно подключить другой поисковый источник. */
 export interface NutritionSearcher {
-  discoverSources(input: SourceDiscoveryInput): Promise<SourceDiscoveryResponse>;
-  extractNutrition(pages: readonly ExtractionPage[]): Promise<readonly ExtractedPage[]>;
+  discoverSources(input: SourceDiscoveryInput, signal?: AbortSignal): Promise<SourceDiscoveryResponse>;
+  extractNutrition(pages: readonly ExtractionPage[], signal?: AbortSignal): Promise<readonly ExtractedPage[]>;
   /** false: поиск сейчас недоступен (например, кончились кредиты), шаг пропускается молча. */
   isAvailable?(): boolean;
   /** Поиск готовым текстом запроса. Если он есть, работает пошаговая стратегия, иначе один запрос discoverSources. */
-  searchQuery?(query: string): Promise<SourceDiscoveryResponse>;
+  searchQuery?(query: string, signal?: AbortSignal): Promise<SourceDiscoveryResponse>;
   /** Состав из текста проверенной страницы. Вызывается не больше одного раза за скан, только когда код его не нашёл. */
-  extractIngredients?(text: string): Promise<string | null>;
+  extractIngredients?(text: string, signal?: AbortSignal): Promise<string | null>;
   /** Запасное чтение страниц, которые не открылись напрямую. Вызывается не больше одного раза за скан. */
-  readPages?(urls: readonly string[]): Promise<readonly { readonly url: string; readonly content: string }[]>;
+  readPages?(urls: readonly string[], signal?: AbortSignal): Promise<readonly { readonly url: string; readonly content: string }[]>;
   /** Всего потрачено кредитов. Считает сам поиск, поэтому неудачное чтение без списания сюда не попадает. */
   creditsSpent?(): number;
 }
 
 export interface PageReader {
-  fetchPage(url: string): Promise<{ readonly finalUrl: string; readonly domain: string; readonly contentType: string; readonly body: string }>;
+  fetchPage(url: string, signal?: AbortSignal): Promise<{ readonly finalUrl: string; readonly domain: string; readonly contentType: string; readonly body: string }>;
 }
 
 interface LoadedPage {
@@ -585,6 +586,7 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
   async lookup(barcode: string | null, context?: ProductLookupContext): Promise<ProductLookupResult | null> {
     // Без значений для сверки страницу можно подтвердить только штрихкодом.
     if (!context) return null;
+    context.signal?.throwIfAborted();
     const verifiable = per100Context(context);
     const reference = verifiable !== null && knownMacros(verifiable) >= MIN_COMPARED_MACROS;
     if (!reference && !barcode) return null;
@@ -660,6 +662,7 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
       wantsIngredients,
       stillMissing,
     );
+    context.signal?.throwIfAborted();
     if (creditsBefore !== undefined) counters.credits = this.searcher.creditsSpent!() - creditsBefore;
     if (memory.sources.size === 0) {
       context.onIngredients?.({ found: false, accepted: false, source: null, rejectReason: null });
@@ -681,6 +684,7 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
     if (wantsIngredients()) await this.withIngredientsExtraction(memory, counters, identity(), barcode);
     for (let left = MAX_AI_EXTRACTIONS_PER_PRODUCT - memory.aiExtractions; left > 0 && !hasRequestedValues(evaluate().values, label); left--)
       memory.pages = await this.withAiExtraction(memory, counters, identity(), barcode, confirmed);
+    context.signal?.throwIfAborted();
     const solid = evaluate();
     const { checked, basis, unresolved, corrections, recipeCorrected } = solid;
     const { values, sources } = solid;
@@ -793,6 +797,7 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
     const counters: SearchCounters = { searches: 0, reads: 0, extracts: 0, aiExtractions: 0, identityReads: 0, webSearchQueries: 0, steps: [] };
     const staged = this.searcher.searchQuery !== undefined;
     for (const kind of staged ? SEARCH_ORDER : SEARCH_ORDER.slice(0, 1)) {
+      identity().signal?.throwIfAborted();
       if (enough()) break;
       // Запрос строится заново: предыдущий шаг мог уточнить название или найти то, чего не хватало.
       const label = { ...identity(), needsIngredients: wantsIngredients(), missingFields: stillMissing() };
@@ -805,9 +810,10 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
       try {
         this.reserveRequest();
         found = staged
-          ? await this.searcher.searchQuery!(step.query)
-          : await this.searcher.discoverSources({ barcode, brand: label.brand, name: label.name, serving: label.serving });
+          ? await abortableLookup(label.signal, () => this.searcher.searchQuery!(step.query, label.signal))
+          : await abortableLookup(label.signal, () => this.searcher.discoverSources({ barcode, brand: label.brand, name: label.name, serving: label.serving }, label.signal));
       } catch (error) {
+      label.signal?.throwIfAborted();
         // Первый сбой виден скану и не кэшируется; после него найденное раньше остаётся в силе.
         if (counters.searches === 0 && memory.pages.length === 0) throw error;
         this.logger.warn('web_search_failed', { step: step.kind, error: (error as Error)?.message ?? 'failed' });
@@ -891,7 +897,7 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
     memory.visited.add(source.url);
     counters.reads++;
     counters.identityReads++;
-    const read = await this.identityPage(source.url, memory, counters);
+    const read = await this.identityPage(source.url, memory, counters, label.signal);
     if (read === null) return null;
     const parsed = parsePage(read.body);
     const page = read.extracted
@@ -931,10 +937,12 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
     url: string,
     memory: SearchMemory,
     counters: SearchCounters,
+    signal?: AbortSignal,
   ): Promise<{ readonly body: string; readonly extracted: boolean } | null> {
     try {
-      return { body: (await this.reader.fetchPage(url)).body, extracted: false };
+      return { body: (await abortableLookup(signal, () => this.reader.fetchPage(url, signal))).body, extracted: false };
     } catch (error) {
+      signal?.throwIfAborted();
       memory.failed.set(url, (error as Error)?.message ?? 'failed');
       this.logger.warn('identity_read_failed', { url: loggedUrl(url), error: (error as Error)?.message ?? 'failed' });
       if (
@@ -948,9 +956,10 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
     memory.extracts++;
     counters.extracts++;
     try {
-      const content = (await this.searcher.readPages!([url])).find((item) => item.url === url)?.content;
+      const content = (await abortableLookup(signal, () => this.searcher.readPages!([url], signal))).find((item) => item.url === url)?.content;
       return content ? { body: content, extracted: true } : null;
     } catch (error) {
+      signal?.throwIfAborted();
       this.logger.warn('web_extract_failed', { error: (error as Error)?.message ?? 'failed' });
       return null;
     }
@@ -961,7 +970,7 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
     const results = await Promise.all(
       sources.map(async (source): Promise<LoadedPage | 'blocked' | null> => {
         try {
-          const fetched = await this.reader.fetchPage(source.url);
+          const fetched = await abortableLookup(context.signal, () => this.reader.fetchPage(source.url, context.signal));
           const page = parsePage(fetched.contentType === 'application/ld+json' ? `<script type="application/ld+json">${fetched.body}</script>` : fetched.body);
           return {
             sourceUrl: source.url,
@@ -975,6 +984,7 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
             reader: 'direct',
           };
         } catch (error) {
+      context.signal?.throwIfAborted();
           this.logger.warn('web_page_failed', { domain: source.domain, error: (error as Error)?.message ?? 'failed' });
           failed.set(source.url, (error as Error)?.message ?? 'failed');
           // Закрытый адрес не передаётся дальше: запасное чтение его не обходит.
@@ -1011,8 +1021,9 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
     memory.extracts++;
     counters.extracts++;
     try {
-      contents = await this.searcher.readPages(unread.map((source) => source.url));
+      contents = await abortableLookup(context.signal, () => this.searcher.readPages!(unread.map((source) => source.url), context.signal));
     } catch (error) {
+      context.signal?.throwIfAborted();
       this.logger.warn('web_extract_failed', { error: (error as Error)?.message ?? 'failed' });
       return pages;
     }
@@ -1054,8 +1065,9 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
     const text = ingredientsFragment(target.page.text);
     let value: string | null;
     try {
-      value = printedIngredients(await this.searcher.extractIngredients(text), text);
+      value = printedIngredients(await abortableLookup(label.signal, () => this.searcher.extractIngredients!(text, label.signal)), text);
     } catch (error) {
+      label.signal?.throwIfAborted();
       this.logger.warn('web_extraction_failed', { error: (error as Error)?.message ?? 'failed' });
       return;
     }
@@ -1099,8 +1111,9 @@ export class WebSearchProductLookupProvider implements ProductLookupProvider {
     counters.aiExtractions++;
     let extracted: readonly ExtractedPage[];
     try {
-      extracted = await this.searcher.extractNutrition(needAi.map(({ id, page }) => ({ id, text: page.page.relevantText })));
+      extracted = await abortableLookup(label.signal, () => this.searcher.extractNutrition(needAi.map(({ id, page }) => ({ id, text: page.page.relevantText })), label.signal));
     } catch (error) {
+      label.signal?.throwIfAborted();
       this.logger.warn('web_extraction_failed', { error: (error as Error)?.message ?? 'failed' });
       return pages;
     }

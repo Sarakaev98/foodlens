@@ -41,7 +41,10 @@ export const ALLERGEN_FOODS: Readonly<Record<AllergenCode, readonly string[]>> =
   molluscs: MOLLUSCS,
 };
 
-export const LABEL_ALLERGEN_FOODS: Readonly<Record<AllergenCode, readonly string[]>> = { ...ALLERGEN_FOODS, sulphites: SULPHITES_STATED };
+export const LABEL_ALLERGEN_FOODS: Readonly<Record<AllergenCode, readonly string[]>> = { ...ALLERGEN_FOODS,
+  // A Russian adjective in lactic acid is not a statement of milk content. Keep every other dairy match.
+  milk: MILK.map(term => term === 'молоч' ? 'молоч(?!н[а-я]*[\\s-]+кислот)' : term),
+  sulphites: SULPHITES_STATED };
 
 /** Диета без запретов (none) сюда не входят: проверять нечего. */
 export const DIET_FOODS: Readonly<Partial<Record<DietaryPreference, readonly string[]>>> = {

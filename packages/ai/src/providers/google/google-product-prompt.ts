@@ -39,7 +39,9 @@ Semantics (semantics-v1, version field required): inferred context with its own 
 - processing: whole_or_minimal, processed (including butter and sugar), ultra_processed (for example isolates, sweeteners, industrial formulation), unknown.
 - Each has value, confidence and evidence: short quoted grounds. Without evidence return unknown. intrinsic and whole_or_minimal need nonempty evidence.
 - productForm: {value: food|beverage|unknown, confidence}.
-- typicalServing: null if a serving is printed. Otherwise the only permitted estimate, grounded in visible package size or structure: {amount, unit, confidence, evidence}; if it cannot be grounded, null. Never estimate nutrition values.`;
+- typicalServing: null if a serving is printed. Otherwise the only permitted estimate, grounded in visible package size or structure: {amount, unit, confidence, evidence}; if it cannot be grounded, null. Never estimate nutrition values.
+English display (in this same response, no additional analysis): keep ingredients.items.name and additives.name in the original printed language. In english.name provide the English product name (null if unreadable), without changing identity.name. In english.ingredients provide one faithful English translation per ingredient, in exactly the same order. In english.additives provide one English name per additive, in the same order (null when its printed name is null). Preserve all E-codes, numbers, percentages, brackets, nested lists and delimiters exactly; do not add or omit ingredients, qualifiers, allergens or trace warnings. Use English even for Latin-script foreign text. If no ingredients were read, use empty arrays.
+`;
 
 /** Added only for 2–3 images, so a one-photo scan keeps prompt v2 and its cost unchanged. */
 export const GOOGLE_PRODUCT_MULTI_IMAGE_PROMPT = `

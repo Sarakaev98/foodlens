@@ -6,6 +6,9 @@ const jsx=(type,props)=>({type,props});
 const source=fs.readFileSync(path.join(__dirname,'../src/features/scan/screens/ProductResultScreen.tsx'),'utf8');
 const moduleCode=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
 const moduleValue={exports:{}};
+const labelsModule={exports:{}};
+const labelsSource=fs.readFileSync(path.join(__dirname,'../src/features/scan/productLabels.ts'),'utf8');
+vm.runInNewContext(ts.transpileModule(labelsSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,{module:labelsModule,exports:labelsModule.exports,require});
 let goalProduct;
 const propsByImport={
  'react/jsx-runtime':{jsx,jsxs:jsx},
@@ -16,7 +19,7 @@ const propsByImport={
  '@/shared/ui':{Button:()=>null,colors:{},radius:{},spacing:{},typography:{}},
  '../components/NutritionTable':{NutritionTable:()=>null},
  '../components/ProductSection':{ProductSection:'ProductSection',NotDetected:({text})=>jsx('Text',{children:text})},
- '../productLabels':{additiveLabel:a=>[a.code,a.name].filter(Boolean).join(' · '),ALLERGEN_LABELS:{},BASIS_LABELS:{},CATEGORY_LABELS:{},isForeignText:()=>false,NOT_DETECTED_LABEL:'Not detected',ORIGINAL_TEXT_LABEL:'as printed on the package, not translated',usesFatSecret:()=>false,usesOpenFoodFacts:()=>false},
+ '../productLabels':labelsModule.exports,
 };
 vm.runInNewContext(moduleCode,{module:moduleValue,exports:moduleValue.exports,require:id=>{assert.ok(id in propsByImport,id);return propsByImport[id];}});
 const {ProductResultScreen}=moduleValue.exports;
@@ -36,7 +39,7 @@ describe('Product Result uses English composition only for display',()=>{
  });
  it('failed translation shows the original and preserves the result screen',()=>{
   const product={...base,ingredientsDisplay:{sourceHash:'test',language:'original',status:'fallback',items:original.value}};
-  const section=find(show(product),n=>n.type==='ProductSection'&&n.props.title==='Ingredients')[0];assert.equal(text(section),'томаты (98%), соль');
+  const section=find(show(product),n=>n.type==='ProductSection'&&n.props.title==='Ingredients')[0];assert.equal(text(section),'томаты (98%), соль');assert.equal(section.props.subtitle,labelsModule.exports.TRANSLATION_UNAVAILABLE_LABEL);
  });
  it('English product name and additive names are shown when the API sends them, originals stay for logic',()=>{
   const additives={value:[{code:'E330',name:'лимонная кислота'},{code:null,name:'краситель'}],provenance:'observed'};
@@ -47,6 +50,14 @@ describe('Product Result uses English composition only for display',()=>{
   assert.equal(text(section),'E330 · citric acidcolouring');assert.equal(product.additives,additives);assert.equal(goalProduct.name.value,'Сгущённое молоко');
  });
  it('legacy cached results without display metadata remain readable',()=>{
-  const section=find(show(base),n=>n.type==='ProductSection'&&n.props.title==='Ingredients')[0];assert.equal(text(section),'томаты (98%), соль');
+  const section=find(show(base),n=>n.type==='ProductSection'&&n.props.title==='Ingredients')[0];assert.equal(text(section),'томаты (98%), соль');assert.equal(section.props.subtitle,labelsModule.exports.TRANSLATION_UNAVAILABLE_LABEL);
  });
+});
+
+it('an untranslated name-only additive shows an honest failure caption, with E-codes preserved',()=>{
+ const product={...base,additives:{value:[{code:null,name:'ароматизатор'},{code:'E322',name:'лецитин'}],provenance:'inferred'}};
+ const section=find(show(product),n=>n.type==='ProductSection'&&n.props.title==='Additives')[0];
+ assert.equal(section.props.subtitle,'English translation unavailable. Showing original text.');
+ assert.equal(text(section),'ароматизаторE322');
+ assert.ok(!section.props.subtitle.includes('not translated'));
 });

@@ -35,6 +35,8 @@ export interface MetaTextField {
 }
 
 export interface MetaProductAnalysis {
+  /** Optional for old responses. English names in source order, without changing the printed fields. */
+  readonly english?: { readonly name?: string | null; readonly ingredients: readonly string[]; readonly additives: readonly (string | null)[] } | null;
   /** Optional in legacy stored/mock responses; new structured responses always include the block. */
   readonly semantics?: ProductSemantics | null;
   readonly image: {
@@ -174,6 +176,11 @@ export const META_PRODUCT_ANALYSIS_SCHEMA: JsonSchema = objectSchema({
     description: 'Food additives from the ingredients list',
     items: objectSchema({ e_number: nullable({ type: 'string' }), name: nullable({ type: 'string' }) }),
   },
+  english: nullable(objectSchema({
+    name: nullable({ type: 'string' }),
+    ingredients: { type: 'array', items: { type: 'string' } },
+    additives: { type: 'array', items: nullable({ type: 'string' }) },
+  })),
   confidence: objectSchema({
     overall: enumSchema(META_CONFIDENCE),
     identity: enumSchema(META_CONFIDENCE),

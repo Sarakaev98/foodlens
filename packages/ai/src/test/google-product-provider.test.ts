@@ -334,3 +334,16 @@ describe('Gemini Label transport regressions (no network)',()=>{
     }
   });
 });
+
+ it('English composition and additive names arrive in the existing Google analysis request',async()=>{
+  let calls=0;
+  const raw=metaAnalysis({ingredients:{visible:true,items:[{name:'молоко',percent:20},{name:'эмульгатор (E322)',percent:null}]},additives:[{e_number:'E322',name:'эмульгатор'}],english:{name:null,ingredients:['milk','emulsifier (E322)'],additives:['emulsifier']}});
+  const p=await provider((async(_url,init)=>{
+   calls++;const body=JSON.parse(String(init!.body));
+   assert.ok(body.generationConfig.responseSchema.properties.english);
+   assert.match(body.systemInstruction.parts[0].text,/English display/);
+   return reply(raw);
+  }) as typeof fetch).analyzeProduct(image());
+  assert.equal(calls,1);assert.equal(p.ingredients.value?.[0]?.name,'молоко');
+  assert.equal(p.additives.value?.[0]?.code,'E322');assert.equal(p.labelTranslations?.[0]?.english,'milk');
+ });

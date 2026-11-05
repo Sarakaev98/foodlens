@@ -49,6 +49,8 @@ export interface Product {
   readonly semantics?: ProductSemantics | null;
   /** Состав в порядке этикетки. not_detected: состава на изображении нет. */
   readonly ingredients: Detected<readonly Ingredient[]>;
+  /** Validated translations from the existing analysis; presentation only, keyed by exact source text. */
+  readonly labelTranslations?: readonly { readonly original: string; readonly english: string }[];
   /** UI-only English projection. Never an input for enrichment, estimator, allergens or scoring. */
   readonly ingredientsDisplay?: {
     readonly sourceHash: string;

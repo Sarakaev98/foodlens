@@ -26,7 +26,9 @@ Semantic context (semantics-v1), returned in this SAME response:
 - sugarSource and processing each contain value, confidence high|medium|low, and evidence: an array of short quoted ingredient/visible-structure grounds. Without evidence return unknown. Intrinsic and whole_or_minimal MUST have nonempty evidence.
 - productForm: {value: food|beverage|unknown, confidence: high|medium|low}.
 - typicalServing is null whenever a serving is printed on the label. Otherwise the ONLY permitted numeric estimate is a typical serving: {amount: positive number, unit: g|ml, confidence: high|medium|low, evidence: string[]}. If it cannot be grounded in visible package size/structure, return null. Never estimate missing nutrition values.
-- Do not add semantic fields or invent data. Return version semantics-v1.`;
+- Do not add semantic fields or invent data. Return version semantics-v1.
+English display (in this same response, no additional analysis): keep ingredients.items.name and additives.name in the original printed language. In english.name provide the English product name (null if unreadable), without changing identity.name. In english.ingredients provide one faithful English translation per ingredient, in exactly the same order. In english.additives provide one English name per additive, in the same order (null when its printed name is null). Preserve all E-codes, numbers, percentages, brackets, nested lists and delimiters exactly; do not add or omit ingredients, qualifiers, allergens or trace warnings. Use English even for Latin-script foreign text. If no ingredients were read, use empty arrays.
+`;
 
 
 export const META_PRODUCT_USER_PROMPT = 'Analyze this product photo and return the structured result.';
